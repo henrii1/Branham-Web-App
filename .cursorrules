@@ -1,0 +1,353 @@
+# Cursor Rules — Branham Web App (Next.js + Supabase)
+
+Project: **Branham Web App**
+
+Purpose: A minimal, high-performance web app (ChatGPT-style UI) that manages:
+- Auth and user sessions (Supabase)
+- Chat session/history persistence (Supabase) for logged-in users
+- Rendering model responses with **human-readable references**
+- Making exactly **one downstream API call**: to the **Branham Model API** (Python service)
+
+No reader view in v1 (references are rendered inline and in an expandable list).
+
+---
+
+## 0) Non-negotiables
+
+- Use **Next.js best practices** to minimize latency and avoid common perf pitfalls.
+- Keep the UI simple: chat window + history sidebar (ChatGPT-like).
+- Supabase client is responsible for:
+  - authentication (sign-in/sign-out/session)
+  - chat history CRUD (logged-in users only)
+- No caching in v1 (no response caching, no embedding caching).
+- The web app makes **only one API call per user message**:
+  - `POST /chat` to the Branham Model API
+- Everything else is local UI work: parsing references, resolving metadata, rendering.
+
+Free app v1 constraints:
+- No API key management in v1.
+- Support anonymous (not logged-in) usage:
+  - user can chat
+  - history is not persisted until user logs in
+  - once logged in, persistence applies going forward
+
+---
+
+## 1) Performance principles (Next.js-specific)
+
+Next.js can feel slower than direct React if misused. Follow these rules:
+
+- Prefer **Server Components by default** (Next.js App Router), but keep the chat input + streaming message area as **Client Components**.
+- Avoid heavy client-side bundles:
+  - keep dependencies minimal
+  - do not import large libraries into client components
+  - use dynamic import for non-critical UI widgets
+- Use **streaming UI**:
+  - stream tokens from Model API to the frontend via the backend route handler
+  - update the assistant message progressively
+- Use stable rendering patterns:
+  - avoid re-rendering the whole message list for each token
+  - append tokens to a single message state efficiently
+- Keep database round-trips minimal:
+  - batch queries (e.g., fetch references metadata for all citations in one query)
+  - avoid per-reference queries in a loop
+
+---
+
+## 2) App behavior overview
+
+### 2.1 User story (anonymous + logged-in)
+1. User opens app.
+2. User may use the app without logging in (anonymous mode):
+   - can send messages
+   - receives answers
+   - session exists only in local state (memory / local storage optional)
+   - no Supabase history persistence
+3. If user logs in:
+   - new chats and messages are persisted (Supabase)
+   - existing anonymous chat may optionally be offered for “Save this chat” (optional UX; not required v1)
+4. User sends a message.
+5. Web backend sends exactly one request to Model API:
+   - `POST /chat`
+6. UI streams and renders the response.
+7. UI parses references like:
+   - `[47-0412--M: ¶2–¶3]`
+8. UI resolves `date_id` → sermon title and displays references in plain language:
+   - “Faith Is The Substance (12-04-47, Morning), paragraphs 2–3”
+9. For logged-in users, all messages and references are saved in Supabase.
+
+---
+
+## 3) Data modeling and history behavior (Supabase)
+
+### 3.1 Relationships (LOCKED)
+- `chat_sessions` has a **one-to-many** relationship with `chat_messages`.
+- History sidebar is built by querying chat sessions for the user, then showing:
+  - session title (or auto-generated)
+  - last updated time
+- Chat view is built by querying messages for a selected session:
+  - `SELECT * FROM chat_messages WHERE session_id = ... ORDER BY created_at ASC`
+
+### 3.2 Anonymous mode rules
+- Anonymous user has:
+  - no `user_id`
+  - no DB persistence
+- In anonymous mode:
+  - messages exist only in local UI state
+  - session_id can be generated locally (uuid) for frontend organization
+- On login:
+  - new messages are persisted under the user
+  - optional: migrate anonymous session into a real chat session (not required v1)
+
+---
+
+## 4) Reference parsing and rendering (LOCKED UX requirement)
+
+Model will return references in text, e.g.:
+- `[47-0412--M: ¶2–¶3]`
+
+The web app must:
+- Parse these reference tokens reliably.
+- Render them in a more human-friendly format using metadata from DB:
+  - sermon title (from DB)
+  - date_id (canonical)
+  - paragraph range in plain language
+
+### 4.1 Parsing rules
+- Pattern conceptually:
+  - `[` + `date_id` + `:` + paragraph range + `]`
+- Extract:
+  - `date_id` = `dd-mm-yy--M|E`
+  - `paragraph_start`, `paragraph_end`
+- Be tolerant:
+  - `¶2–¶3` or `¶2-¶3`
+  - allow spaces
+
+### 4.2 Metadata resolution
+- The app stores `sermon_metadata` mapping:
+  - `date_id -> title, preacher, language(optional)`
+- On rendering an assistant message:
+  - collect all `date_id`s found in that message
+  - fetch metadata in one query (batch)
+  - render a references panel/list
+
+### 4.3 references_json (LOCKED)
+- Keep `references_json` column on `chat_messages` (jsonb).
+- When storing an assistant message, store both:
+  - raw assistant text
+  - parsed structured references (references_json)
+- On render:
+  - prefer references_json for speed and stability
+  - parsing raw text is fallback only
+
+---
+
+## 5) Supabase responsibilities (v1)
+
+Supabase client handles:
+- Auth
+- Session state
+- Chat history persistence for logged-in users
+
+No caching in v1.
+
+### 5.1 Required database tables (minimum)
+
+#### chat_sessions
+- id (uuid, PK)
+- user_id (uuid, nullable for future; in v1 persisted sessions require user_id)
+- title (text, optional auto-title)
+- created_at
+- updated_at
+
+Notes:
+- For logged-in users: `user_id` is required.
+- Anonymous sessions should not be persisted in v1.
+
+#### chat_messages
+- id (uuid, PK)
+- session_id (uuid, FK -> chat_sessions.id)
+- user_id (uuid, nullable; in v1 persisted messages require user_id)
+- role (`user` | `assistant`)
+- content (text)
+- created_at
+- references_json (jsonb, optional but strongly recommended)
+
+Notes:
+- One session has many messages.
+- Message order is by created_at ascending.
+
+#### sermon_metadata
+- date_id (text, PK)
+- title (text)
+- preacher (text, default “William Marrion Branham”)
+- language (text, default “en”)
+- created_at
+
+Notes:
+- sermon_metadata is pre-seeded from corpus pipeline.
+- The app uses this table to resolve `date_id` → human title.
+
+---
+
+## 6) API call contract (web app side)
+
+### 6.1 Single downstream call per message (LOCKED)
+The app backend calls the Model API:
+
+- `POST {MODEL_API_BASE_URL}/chat`
+
+Request:
+- session_id
+- user_language
+- query
+- optional:
+  - history_window
+  - conversation_summary
+
+Important v1 change:
+- **No conversation summarization** in v1.
+- Use truncation instead:
+  - send only the last N messages or last X tokens as `history_window`
+  - keep it deterministic and fast
+
+Response:
+- answer
+- mode
+- references (structured list)
+  - date_id
+  - paragraph_start
+  - paragraph_end
+  - chunk_ids
+
+### 6.2 Web backend route
+Implement a single Next.js route handler:
+- `POST /api/chat`
+
+Responsibilities:
+- Determine if user is logged in (Supabase session):
+  - if logged in: persist session/message history
+  - if anonymous: do not persist, but still allow chat
+- Insert user message into DB only if logged in
+- Call Model API (streaming)
+- Persist assistant message + references_json only if logged in
+- Return streamed response to client
+
+---
+
+## 7) UI requirements (ChatGPT-like)
+
+### 7.1 Layout
+- Left sidebar:
+  - list of chat sessions (history) (logged-in only)
+  - create new chat button
+  - sign in / sign out button
+- Main panel:
+  - messages list
+  - message input box
+  - streaming assistant response
+  - references display for assistant messages
+
+Anonymous UX:
+- Sidebar can be hidden or show a “Sign in to save history” banner.
+- Chat works normally but is not persisted.
+
+### 7.2 Behavior
+- Logged-in:
+  - New chat creates a `chat_sessions` row
+  - Sending message creates `chat_messages` row for user
+  - Assistant message saved at end of stream with references_json
+- Anonymous:
+  - New chat is local-only
+  - Sending message updates local state only
+  - Assistant message stored in local state only
+
+### 7.3 Accessibility
+- Keyboard navigation for sessions list
+- Enter to send, Shift+Enter for newline
+- Good contrast and readable typography
+
+---
+
+## 8) Next.js codebase structure (recommended scaffold)
+
+web-app/
+- README.md
+- next.config.js
+- .env.local
+- src/
+  - app/
+    - layout.tsx
+    - page.tsx
+    - (auth)/
+      - login/page.tsx
+    - (app)/
+      - chat/page.tsx
+      - chat/[sessionId]/page.tsx
+    - api/
+      - chat/route.ts          # the ONLY model API call path
+  - components/
+    - chat/
+      - ChatShell.tsx
+      - MessageList.tsx
+      - MessageBubble.tsx
+      - Composer.tsx
+      - ReferencesPanel.tsx
+      - ReferencePill.tsx
+      - SessionSidebar.tsx
+      - AnonymousBanner.tsx
+    - auth/
+      - AuthGate.tsx
+  - lib/
+    - supabase/
+      - client.ts
+      - server.ts
+      - middleware.ts
+    - modelApi/
+      - client.ts              # fetch/stream wrapper
+    - references/
+      - parse.ts               # parse [date_id: ¶x–¶y]
+      - resolve.ts             # batch resolve date_ids -> metadata
+      - format.ts              # format references in plain language
+    - db/
+      - queries.ts             # typed DB access helpers
+    - utils/
+      - ids.ts
+      - time.ts
+      - safeHtml.ts
+  - styles/
+    - globals.css
+
+---
+
+## 9) Streaming implementation rules (important)
+
+- Use `ReadableStream` and incremental decoding on client.
+- Keep assistant message state localized:
+  - avoid re-rendering entire list per token
+  - append to the current assistant message only
+- Persist only after completion (logged-in only):
+  - write the final assistant content + references_json once stream ends
+- Do not store partial messages in DB in v1 (keep DB clean and simple).
+
+---
+
+## 10) Security and rate limiting (v1 minimal)
+
+- Validate Supabase auth session for persistence actions.
+- Anonymous requests are allowed but rate-limited (simple server-side limit).
+- No API key management in v1.
+- Never expose Model API keys to the client.
+- Store minimal PII.
+
+---
+
+## 11) What is intentionally out of scope for v1
+
+- Full sermon reader view (deep linking into text)
+- Caching layer
+- Offline support
+- Advanced analytics dashboards
+- Multi-tenant admin console
+
+These can be added after v1 is stable.
