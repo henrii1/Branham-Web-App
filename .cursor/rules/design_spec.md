@@ -1,554 +1,743 @@
-# Branham Web App — Design Guide (Next.js App Router + Supabase)
+# Branham Web App — Design Specification (v1)
 
-Project: **Branham Web App**
+## Next.js App Router · Supabase · Cloudflare Pages
 
-Purpose: A minimal, high-performance ChatGPT-style web app that manages:
-- Auth and user sessions (**Supabase Auth**)
-- Chat session/history persistence (**Supabase DB**) for **logged-in users only**
-- Rendering model responses as **streamed Markdown**
-- Making exactly **one downstream API call per user message** to the **Branham Model API** (Python service)
+**Project:** Branham Web App
+**Deployment target:** Cloudflare Pages (NOT Vercel)
 
-v1 UX: **No reader view**, **no references panel/list**. References are rendered **inline** (Markdown links or plain `[date_id: ¶x–¶y]` tokens).
+**Purpose:** A minimal, high-performance ChatGPT-style web app that:
+- Authenticates users via **Supabase Auth**
+- Persists chat history in **Supabase DB** (logged-in users only)
+- Renders model responses as **streamed Markdown** in a two-panel layout (Sources + Chat)
+- Makes exactly **one downstream API call per user message** to the **Branham Model API** (Python SSE service)
+
+**v1 language:** English only. Non-English language selections trigger an explanatory modal.
+**v1 UX:** No reader view. References are rendered **inline** as styled citation pills on the final chat render.
 
 ---
 
 ## 0) Non-negotiables (LOCKED)
 
-- Use **Next.js best practices** to minimize latency and avoid common perf pitfalls.
-- Keep UI simple: chat window + history sidebar (ChatGPT-like).
-- Supabase client is responsible for:
-  - authentication (sign-in/sign-out/session)
+- Deploy to **Cloudflare Pages** with `@cloudflare/next-on-pages`. All route handlers use **edge runtime**.
+- Keep UI simple: **two-panel layout** (Sources top, Chat bottom) + history sidebar.
+- Supabase client handles:
+  - authentication (sign-in / sign-out / session)
   - chat history CRUD (**logged-in users only**)
-- No caching in v1 (no response caching, no embedding caching).
+- No response or embedding caching in v1.
 - The web app makes **only one API call per user message**:
-  - `POST /chat` to the Branham Model API (via Next route handler `POST /api/chat`)
-- Everything else is local UI work: streaming render, markdown sanitize, reference formatting.
+  - `POST /api/chat` (Cloudflare Pages Function) → proxies to Model API with bearer token
+- The Model API bearer token is **never exposed to the client**. It lives in CF Pages environment variables and is injected server-side.
+- Everything else is client-side work: SSE parsing, markdown rendering, citation styling.
 
-Free app v1 constraints:
-- No API key management in v1.
+**Free app v1 constraints:**
+- No API key management in v1 (single shared bearer token).
 - Support anonymous usage:
-  - user can chat
-  - **no persistence**
-  - **memory-only** (refresh loses all history)
+  - user can send **one query per conversation** (no follow-ups without login)
+  - can start multiple fresh single-query conversations
+  - **no DB persistence** — browser memory only
+  - page refresh loses all data
 - SEO (v1):
-  - **English-only** for SEO pages
-  - curated FAQ cache pages (no duplicates per query/intent)
+  - **English only** for SEO pages
+  - curated SEO query cache (no auto-generation)
 
 ---
 
-## 1) Performance principles (Next.js-specific)
+## 1) Deployment: Cloudflare Pages
 
-Next.js can feel slower than direct React if misused. Follow these rules:
+### 1.1 Why Cloudflare Pages
+- Global edge network, fast cold starts, generous free tier.
+- Functions (Workers runtime) support streaming responses (critical for SSE proxy).
+- No Node.js runtime — edge runtime only (V8 isolates).
 
-- Prefer **Server Components by default** (App Router), but keep the interactive chat surface as **Client Components**:
-  - chat input
-  - streaming assistant message area
-  - message list container
-- Avoid heavy client-side bundles:
-  - keep dependencies minimal
-  - do not import large libraries into client components
+### 1.2 Constraints
+- **No Node.js APIs** (`fs`, `net`, `crypto.createHmac`, etc.). Use Web APIs only.
+- **No Nodemailer** — use HTTP-based email providers (Postmark in v1).
+- **`@supabase/ssr`** works on edge runtime (uses `fetch`). No issue.
+- All Next.js route handlers must declare `export const runtime = 'edge'`.
+- Use `@cloudflare/next-on-pages` adapter for build and deployment.
+
+### 1.3 Environment variables (CF Pages dashboard)
+- `MODEL_API_BASE_URL` — Branham Model API base URL
+- `CHAT_API_BEARER_KEY` — bearer token for Model API (SECRET — never in client bundle)
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service key (server-side only)
+- `POSTMARK_SERVER_TOKEN` — Postmark API token (server-side only)
+
+---
+
+## 2) Performance principles
+
+### 2.1 Next.js on Cloudflare
+- Prefer **Server Components** by default (App Router).
+- Keep interactive surfaces as **Client Components**:
+  - chat input (Composer)
+  - streaming chat panel
+  - Sources (RAG) panel
+  - message list
+- Avoid heavy client bundles:
+  - minimal dependencies
+  - no large libraries in client components
   - dynamic import for non-critical widgets
-- Use **streaming UI**:
-  - stream Model API response via `/api/chat` route handler to the frontend
-  - update assistant content progressively
-- Use stable rendering patterns:
-  - avoid re-rendering the whole message list for each token
-  - append streamed content to the “currently streaming assistant message” efficiently
-- Keep DB round-trips minimal:
-  - fetch conversations list in one query
-  - fetch conversation messages in one query
-  - if metadata resolution is needed, batch it (no per-reference query loops)
+
+### 2.2 Rendering efficiency
+- **Never re-render the full message list** for each streamed token.
+- Append delta text to the current assistant message buffer only.
+- Re-render markdown at safe boundaries (paragraph `\n\n` or newline `\n`).
+- One final full markdown render on stream completion.
+- Sources panel renders once per turn (when `rag` event arrives).
+
+### 2.3 DB round-trips
+- Fetch conversation list: one query.
+- Fetch conversation messages: one query.
+- Fetch latest RAG for a conversation: one query.
+- UPSERT RAG on each turn: one query.
+- No per-reference query loops.
 
 ---
 
-## 2) App behavior overview
+## 3) API contract (SSE summary)
 
-### 2.1 User story (anonymous + logged-in)
+Full contract: see `api_contract.md`. Key points summarized here.
 
-1. User opens app.
-2. Anonymous mode (default when not logged in):
-   - user can send messages and get answers
-   - conversation exists **only in runtime memory**
-   - refresh/tab close → **history is lost**
-3. After the first completed assistant response in anonymous mode:
-   - show a nudge banner: “Log in to preserve your history.”
-4. If user signs up:
-   - immediately after account creation, user selects preferred language
-   - profile is created/updated with language
-   - user sees a welcome page with a language-specific intro message
-   - welcome email is sent **once** (signup-only)
-   - user clicks “Continue” → chat UI
-5. If user is logged in:
-   - new conversations and messages are persisted
-   - history sidebar is available and persistent
-6. User sends a message.
-7. Web backend sends exactly one request to Model API:
-   - `POST /chat`
-8. UI streams and renders the response (Markdown).
-9. References appear **inline** in the assistant response:
-   - either as Markdown links
-   - or as plain tokens like `[47-0412--M: ¶2–¶3]`
-10. Logged-in users: messages saved after stream completes.
+### 3.1 Request
+```
+POST {MODEL_API_BASE_URL}/api/chat
+Authorization: Bearer {CHAT_API_BEARER_KEY}
+Content-Type: application/json
+```
 
----
+Body:
+```json
+{
+  "conversation_id": "uuid",
+  "query": "user message",
+  "user_language": "en",
+  "conversation_summary": "string or omit on first turn",
+  "history_window": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ]
+}
+```
 
-## 3) Data modeling and persistence (Supabase)
+**Rules:**
+- `conversation_id` and `query` are always required.
+- `user_language` is always sent (`"en"` for v1).
+- `conversation_summary`: omit on first turn. On follow-ups, send the summary from the **latest** `final` event.
+- `history_window`: send the last N messages (oldest → newest). Deterministic truncation.
 
-### 3.1 Relationships (LOCKED)
-- `conversations` has a **one-to-many** relationship with `chat_messages`.
-- History sidebar (logged-in only) is built by querying conversations:
-  - title
-  - updated_at ordering
-- Chat view is built by querying messages for a selected conversation:
-  - `SELECT * FROM chat_messages WHERE conversation_id = ... ORDER BY created_at ASC`
+### 3.2 SSE event sequence
+```
+start  →  rag (optional)  →  delta (many)  →  final  →  done
+```
+Error path: `error → done`
 
-### 3.2 Anonymous mode rules (LOCKED)
-- Anonymous user has:
-  - no `user_id`
-  - no DB persistence
-- In anonymous mode:
-  - conversation exists only in runtime memory
-  - a local `conversation_id` may be generated for UI grouping, but is never persisted
-- On login:
-  - new chats and messages are persisted going forward
-  - optional future UX (“Save this chat”) is out of scope for v1
+| Event | Payload | Notes |
+|-------|---------|-------|
+| `start` | `{ conversation_id }` | Connection established |
+| `rag` | `{ retrieval_query, rag_context, retrieval }` | Arrives ~2-3s. Render in Sources panel immediately. Not emitted on refusals or non-English gate. |
+| `delta` | `{ text }` | Append to chat buffer. First delta may be ~5-8s after request. |
+| `final` | `{ mode, answer, external_info, conversation_summary }` | Source of truth for full answer. Store `conversation_summary` for next turn. |
+| `done` | `{ ok: true }` | Terminal event. Close connection. |
+| `error` | `{ mode: "error", answer }` | Show error UI. Do not overwrite existing summary. |
 
----
+### 3.3 `final` event fields
+- `mode`: `"answer"` | `"refusal"` | `"error"`
+- `answer`: full final markdown text (authoritative — use this, not concatenated deltas)
+- `external_info`: `null` or `{ disclaimer, sources[] }` — already rendered inline in the markdown answer, no separate UI needed
+- `conversation_summary`: compact string for next-turn memory handoff. Store in `conversations` table.
 
-## 4) References in responses (UPDATED — no panel/list)
-
-Model returns references inline in answer text, e.g.:
-- `[47-0412--M: ¶2–¶3]`
-
-v1 rendering requirements:
-- References are shown **inline only** (no expandable references panel/list).
-- The UI may optionally convert recognized reference tokens into Markdown links (e.g., to a future reader route), but v1 does not require a reader page.
-- The UI may optionally resolve `date_id → sermon title` to show a friendlier hover/tooltip (optional), but the core requirement is inline display.
-
-### 4.1 Parsing rules (tolerant)
-- Pattern conceptually:
-  - `[` + `date_id` + `:` + paragraph range + `]`
-- Extract:
-  - `date_id` = `yy-mmdd--M|E` or your canonical format
-  - `paragraph_start`, `paragraph_end`
-- Be tolerant:
-  - `¶2–¶3` or `¶2-¶3`
-  - allow spaces
-
-### 4.2 sermon_metadata usage (optional in v1)
-- `sermon_metadata` maps:
-  - `date_id -> title, preacher, language(optional)`
-- If used:
-  - batch resolve all `date_id`s found in the message in one query
-  - apply optional enhancements (tooltip/link label)
-- v1 does **not** require storing `references_json`; parsing can happen at render time.
+### 3.4 "Answer:" prefix dedup (LOCKED)
+The model response often begins with `"Answer:"`. **Always strip this prefix** before rendering and before persisting. Apply to both streamed deltas (strip on first delta if it starts with "Answer") and the `final.answer` field.
 
 ---
 
-## 5) Supabase responsibilities (v1)
+## 4) App behavior overview
 
-Supabase client handles:
-- Auth
-- Session state
-- Chat persistence for logged-in users
-- Profile persistence (language, basic user info)
+### 4.1 Anonymous user (not logged in) — main chat page
+1. User opens app. No sidebar. Clean chat UI.
+2. User sends a query.
+3. `/api/chat` proxies to Model API. RAG arrives → Sources panel. Deltas stream → Chat panel.
+4. Response completes. Everything lives in **browser memory only**.
+5. If user tries to **follow up** (types in composer):
+   - **Login modal** appears: "Sign up to continue the conversation."
+   - Modal links to signup page.
+6. User can **start a new conversation** (new single query) without logging in. No limit on fresh conversations.
+7. Page refresh → all data lost.
 
-No caching in v1 for chat responses.
+### 4.2 Anonymous user — SEO page (`/q/[slug]`)
+1. User lands on SEO page (e.g., from Google).
+2. Cached answer renders with **typewriter effect** (simulated streaming from DB).
+3. Cached RAG context renders in Sources panel.
+4. If user tries to follow up:
+   - **Login modal**: "Sign up to follow up on this question."
+   - Signup link includes a reference to the SEO slug (query param or localStorage).
+5. After signup → language selection → user is redirected to `/chat/[conversationId]`.
+   - A new `conversations` row is created, seeded with the SEO question as the first user message and the cached answer as the first assistant message.
+   - The cached RAG is stored in `conversation_rag`.
+   - The cached `conversation_summary` is stored on the conversation.
+   - User can now follow up normally.
 
----
+### 4.3 Logged-in user — main chat page
+1. Sidebar shows conversation history.
+2. User starts a new chat or resumes an existing one.
+3. Sending a message:
+   - Creates `conversations` row (if new).
+   - Creates `chat_messages` row for user message.
+   - `/api/chat` fires with `conversation_summary` (if follow-up) + `history_window` + `user_language`.
+   - RAG → Sources panel. Deltas → Chat panel.
+   - On `final`: persist assistant message, UPSERT RAG, update `conversation_summary` on conversation.
+4. Loading a previous conversation:
+   - Fetch all messages → render in Chat panel.
+   - Fetch latest RAG → render in Sources panel.
 
-## 6) Required database tables (minimum)
+### 4.4 Login/signup flow
+1. User clicks "Sign up" (from modal or sidebar).
+2. **Signup providers**: Google OAuth, Email OTP (magic link via Supabase Auth).
+3. After account creation → **Language selection** screen.
+   - If user picks a non-English language: **modal** explains "Only English is supported for now. We're working on extending to your language."
+   - Language is stored in `profiles.language`.
+4. After language selection → redirect to **chat page** immediately.
+5. **Welcome email** fires async in the background (Postmark HTTP API).
+   - Only sent if `profiles.welcome_email_sent_at IS NULL`.
+   - On success, set `welcome_email_sent_at`.
 
-### 6.1 conversations
-- id (uuid, PK)  ← conversation_id
-- user_id (uuid, nullable; v1 persisted conversations require user_id)
-- title (text, optional auto-title)
-- created_at
-- updated_at
-
-Notes:
-- Logged-in conversations: `user_id` required.
-- Anonymous conversations are not persisted in v1.
-
-### 6.2 chat_messages
-- id (uuid, PK)
-- conversation_id (uuid, FK -> conversations.id)
-- user_id (uuid, nullable; v1 persisted messages require user_id)
-- role (`user` | `assistant`)
-- content (text)  ← stored as Markdown for assistant messages
-- created_at
-
-Notes:
-- Persist assistant message only after stream completion.
-- No partial message rows in v1.
-
-### 6.3 profiles
-- user_id (uuid, PK, FK -> auth.users)
-- display_name (text, optional)
-- language (text, required; editable in profile)
-- welcome_email_sent_at (timestamptz, nullable)  ← send-once guard
-- created_at
-- updated_at
-
-Notes:
-- language is selected immediately after signup completion.
-
-### 6.4 intro_messages
-- id (uuid, PK)
-- language (text)
-- subject (text)
-- body_markdown (text)
-- created_at
-- updated_at
-
-Notes:
-- Used to display welcome text and generate welcome email content by language.
-
-### 6.5 sermon_metadata
-- date_id (text, PK)
-- title (text)
-- preacher (text, default “William Marrion Branham”)
-- language (text, default “en”)
-- created_at
-
-Notes:
-- Pre-seeded from corpus pipeline.
-- Optional for v1 inline enhancements.
-
-### 6.6 faq_cache (SEO)
-- slug (text, PK)
-- question (text)
-- answer_markdown (text)
-- language (text, default “en”)  ← v1 SEO targets English only
-- published (boolean, default false)
-- meta_title (text, optional)
-- meta_description (text, optional)
-- updated_at
-- created_at
-
-Notes:
-- Manually curated content only (no on-the-fly API calls).
-- Only `published=true` pages are indexable.
+### 4.5 "Finalizing Response" state
+- After the `rag` event is rendered in Sources:
+  - Chat panel shows a greyed-out placeholder: *"Finalizing response…"*
+- When the first `delta` arrives:
+  - Placeholder is replaced with streaming content.
+- If no `rag` event (refusal/error path):
+  - Chat panel shows a loading spinner until first `delta` or `error`.
 
 ---
 
-## 7) API call contract (web app side)
+## 5) UI layout
 
-### 7.1 Single downstream call per user message (LOCKED)
-The web backend calls the Model API:
+### 5.1 Large screens (desktop / tablet)
 
-- `POST {MODEL_API_BASE_URL}/chat`
+```
+┌──────────────┬───────────────────────────────────┐
+│              │  ┌───────────────────────────────┐ │
+│  Sidebar     │  │  Sources (RAG) panel          │ │
+│  (history)   │  │  — rendered markdown           │ │
+│              │  │  — drag handle ═══════════════ │ │
+│              │  │  Chat panel                    │ │
+│              │  │  — streaming markdown           │ │
+│              │  │  — citation pills (final only) │ │
+│              │  ├───────────────────────────────┤ │
+│              │  │  Composer (input box)          │ │
+│              │  └───────────────────────────────┘ │
+└──────────────┴───────────────────────────────────┘
+```
 
-Request:
-- conversation_id (string/uuid)
-- user_language
-- query
-- optional:
-  - history_window (deterministic truncation)
-  - conversation_summary (v1: **not used**)
+- **Sidebar** (~1/5 width): conversations list (logged-in only), new chat button, sign in/out.
+- **Main panel**: vertically split into Sources (top) and Chat (bottom).
+- **Drag-to-resize**: vertical divider between Sources and Chat. Height changes only, width stays constant. Default split: ~40% Sources / 60% Chat. Minimum height for each panel (~15% of viewport).
+- **Composer**: anchored at bottom, always visible.
+- Anonymous users: sidebar hidden or collapsed. Show "Sign in to save history" nudge.
 
-Important v1 rule:
-- **No conversation summarization** in v1.
-- Use truncation instead:
-  - send only the last N messages or last X tokens as `history_window`
-  - deterministic and fast
+### 5.2 Small screens (phones)
 
-Response (streaming):
-- streamed markdown answer text (primary)
-- optional final metadata frame/event (if supported by your API)
-  - e.g., mode, citations, debug flags
-- In v1, the UI does not require a separate references payload.
+- **Tab interface**: two tabs — `Chat` | `Sources`.
+- **Smart auto-switching per turn:**
+  1. User sends query → loading state on both tabs.
+  2. `rag` event arrives → auto-switch to **Sources tab**. RAG content renders.
+  3. First `delta` arrives → auto-switch to **Chat tab**. Streaming begins. Sources tab shows a green badge.
+  4. After that, user can freely toggle tabs.
+- Composer anchored at bottom.
+- Sidebar is a hamburger drawer.
 
-### 7.2 Web backend route (ONLY model call path)
-Implement a single Next.js route handler:
-- `POST /api/chat`
-
-Responsibilities:
-- Determine if user is logged in (Supabase session):
-  - if logged in: persist conversation + messages
-  - if anonymous: do not persist
-- Persist user message (logged-in only)
-- Call Model API (streaming)
-- Stream response to client
-- Persist final assistant message (logged-in only) **after stream ends**
-
-Constraints:
-- Exactly one downstream Model API call per user message.
-- Never expose Model API keys to the client.
+### 5.3 Accessibility
+- Keyboard navigation for conversation list.
+- Enter to send, Shift+Enter for newline.
+- Good contrast, readable typography.
+- ARIA labels on panels and tabs.
 
 ---
 
-## 8) UI requirements (ChatGPT-like)
+## 6) Streaming & rendering pipeline
 
-### 8.1 Layout
-- Left sidebar (~1/5 width):
-  - list of conversations (history) (logged-in only)
-  - create new chat button
-  - sign in / sign out button
-- Main panel:
-  - messages list
-  - message input box
-  - streaming assistant response rendered as Markdown
+### 6.1 SSE parsing (client-side)
+1. Connect to `/api/chat` (POST, SSE).
+2. Parse events using `EventSource` or manual `ReadableStream` + line parser.
+3. On `start`: initialize turn state.
+4. On `rag`: render `rag_context` markdown in Sources panel. Show "Finalizing response…" in Chat.
+5. On `delta`: append `text` to chat buffer. Re-render markdown at safe boundaries (`\n\n` preferred, `\n` acceptable).
+6. On `final`: do one final full markdown render of `final.answer` (after stripping "Answer:" prefix). Apply citation CSS styling. Persist data (logged-in only).
+7. On `done`: close connection. Clean up loading states.
+8. On `error`: show error UI. Do not clear existing conversation summary.
 
-Anonymous UX:
-- Sidebar hidden or disabled
-- Show “Sign in to save history” banner (nudge after first exchange)
+### 6.2 Final render vs. stream render
+- During streaming: render deltas as plain markdown (no citation styling).
+- On `final`: replace streamed content with `final.answer` rendered with full citation styling.
+- This avoids regex/DOM manipulation on every token.
 
-### 8.2 Behavior
-- Logged-in:
-  - New chat creates a `conversations` row
-  - Sending message creates a `chat_messages` row for user
-  - Assistant message saved at end of stream (markdown text)
-- Anonymous:
-  - New chat is memory-only
-  - Sending message updates local state only
-  - Assistant message stored in local state only
-
-### 8.3 Accessibility
-- Keyboard navigation for conversations list
-- Enter to send, Shift+Enter for newline
-- Good contrast and readable typography
+### 6.3 Both panels render markdown
+- Sources panel: renders `rag_context` as markdown (received as a single string).
+- Chat panel: renders assistant messages as markdown.
+- Both use the same sanitized markdown renderer.
 
 ---
 
-## 9) Streaming Markdown rendering rules (LOCKED)
+## 7) Markdown sanitization (LOCKED)
 
-- The Model API streams Markdown.
-- Client rendering strategy:
-  - append streamed text to a buffer
-  - only re-render Markdown at safe boundaries:
-    - preferred: paragraph boundary (`\n\n`)
-    - acceptable: newline (`\n`)
-  - on stream completion:
-    - do one final full Markdown render
-
-Goal:
-- avoid re-rendering the whole message list per token
-- minimize layout jitter
-
----
-
-## 10) Markdown sanitization (LOCKED)
-
-Even if the model outputs “strict Markdown,” the renderer must be safe.
-
-Sanitization policy:
-- Allow a safe Markdown subset:
-  - paragraphs, emphasis, lists, blockquotes, links
-- Disallow raw HTML and any HTML passthrough
+**Policy:**
+- Allow safe subset: paragraphs, emphasis, strong, lists, blockquotes, links, headings, code blocks.
+- **Disallow all raw HTML** and HTML passthrough.
 - Links:
-  - allow only `http://` and `https://`
-  - add `rel="noopener noreferrer"` and `target="_blank"` for external links
-- Never execute scripts or unsafe URLs.
+  - Allow only `http://` and `https://` schemes.
+  - Add `rel="noopener noreferrer"` and `target="_blank"` to all links.
+- Never execute scripts or unsafe URL schemes (`javascript:`, `data:`, etc.).
 
 ---
 
-## 11) Signup, language selection, welcome page, and welcome email (NEW)
+## 8) Citation styling (LOCKED — chat panel only)
 
-### 11.1 Signup providers
-- Support:
-  - Google OAuth
-  - Email login (Supabase Auth OTP/magic-link style)
+### 8.1 Citation format
+Citations appear in assistant answers as:
+```
+[SERMON TITLE — DATE_ID: ¶X–¶Y]
+```
+Example: `[INVESTMENTS — 63-1116B: ¶232–¶235]`
 
-### 11.2 Language selection (required)
+### 8.2 Detection
+- Regex pattern on the **final rendered answer only** (not during streaming).
+- Match: `\[` + text containing ` — ` + date pattern + `:` + paragraph range + `\]`
+- Be tolerant of spacing and dash variants (`–`, `-`, `—`).
+
+### 8.3 Rendered style (CSS pill)
+```
+┌──────────────────────────────────────────────┐
+│  INVESTMENTS — 63-1116B  ¶232–¶235           │
+└──────────────────────────────────────────────┘
+```
+- Inline element (`<span>`) replacing the raw `[...]` token.
+- Thin border (1px solid, muted grey).
+- Slightly rounded corners (border-radius ~6px).
+- No background color (transparent).
+- Font: slightly smaller, monospace or system mono.
+- Subtle hover effect (border darkens slightly).
+- Applied **only in the Chat panel**, not in Sources.
+
+---
+
+## 9) Data modeling (Supabase)
+
+### 9.1 `conversations`
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid, PK | = conversation_id |
+| `user_id` | uuid, FK → auth.users | Required for persisted conversations |
+| `title` | text, nullable | Auto-generated or user-set |
+| `conversation_summary` | text, nullable | Updated after each turn from `final.conversation_summary` |
+| `created_at` | timestamptz | Default now() |
+| `updated_at` | timestamptz | Updated on each new message |
+
+### 9.2 `chat_messages`
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid, PK | |
+| `conversation_id` | uuid, FK → conversations.id | |
+| `user_id` | uuid, FK → auth.users | Required for persisted messages |
+| `role` | text | `'user'` or `'assistant'` |
+| `content` | text | Stored as markdown for assistant messages. "Answer:" prefix already stripped. |
+| `created_at` | timestamptz | Default now(). Message order is by created_at ASC. |
+
+**Rules:**
+- Persist assistant message **only after stream completion** (from `final.answer`).
+- No partial message rows.
+
+### 9.3 `conversation_rag`
+| Column | Type | Notes |
+|--------|------|-------|
+| `conversation_id` | uuid, PK, FK → conversations.id | One-to-one with conversation |
+| `rag_context` | text | Full markdown from `rag` event |
+| `retrieval_query` | text | The query used for retrieval |
+| `retrieval_metadata` | jsonb, nullable | Stats: hit counts, signals, should_refuse, etc. |
+| `updated_at` | timestamptz | |
+
+**Rules:**
+- **UPSERT** on each turn (INSERT ON CONFLICT UPDATE). Only the latest RAG is kept.
+- When loading a conversation from history: fetch messages + latest RAG.
+
+### 9.4 `profiles`
+| Column | Type | Notes |
+|--------|------|-------|
+| `user_id` | uuid, PK, FK → auth.users | |
+| `display_name` | text, nullable | |
+| `language` | text | Required. Default `'en'`. Editable in profile. |
+| `welcome_email_sent_at` | timestamptz, nullable | Send-once guard |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
+### 9.5 `seo_cache`
+| Column | Type | Notes |
+|--------|------|-------|
+| `slug` | text, PK | URL slug for `/q/[slug]` |
+| `question` | text | User-facing SEO question (basic query) |
+| `robust_query` | text | Enhanced query sent to Model API for better answer |
+| `answer_markdown` | text | Cached full answer from API (with "Answer:" stripped) |
+| `rag_context` | text | Cached RAG context from API |
+| `conversation_summary` | text, nullable | From `final.conversation_summary` |
+| `language` | text | Default `'en'`. v1 = English only. |
+| `published` | boolean | Default false. Only published = indexable. |
+| `meta_title` | text, nullable | SEO meta title |
+| `meta_description` | text, nullable | SEO meta description |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
+**Rules:**
+- Manually curated only. No on-the-fly API calls for SEO page rendering.
+- Only `published = true` pages are indexable.
+- User provides both `question` (basic) and `robust_query` (enhanced). API is called with `robust_query`. Stored results serve as the SEO page content.
+
+### 9.6 `sermon_metadata` (optional in v1)
+| Column | Type | Notes |
+|--------|------|-------|
+| `date_id` | text, PK | |
+| `title` | text | |
+| `preacher` | text | Default "William Marrion Branham" |
+| `language` | text | Default "en" |
+| `created_at` | timestamptz | |
+
+Pre-seeded from corpus pipeline. Optional for future citation tooltip enhancements.
+
+### 9.7 `intro_messages` (optional — for email templates)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid, PK | |
+| `language` | text | |
+| `subject` | text | Email subject line |
+| `body_markdown` | text | Email body content |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
+Used by the welcome email sender. v1 ships with English content only.
+
+---
+
+## 10) Supabase setup (RLS, indexes, policies)
+
+### 10.1 Row Level Security policies (LOCKED)
+
+**conversations:**
+- `SELECT`: `user_id = auth.uid()`
+- `INSERT`: `user_id = auth.uid()`
+- `UPDATE`: `user_id = auth.uid()`
+- `DELETE`: `user_id = auth.uid()`
+
+**chat_messages:**
+- `SELECT`: `user_id = auth.uid()`
+- `INSERT`: `user_id = auth.uid()`
+- `UPDATE`: none (messages are immutable after creation)
+- `DELETE`: `user_id = auth.uid()`
+
+**conversation_rag:**
+- `SELECT`: via join — `conversation_id IN (SELECT id FROM conversations WHERE user_id = auth.uid())`
+- `INSERT`: same join check
+- `UPDATE`: same join check
+- `DELETE`: same join check
+
+**profiles:**
+- `SELECT`: `user_id = auth.uid()`
+- `INSERT`: `user_id = auth.uid()`
+- `UPDATE`: `user_id = auth.uid()`
+
+**seo_cache:**
+- `SELECT`: public, but only where `published = true`
+- No INSERT/UPDATE/DELETE via client (admin only, use service role key or Supabase dashboard)
+
+**sermon_metadata:**
+- `SELECT`: public (all rows)
+- No INSERT/UPDATE/DELETE via client
+
+**intro_messages:**
+- `SELECT`: public (for email template fetching)
+- No INSERT/UPDATE/DELETE via client
+
+### 10.2 Indexes
+- `conversations`: index on `(user_id, updated_at DESC)` — sidebar query
+- `chat_messages`: index on `(conversation_id, created_at ASC)` — message loading
+- `chat_messages`: index on `(user_id)` — RLS performance
+- `conversation_rag`: PK on `conversation_id` is sufficient (one-to-one)
+- `seo_cache`: index on `(published, language)` — sitemap/listing queries
+- `seo_cache`: PK on `slug` is sufficient for page loads
+
+### 10.3 Supabase Auth configuration
+- Enable **Google OAuth** provider
+- Enable **Email OTP** (magic link) provider
+- Configure redirect URLs for Cloudflare Pages domain
+- Set up auth email templates in Supabase dashboard
+
+---
+
+## 11) Security (LOCKED)
+
+### 11.1 API key protection
+- `CHAT_API_BEARER_KEY` is stored as a **Cloudflare Pages environment variable** (encrypted at rest, server-side only).
+- The `/api/chat` route handler (CF Pages Function) injects the bearer token into the upstream request.
+- The token **never** appears in client-side JavaScript bundles, network requests visible to the browser, or source maps.
+- The client calls `/api/chat` (same-origin), not the Model API directly.
+
+### 11.2 Supabase security
+- RLS enabled on all tables (see §10.1).
+- Service role key used only in server-side route handlers, never in client code.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` is safe to expose (limited by RLS).
+
+### 11.3 Rate limiting
+- Anonymous `/api/chat` requests: simple rate limit (e.g., 10 requests/minute per IP).
+- Implement via Cloudflare rate limiting rules or in-function IP tracking.
+- Logged-in users: higher or no rate limit in v1.
+
+### 11.4 General
+- Store minimal PII (only email, display name, language).
+- Sanitize all markdown output (see §7).
+- Never execute user-provided scripts.
+
+---
+
+## 12) SEO pages
+
+### 12.1 Routing
+- Public route: `/q/[slug]`
+- Loads from `seo_cache` by slug.
+- Renders cached answer with **typewriter effect** (simulated streaming animation from DB content).
+- Renders cached `rag_context` in Sources panel.
+- Both panels active, same layout as live chat.
+
+### 12.2 Typewriter effect
+- The answer markdown is split into chunks (by paragraph or sentence).
+- Chunks are revealed progressively with a short delay to simulate streaming.
+- On completion: apply citation CSS styling to the full answer.
+
+### 12.3 Follow-up behavior
+- **Not logged in**: typing in composer triggers login modal. After signup, SEO content seeds a new conversation (see §4.2).
+- **Logged in**: creates a new `conversations` row seeded with SEO content. User follow-up triggers live `/api/chat`.
+
+### 12.4 Indexing controls (LOCKED)
+- Only `seo_cache.published = true` pages are indexable.
+- All `/chat/...` routes are **noindex, nofollow**.
+- Unpublished slugs return **404**.
+- Generate sitemap from published `seo_cache` rows.
+
+### 12.5 SEO content workflow
+- **Stage**: user provides `question` (basic) and `robust_query` (enhanced) for each FAQ.
+- Developer calls Model API with `robust_query`, stores full result in `seo_cache`.
+- Page displays `question` as the heading, `answer_markdown` + `rag_context` as content.
+
+---
+
+## 13) Signup, language selection, and welcome email
+
+### 13.1 Signup providers
+- Google OAuth
+- Email OTP / magic link (Supabase Auth)
+
+### 13.2 Language selection (required)
 - Immediately after account creation:
-  - user selects preferred language
-  - store it in `profiles.language`
-- Language is editable later on profile page.
+  - User selects preferred language.
+  - Stored in `profiles.language`.
+- If user selects a non-English language:
+  - **Modal**: "Only English is supported right now. We're actively working to extend support to your language in upcoming updates."
+  - Language is still saved (for future use). User proceeds to chat.
+- Language is editable later on the profile page.
 
-### 11.3 Welcome page
-- After language selection:
-  - show a welcome message pulled from `intro_messages` where `language = profiles.language`
-  - include a “Continue” button → chat UI
-- Welcome message should include an instruction similar to:
-  - “Welcome, {name}. This app helps you find what Brother Branham said. For deeper study and context, use The Table app.”
+### 13.3 Post-signup redirect
+- After language selection → redirect to **chat page** immediately (no welcome page).
+- If the signup originated from an SEO page (slug stored in query param or localStorage):
+  - Create a conversation seeded with SEO content.
+  - Redirect to `/chat/[conversationId]`.
+- Otherwise: redirect to `/chat` (fresh chat page).
 
-### 11.4 Welcome email (signup-only, send-once)
-- On signup completion (not on every login):
-  - send a welcome email using the language-specific intro content
-- Prevent duplicates:
-  - only send if `profiles.welcome_email_sent_at IS NULL`
-  - set timestamp after success
-
-Email implementation:
-- v1 default: Nodemailer via SMTP from the Next.js backend (Node runtime)
-- delivery fallback: swap provider (e.g., Postmark) behind a single `sendWelcomeEmail()` interface
-
----
-
-## 12) SEO and FAQ cache (UPDATED)
-
-Goal:
-- Rank for curated English questions about Branham sermons by serving stable, indexable pages.
-
-### 12.1 Cache rules
-- FAQ cache is **manual curated**
-- No on-the-fly Model API call for SEO page rendering
-- Each cached question has exactly one canonical route (no duplicates)
-
-### 12.2 Routing
-- Public SEO route:
-  - `/q/[slug]`
-- Loads `faq_cache` by slug.
-- Renders cached answer into the same chat-style UI (seeded conversation look).
-
-Follow-up behavior:
-- Logged-in:
-  - create a new `conversations` row (user_id set)
-  - insert cached content as the first assistant message
-  - then user follow-up becomes next message and triggers `/api/chat`
-- Anonymous:
-  - memory-only seeded conversation
-  - refresh loses it
-
-### 12.3 Indexing controls (LOCKED)
-- Only allow indexing for `faq_cache.published=true` pages.
-- All chat pages and user conversation routes are **noindex**.
-- Unpublished slugs:
-  - return 404 or `noindex` response (choose one policy and apply consistently)
+### 13.4 Welcome email (send-once, async)
+- Fires in the background after redirect (non-blocking).
+- Sent via **Postmark HTTP API** from a CF Pages Function (`/api/welcome-email`).
+- Guard: only send if `profiles.welcome_email_sent_at IS NULL`.
+- On success: set `profiles.welcome_email_sent_at` to current timestamp.
+- Email content sourced from `intro_messages` table (English for v1).
+- Provider abstraction: `sendWelcomeEmail()` function wraps Postmark. Swappable later.
 
 ---
 
-## 13) Security and rate limiting (v1 minimal)
+## 14) App logo
 
-- Validate Supabase session for persistence actions.
-- Anonymous `/api/chat` requests are allowed but rate-limited (simple server-side limit).
-- No API key management in v1.
-- Never expose Model API keys to the client.
-- Store minimal PII.
+- Concept: a **circular icon** (ChatGPT-style) positioned under/within an **open book** shape.
+- Represents: AI chat (circle) grounded in scripture/sermons (book).
+- Used as: favicon, sidebar header, mobile PWA icon, Open Graph image.
 
 ---
 
-## 14) Row Level Security (RLS) requirements (LOCKED)
+## 15) Codebase structure
 
-Implement Supabase RLS so users can only access their own data.
-
-- conversations:
-  - logged-in user can read/write only where `user_id = auth.uid()`
-- chat_messages:
-  - logged-in user can read/write only messages belonging to their conversations
-  - enforce via `user_id = auth.uid()` or via join on conversations.user_id = auth.uid()
-- profiles:
-  - logged-in user can read/write only where `profiles.user_id = auth.uid()`
-- sermon_metadata:
-  - public read (SELECT allowed)
-- faq_cache:
-  - public read only where `published = true`
-
----
-
-## 15) Next.js codebase structure (recommended scaffold)
-
-web-app/
-- README.md
-- next.config.js
-- .env.local
-- src/
-  - app/
-    - layout.tsx
-    - page.tsx
-    - (auth)/
-      - login/page.tsx
-      - signup/page.tsx
-      - onboarding/
-        - language/page.tsx
-        - welcome/page.tsx
-      - profile/page.tsx
-    - (app)/
-      - chat/page.tsx
-      - chat/[conversationId]/page.tsx
-      - q/[slug]/page.tsx
-    - api/
-      - chat/route.ts              # ONLY model call path
-      - welcome-email/route.ts     # sends welcome email (signup-only)
-  - components/
-    - chat/
-      - ChatShell.tsx
-      - MessageList.tsx
-      - MessageBubble.tsx
-      - Composer.tsx
-      - ConversationSidebar.tsx
-      - AnonymousBanner.tsx
-    - auth/
-      - AuthGate.tsx
-      - LanguagePicker.tsx
-  - lib/
-    - supabase/
-      - client.ts
-      - server.ts
-      - middleware.ts
-    - modelApi/
-      - client.ts                  # fetch/stream wrapper
-    - markdown/
-      - render.ts                   # markdown render + sanitize
-      - sanitize.ts
-    - references/
-      - parse.ts                    # parse [date_id: ¶x–¶y] tokens
-      - optionalEnhance.ts          # optional: tooltips/labels
-    - db/
-      - queries.ts                  # typed DB access helpers
-    - email/
-      - sendWelcomeEmail.ts         # provider abstraction (Nodemailer/Postmark)
-    - utils/
-      - ids.ts
-      - time.ts
-  - styles/
-    - globals.css
+```
+branham-web-app/
+├── README.md
+├── next.config.ts
+├── wrangler.toml                       # Cloudflare Pages config
+├── .env.local                          # Local dev env vars
+├── public/
+│   ├── logo.svg
+│   └── favicon.ico
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx                  # Root layout (Server Component)
+│   │   ├── page.tsx                    # Landing / redirect to chat
+│   │   ├── (auth)/
+│   │   │   ├── login/page.tsx
+│   │   │   ├── signup/page.tsx
+│   │   │   ├── onboarding/
+│   │   │   │   └── language/page.tsx
+│   │   │   └── profile/page.tsx
+│   │   ├── (app)/
+│   │   │   ├── chat/page.tsx           # New chat
+│   │   │   ├── chat/[conversationId]/page.tsx
+│   │   │   └── q/[slug]/page.tsx       # SEO pages
+│   │   └── api/
+│   │       ├── chat/route.ts           # SSE proxy to Model API (edge runtime)
+│   │       └── welcome-email/route.ts  # Postmark email sender (edge runtime)
+│   ├── components/
+│   │   ├── chat/
+│   │   │   ├── ChatShell.tsx           # Main layout: panels + composer
+│   │   │   ├── SourcesPanel.tsx        # RAG content panel (top)
+│   │   │   ├── ChatPanel.tsx           # Chat messages panel (bottom)
+│   │   │   ├── MessageList.tsx
+│   │   │   ├── MessageBubble.tsx
+│   │   │   ├── Composer.tsx            # Input box
+│   │   │   ├── DragDivider.tsx         # Resizable panel divider
+│   │   │   ├── ConversationSidebar.tsx
+│   │   │   ├── AnonymousBanner.tsx
+│   │   │   ├── LoginModal.tsx          # "Sign up to continue" modal
+│   │   │   └── CitationPill.tsx        # Styled citation span
+│   │   ├── auth/
+│   │   │   ├── AuthGate.tsx
+│   │   │   ├── LanguagePicker.tsx
+│   │   │   └── LanguageOnlyModal.tsx   # "English only" modal
+│   │   └── seo/
+│   │       └── TypewriterRenderer.tsx  # Simulated streaming for SEO pages
+│   ├── lib/
+│   │   ├── supabase/
+│   │   │   ├── client.ts              # Browser client
+│   │   │   ├── server.ts              # Server/edge client
+│   │   │   └── middleware.ts           # Auth middleware
+│   │   ├── modelApi/
+│   │   │   └── client.ts              # SSE fetch + stream wrapper
+│   │   ├── markdown/
+│   │   │   ├── render.ts              # Markdown → safe HTML
+│   │   │   └── citations.ts           # Detect + style citation tokens
+│   │   ├── sse/
+│   │   │   └── parser.ts              # SSE event stream parser
+│   │   ├── db/
+│   │   │   └── queries.ts             # Typed Supabase query helpers
+│   │   ├── email/
+│   │   │   └── sendWelcomeEmail.ts    # Postmark provider abstraction
+│   │   └── utils/
+│   │       ├── ids.ts
+│   │       ├── time.ts
+│   │       └── answerDedup.ts         # Strip "Answer:" prefix
+│   └── styles/
+│       └── globals.css
+```
 
 ---
 
-## 16) Implementation stages (ADD IF NOT PRESENT)
+## 16) Implementation stages
 
-### Stage 1 — Skeleton + Auth
-- Next.js app scaffold (App Router)
-- Supabase client/server setup
-- Login page (Google OAuth + email login)
-- Signup → onboarding language selection
-- Profiles table integration
-- Welcome page renders intro message by language
+### Stage 0 — Project setup + Supabase provisioning
+- Initialize Next.js app (App Router, TypeScript, Tailwind CSS)
+- Configure `@cloudflare/next-on-pages`
+- Set up `wrangler.toml` for local dev
+- Create all Supabase tables (conversations, chat_messages, conversation_rag, profiles, seo_cache, sermon_metadata, intro_messages)
+- Apply all RLS policies (§10.1)
+- Create all indexes (§10.2)
+- Configure Supabase Auth providers (Google OAuth, Email OTP)
+- Set up Cloudflare Pages project + environment variables
+- Verify local dev environment works end-to-end
 
-### Stage 2 — Core Chat (Anonymous + Logged-in)
-- Chat UI (messages + composer)
-- Anonymous memory-only chat
-- Nudge banner after first exchange
-- Logged-in conversation creation + message persistence
-- Conversations sidebar for logged-in users
+### Stage 1 — Auth + signup flow
+- Supabase client/server setup (`client.ts`, `server.ts`, `middleware.ts`)
+- Login page (Google OAuth + Email OTP)
+- Signup page
+- Language selection (onboarding page)
+- "English only" modal for non-English selections
+- Profiles table integration (create profile on signup)
+- Post-signup redirect to chat page
+- AuthGate component
 
-### Stage 3 — Streaming `/api/chat` integration
-- Implement `/api/chat` streaming proxy to Model API
-- Client-side streaming buffer + safe-boundary markdown rendering
-- Final markdown render on completion
-- Persist assistant message only when stream completes (logged-in)
+### Stage 2 — Core chat UI (two-panel layout)
+- ChatShell layout: sidebar + Sources panel + Chat panel + Composer
+- DragDivider (vertical resize, height only, minimum floors)
+- Mobile tab interface (Chat | Sources) with smart auto-switching
+- MessageList, MessageBubble components
+- AnonymousBanner ("Sign in to save history")
+- LoginModal ("Sign up to continue the conversation")
+- Anonymous memory-only state management
 
-### Stage 4 — Markdown sanitization hardening
-- Lock allowed markdown subset
+### Stage 3 — `/api/chat` SSE proxy + streaming integration
+- Implement `/api/chat` route handler (edge runtime)
+- Inject bearer token server-side (never exposed to client)
+- SSE parser (client-side): handle start, rag, delta, final, done, error events
+- Stream rendering pipeline: delta buffer → safe-boundary markdown render
+- SourcesPanel: render `rag_context` on `rag` event
+- "Finalizing response…" placeholder state in Chat panel
+- "Answer:" prefix stripping (answerDedup utility)
+- Final render: replace streamed content with `final.answer` + citation styling
+
+### Stage 4 — Persistence (logged-in users)
+- Conversation creation + sidebar listing
+- ConversationSidebar component
+- Save user message on send
+- Save assistant message on stream completion (from `final.answer`)
+- UPSERT `conversation_rag` on each turn
+- Store `conversation_summary` on conversations table
+- Send `conversation_summary` + `history_window` + `user_language` on follow-ups
+- Load conversation history (messages + latest RAG) on sidebar click
+
+### Stage 5 — Markdown sanitization + citation styling
+- Lock safe markdown subset (§7)
 - Disable raw HTML
 - Link safety rules
+- Citation detection regex on final render
+- CitationPill component (CSS styled span, §8)
+- Apply only in Chat panel, not Sources
 
-### Stage 5 — SEO FAQ cache
-- `faq_cache` table
-- `/q/[slug]` SSR page rendering cached answer (English-only)
-- Noindex rules for non-SEO pages
-- Published-only indexing
+### Stage 6 — SEO pages
+- **User provides**: list of `question` + `robust_query` pairs
+- Developer calls Model API, stores results in `seo_cache`
+- `/q/[slug]` SSR page: loads from `seo_cache`
+- TypewriterRenderer for simulated streaming effect
+- Follow-up behavior: login modal → signup → seed conversation from SEO content
+- Noindex on all non-SEO routes
+- 404 for unpublished slugs
+- Sitemap generation from published rows
+- meta_title, meta_description for each page
 
-### Stage 6 — Welcome email (signup-only)
-- `profiles.welcome_email_sent_at`
-- `sendWelcomeEmail()` provider abstraction
-- `/api/welcome-email` route (Node runtime)
-- SMTP (Nodemailer) in v1; switchable to Postmark later
+### Stage 7 — Welcome email
+- `sendWelcomeEmail()` abstraction (Postmark HTTP API)
+- `/api/welcome-email` route handler (edge runtime)
+- Fire async after signup redirect (non-blocking)
+- `welcome_email_sent_at` guard
+- Email content from `intro_messages` table (English)
 
-### Stage 7 — RLS + rate limiting
-- Supabase RLS policies enforced
-- Anonymous rate limiting on `/api/chat`
+### Stage 8 — Rate limiting + security hardening
+- Anonymous rate limiting on `/api/chat` (Cloudflare rate limiting or in-function)
+- Verify all RLS policies work correctly
+- Verify bearer token is never exposed in client bundles or network tab
+- Verify markdown sanitization blocks all XSS vectors
+- Verify noindex is applied on all chat routes
+- **User provides**: release notes (static markdown in repo)
 
 ---
 
 ## 17) Out of scope for v1 (LOCKED)
 
 - Full sermon reader view (deep linking into text)
-- Caching layer for chat responses
-- Offline support
+- Response caching layer
+- Offline / PWA support
 - Advanced analytics dashboards
 - Multi-tenant admin console
 - Auto-generation of SEO pages (v1 is curated only)
-
+- Multi-language support beyond English (language field is stored for future use)
+- Conversation summarization by the web app (summary comes from Model API)
+- Migration of anonymous sessions on login
