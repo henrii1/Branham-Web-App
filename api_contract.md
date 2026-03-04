@@ -225,3 +225,10 @@ Fields:
 - Treat `final.answer` as source of truth (not concatenated deltas alone).
 - Store `final.conversation_summary` for the next request when provided.
 - Handle `external_info` as unverified external data.
+
+
+## Basic Curl:
+curl -N -X POST https://api.branhamsermons.ai/api/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer b6766b2e-9a26-4342-9bef-5da4ad67e51c" \
+  -d '{"conversation_id": "test-001", "query": "Who is William Branham?"}'

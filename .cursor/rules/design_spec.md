@@ -1,9 +1,9 @@
 # Branham Web App — Design Specification (v1)
 
-## Next.js App Router · Supabase · Cloudflare Pages
+## Next.js App Router · Supabase · Cloudflare Workers
 
 **Project:** Branham Web App
-**Deployment target:** Cloudflare Pages (NOT Vercel)
+**Deployment target:** Cloudflare Workers via `@opennextjs/cloudflare` (NOT Vercel)
 
 **Purpose:** A minimal, high-performance ChatGPT-style web app that:
 - Authenticates users via **Supabase Auth**
@@ -18,15 +18,15 @@
 
 ## 0) Non-negotiables (LOCKED)
 
-- Deploy to **Cloudflare Pages** with `@cloudflare/next-on-pages`. All route handlers use **edge runtime**.
+- Deploy to **Cloudflare Workers** with `@opennextjs/cloudflare`. Do **not** use the deprecated `@cloudflare/next-on-pages`.
 - Keep UI simple: **two-panel layout** (Sources top, Chat bottom) + history sidebar.
 - Supabase client handles:
   - authentication (sign-in / sign-out / session)
   - chat history CRUD (**logged-in users only**)
 - No response or embedding caching in v1.
 - The web app makes **only one API call per user message**:
-  - `POST /api/chat` (Cloudflare Pages Function) → proxies to Model API with bearer token
-- The Model API bearer token is **never exposed to the client**. It lives in CF Pages environment variables and is injected server-side.
+  - `POST /api/chat` (Cloudflare Workers route handler) → proxies to Model API with bearer token
+- The Model API bearer token is **never exposed to the client**. It lives in Cloudflare Workers secrets and is injected server-side.
 - Everything else is client-side work: SSE parsing, markdown rendering, citation styling.
 
 **Free app v1 constraints:**
@@ -42,33 +42,38 @@
 
 ---
 
-## 1) Deployment: Cloudflare Pages
+## 1) Deployment: Cloudflare Workers
 
-### 1.1 Why Cloudflare Pages
+### 1.1 Why Cloudflare Workers (via `@opennextjs/cloudflare`)
 - Global edge network, fast cold starts, generous free tier.
-- Functions (Workers runtime) support streaming responses (critical for SSE proxy).
-- No Node.js runtime — edge runtime only (V8 isolates).
+- Workers runtime supports streaming responses (critical for SSE proxy).
+- Full Node.js API compatibility via `nodejs_compat` flag (but prefer Web APIs for portability).
+- `@cloudflare/next-on-pages` is **deprecated** — `@opennextjs/cloudflare` is the official Cloudflare-recommended replacement.
+- Deploys to the same global edge network as Pages, with better Next.js feature coverage (SSR, ISR, Server Actions, Partial Prerendering).
 
 ### 1.2 Constraints
-- **No Node.js APIs** (`fs`, `net`, `crypto.createHmac`, etc.). Use Web APIs only.
+- Prefer **Web APIs** over Node.js-specific APIs for portability.
 - **No Nodemailer** — use HTTP-based email providers (Postmark in v1).
-- **`@supabase/ssr`** works on edge runtime (uses `fetch`). No issue.
-- All Next.js route handlers must declare `export const runtime = 'edge'`.
-- Use `@cloudflare/next-on-pages` adapter for build and deployment.
+- **`@supabase/ssr`** works in Workers runtime (uses `fetch`). No issue.
+- Do **not** add `export const runtime = 'edge'` — the OpenNext adapter does not support edge runtime declarations. Workers runtime with `nodejs_compat` is the default.
+- Use `@opennextjs/cloudflare` adapter for build and deployment. Build config in `wrangler.jsonc`.
+- Use `middleware.ts` with `export const runtime = 'edge'` (OpenNext does not yet support Next.js 16 `proxy.ts`; migrate when the Adapters API ships). The Next.js deprecation warning is cosmetic.
 
-### 1.3 Environment variables (CF Pages dashboard)
+### 1.3 Environment variables (Cloudflare Workers secrets + `.env.local`)
 - `MODEL_API_BASE_URL` — Branham Model API base URL
 - `CHAT_API_BEARER_KEY` — bearer token for Model API (SECRET — never in client bundle)
 - `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service key (server-side only)
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase secret key (server-side only)
 - `POSTMARK_SERVER_TOKEN` — Postmark API token (server-side only)
+
+Server-side secrets are set via `wrangler secret put` (encrypted at rest). Client-side `NEXT_PUBLIC_*` vars go in `wrangler.jsonc` or `.env.local`.
 
 ---
 
 ## 2) Performance principles
 
-### 2.1 Next.js on Cloudflare
+### 2.1 Next.js on Cloudflare Workers
 - Prefer **Server Components** by default (App Router).
 - Keep interactive surfaces as **Client Components**:
   - chat input (Composer)
@@ -321,6 +326,25 @@ Example: `[INVESTMENTS — 63-1116B: ¶232–¶235]`
 - Subtle hover effect (border darkens slightly).
 - Applied **only in the Chat panel**, not in Sources.
 
+### 8.4 `Evidence:` label styling (LOCKED)
+In many answers, citations are grouped after a sentence as:
+`Evidence: [REF A]; [REF B]; [REF C].`
+
+`Evidence:` is metadata, not prose. It must be visually separated from sentence text.
+
+Rendering rules on final chat render:
+- Detect `Evidence:` blocks and wrap them in an evidence row/container.
+- Render `Evidence:` as a dedicated label chip/badge (not plain inline text).
+- Render each square-bracket reference token as a citation pill (same style as §8.3).
+- Keep semicolon-separated references visually grouped with consistent spacing.
+- Preserve punctuation in content, but do not style trailing punctuation as part of citation pills.
+- Apply this behavior in the Chat panel only (not Sources panel).
+
+Recommended structure:
+- `<span class=\"evidence-label\">Evidence</span>`
+- `<span class=\"citation-pill\">[INVESTMENTS — 63-1116B: ¶232–¶235]</span>`
+- Repeat citation pills for all evidence references in that sentence.
+
 ---
 
 ## 9) Data modeling (Supabase)
@@ -468,7 +492,7 @@ Used by the welcome email sender. v1 ships with English content only.
 ### 10.3 Supabase Auth configuration
 - Enable **Google OAuth** provider
 - Enable **Email OTP** (magic link) provider
-- Configure redirect URLs for Cloudflare Pages domain
+- Configure redirect URLs for Cloudflare Workers custom domain
 - Set up auth email templates in Supabase dashboard
 
 ---
@@ -476,8 +500,8 @@ Used by the welcome email sender. v1 ships with English content only.
 ## 11) Security (LOCKED)
 
 ### 11.1 API key protection
-- `CHAT_API_BEARER_KEY` is stored as a **Cloudflare Pages environment variable** (encrypted at rest, server-side only).
-- The `/api/chat` route handler (CF Pages Function) injects the bearer token into the upstream request.
+- `CHAT_API_BEARER_KEY` is stored as a **Cloudflare Workers secret** (encrypted at rest, server-side only, set via `wrangler secret put`).
+- The `/api/chat` route handler (Workers function) injects the bearer token into the upstream request.
 - The token **never** appears in client-side JavaScript bundles, network requests visible to the browser, or source maps.
 - The client calls `/api/chat` (same-origin), not the Model API directly.
 
@@ -553,7 +577,7 @@ Used by the welcome email sender. v1 ships with English content only.
 
 ### 13.4 Welcome email (send-once, async)
 - Fires in the background after redirect (non-blocking).
-- Sent via **Postmark HTTP API** from a CF Pages Function (`/api/welcome-email`).
+- Sent via **Postmark HTTP API** from a Workers route handler (`/api/welcome-email`).
 - Guard: only send if `profiles.welcome_email_sent_at IS NULL`.
 - On success: set `profiles.welcome_email_sent_at` to current timestamp.
 - Email content sourced from `intro_messages` table (English for v1).
@@ -575,12 +599,18 @@ Used by the welcome email sender. v1 ships with English content only.
 branham-web-app/
 ├── README.md
 ├── next.config.ts
-├── wrangler.toml                       # Cloudflare Pages config
+├── wrangler.jsonc                      # Cloudflare Workers config
+├── open-next.config.ts                 # OpenNext adapter config
 ├── .env.local                          # Local dev env vars
+├── .dev.vars                           # Cloudflare local dev vars
 ├── public/
+│   ├── _headers                        # Static asset cache headers
 │   ├── logo.svg
 │   └── favicon.ico
+├── supabase/
+│   └── migrations/                     # SQL migrations (pushed via supabase db push)
 ├── src/
+│   ├── middleware.ts                    # Auth session refresh + route protection (edge runtime; migrate to proxy.ts when OpenNext supports it)
 │   ├── app/
 │   │   ├── layout.tsx                  # Root layout (Server Component)
 │   │   ├── page.tsx                    # Landing / redirect to chat
@@ -595,8 +625,8 @@ branham-web-app/
 │   │   │   ├── chat/[conversationId]/page.tsx
 │   │   │   └── q/[slug]/page.tsx       # SEO pages
 │   │   └── api/
-│   │       ├── chat/route.ts           # SSE proxy to Model API (edge runtime)
-│   │       └── welcome-email/route.ts  # Postmark email sender (edge runtime)
+│   │       ├── chat/route.ts           # SSE proxy to Model API
+│   │       └── welcome-email/route.ts  # Postmark email sender
 │   ├── components/
 │   │   ├── chat/
 │   │   │   ├── ChatShell.tsx           # Main layout: panels + composer
@@ -619,8 +649,8 @@ branham-web-app/
 │   ├── lib/
 │   │   ├── supabase/
 │   │   │   ├── client.ts              # Browser client
-│   │   │   ├── server.ts              # Server/edge client
-│   │   │   └── middleware.ts           # Auth middleware
+│   │   │   ├── server.ts              # Server client (cookie-based sessions)
+│   │   │   └── middleware.ts           # Session update helper (used by proxy.ts)
 │   │   ├── modelApi/
 │   │   │   └── client.ts              # SSE fetch + stream wrapper
 │   │   ├── markdown/
@@ -644,19 +674,20 @@ branham-web-app/
 
 ## 16) Implementation stages
 
-### Stage 0 — Project setup + Supabase provisioning
+### Stage 0 — Project setup + Supabase provisioning ✅
 - Initialize Next.js app (App Router, TypeScript, Tailwind CSS)
-- Configure `@cloudflare/next-on-pages`
-- Set up `wrangler.toml` for local dev
+- Configure `@opennextjs/cloudflare` adapter + `wrangler.jsonc`
 - Create all Supabase tables (conversations, chat_messages, conversation_rag, profiles, seo_cache, sermon_metadata, intro_messages)
 - Apply all RLS policies (§10.1)
 - Create all indexes (§10.2)
+- Create `handle_new_user` trigger (auto-creates profile on signup)
 - Configure Supabase Auth providers (Google OAuth, Email OTP)
-- Set up Cloudflare Pages project + environment variables
+- Set up Cloudflare Workers project + secrets
+- Configure custom domain (`branhamsermons.ai`)
 - Verify local dev environment works end-to-end
 
 ### Stage 1 — Auth + signup flow
-- Supabase client/server setup (`client.ts`, `server.ts`, `middleware.ts`)
+- Supabase client/server setup (`client.ts`, `server.ts`, `middleware.ts` helper used by `src/middleware.ts`)
 - Login page (Google OAuth + Email OTP)
 - Signup page
 - Language selection (onboarding page)
@@ -675,7 +706,7 @@ branham-web-app/
 - Anonymous memory-only state management
 
 ### Stage 3 — `/api/chat` SSE proxy + streaming integration
-- Implement `/api/chat` route handler (edge runtime)
+- Implement `/api/chat` route handler
 - Inject bearer token server-side (never exposed to client)
 - SSE parser (client-side): handle start, rag, delta, final, done, error events
 - Stream rendering pipeline: delta buffer → safe-boundary markdown render
@@ -684,21 +715,24 @@ branham-web-app/
 - "Answer:" prefix stripping (answerDedup utility)
 - Final render: replace streamed content with `final.answer` + citation styling
 
-### Stage 4 — Persistence (logged-in users)
+### Stage 4 — Persistence (logged-in users) ✅
 - Conversation creation + sidebar listing
-- ConversationSidebar component
-- Save user message on send
+- ConversationSidebar component (grouped by Today/Yesterday/7d/30d/Older)
+- Save user message on send (fire-and-forget, non-blocking)
 - Save assistant message on stream completion (from `final.answer`)
 - UPSERT `conversation_rag` on each turn
 - Store `conversation_summary` on conversations table
 - Send `conversation_summary` + `history_window` + `user_language` on follow-ups
 - Load conversation history (messages + latest RAG) on sidebar click
+- URL management: `window.history.replaceState` for in-app navigation (no full re-render)
+- DB query helpers in `src/lib/db/queries.ts`
 
 ### Stage 5 — Markdown sanitization + citation styling
 - Lock safe markdown subset (§7)
 - Disable raw HTML
 - Link safety rules
 - Citation detection regex on final render
+- `Evidence:` label detection + evidence-row rendering
 - CitationPill component (CSS styled span, §8)
 - Apply only in Chat panel, not Sources
 
@@ -715,7 +749,7 @@ branham-web-app/
 
 ### Stage 7 — Welcome email
 - `sendWelcomeEmail()` abstraction (Postmark HTTP API)
-- `/api/welcome-email` route handler (edge runtime)
+- `/api/welcome-email` route handler
 - Fire async after signup redirect (non-blocking)
 - `welcome_email_sent_at` guard
 - Email content from `intro_messages` table (English)
@@ -727,6 +761,13 @@ branham-web-app/
 - Verify markdown sanitization blocks all XSS vectors
 - Verify noindex is applied on all chat routes
 - **User provides**: release notes (static markdown in repo)
+
+### Stage 9 — Supabase plan upgrade + production config
+- Upgrade Supabase project to Pro plan (or appropriate paid tier)
+- Increase auth email rate limits (rate limits are low on free tier: ~3 emails/hour)
+- Configure custom SMTP for auth emails (optional, improves deliverability)
+- Review and tune Supabase connection pooling for production load
+- Verify all secrets are set in Cloudflare Workers (`wrangler secret put`)
 
 ---
 
