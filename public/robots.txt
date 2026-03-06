@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /chat/
+Disallow: /login
+Disallow: /signup
+Disallow: /onboarding/
+Disallow: /profile
+Disallow: /api/
+
+Sitemap: https://branhamsermons.ai/sitemap.xml

@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import type { Message, StreamingStatus } from "@/lib/chat/types";
 import { MessageBubble } from "./MessageBubble";
+import { renderMarkdown } from "@/lib/markdown/render";
+import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
+import { stripParagraphLetterSuffixes } from "@/lib/markdown/citations";
 
 interface MessageListProps {
   messages: Message[];
@@ -43,13 +46,24 @@ function StreamingIndicator({ status }: { status: StreamingStatus }) {
   return null;
 }
 
+/**
+ * Renders the streaming buffer as markdown (no citation styling).
+ * Citation styling is applied only on the final message render.
+ */
 function StreamingText({ content }: { content: string }) {
+  const html = useMemo(() => {
+    const normalized = stripParagraphLetterSuffixes(content);
+    const processed = postprocessChatResponse(normalized);
+    return renderMarkdown(processed);
+  }, [content]);
+
   return (
     <div role="article" aria-label="Assistant message">
-      <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-900 dark:text-zinc-100">
-        {content}
-        <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-zinc-900 dark:bg-zinc-100" />
-      </div>
+      <div
+        className="chat-markdown prose prose-sm prose-zinc max-w-none break-words dark:prose-invert"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-zinc-900 dark:bg-zinc-100" />
     </div>
   );
 }
@@ -81,7 +95,6 @@ export function MessageList({
       )}
 
       <StreamingIndicator status={streamingStatus} />
-
       <div ref={bottomRef} aria-hidden="true" />
     </div>
   );

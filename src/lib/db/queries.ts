@@ -146,6 +146,54 @@ export async function upsertRag(
   if (error) throw error;
 }
 
+export async function renameConversation(
+  conversationId: string,
+  title: string,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("conversations")
+    .update({ title })
+    .eq("id", conversationId);
+
+  if (error) throw error;
+}
+
+export async function deleteConversation(
+  conversationId: string,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", conversationId);
+
+  if (error) throw error;
+}
+
+export interface SeoCacheClientRow {
+  slug: string;
+  question: string;
+  answer_markdown: string;
+  rag_context: string;
+  conversation_summary: string | null;
+}
+
+export async function fetchSeoPageClient(
+  slug: string,
+): Promise<SeoCacheClientRow | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("seo_cache")
+    .select("slug, question, answer_markdown, rag_context, conversation_summary")
+    .eq("slug", slug)
+    .eq("published", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function updateConversationAfterTurn(
   conversationId: string,
   summary: string | null,

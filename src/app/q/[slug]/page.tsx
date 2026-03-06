@@ -1,0 +1,108 @@
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { fetchSeoPage } from "@/lib/db/seo-queries";
+import { SeoShell } from "@/components/seo/SeoShell";
+
+const SITE_URL = "https://branhamsermons.ai";
+const OG_IMAGE = "/og-image.png";
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+function stripMarkdownToPlain(md: string): string {
+  return md
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^>\s+/gm, "")
+    .replace(/^---$/gm, "")
+    .replace(/\n{2,}/g, " ")
+    .replace(/\n/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function getFirst300Words(md: string): string {
+  const plain = stripMarkdownToPlain(md);
+  const words = plain.split(/\s+/);
+  return words.slice(0, 300).join(" ");
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const page = await fetchSeoPage(slug);
+
+  if (!page) {
+    return { title: "Not Found" };
+  }
+
+  const title = page.meta_title || `${page.question} | Branham Sermons AI`;
+  const description =
+    page.meta_description || stripMarkdownToPlain(page.answer_markdown).slice(0, 155);
+  const canonicalUrl = `${SITE_URL}/q/${slug}`;
+
+  return {
+    title: { absolute: title },
+    description,
+    robots: { index: true, follow: true },
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      type: "article",
+      images: [{ url: OG_IMAGE }],
+      siteName: "Branham Sermons AI",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [OG_IMAGE],
+    },
+  };
+}
+
+export default async function SeoQuestionPage({ params }: PageProps) {
+  const { slug } = await params;
+  const page = await fetchSeoPage(slug);
+
+  if (!page) {
+    notFound();
+  }
+
+  const answerPlainExcerpt = getFirst300Words(page.answer_markdown);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity: {
+      "@type": "Question",
+      name: page.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: answerPlainExcerpt,
+      },
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <SeoShell
+        slug={slug}
+        question={page.question}
+        answerMarkdown={page.answer_markdown}
+        ragContext={page.rag_context}
+        conversationSummary={page.conversation_summary}
+      />
+    </>
+  );
+}

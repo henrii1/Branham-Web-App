@@ -1,6 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import type { RagData, StreamingStatus } from "@/lib/chat/types";
+import { renderMarkdown } from "@/lib/markdown/render";
+import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 
 interface SourcesPanelProps {
   ragData: RagData | null;
@@ -62,6 +65,14 @@ export function SourcesPanel({ ragData, streamingStatus }: SourcesPanelProps) {
   const isLoading = streamingStatus === "connecting";
   const hasNoContent = !ragData && streamingStatus === "idle";
 
+  // Postprocess and render RAG markdown once (memoized).
+  // No citation styling in the Sources panel (§8: chat panel only).
+  const renderedHtml = useMemo(() => {
+    if (!ragData) return "";
+    const cleaned = postprocessRag(ragData.ragContext);
+    return renderMarkdown(cleaned);
+  }, [ragData]);
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
@@ -80,11 +91,10 @@ export function SourcesPanel({ ragData, streamingStatus }: SourcesPanelProps) {
         {hasNoContent && !isLoading && <EmptyState />}
         {ragData && (
           <div className="p-4">
-            <div className="prose prose-sm prose-zinc max-w-none dark:prose-invert">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                {ragData.ragContext}
-              </div>
-            </div>
+            <div
+              className="sources-markdown prose prose-sm prose-zinc max-w-none dark:prose-invert"
+              dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            />
           </div>
         )}
       </div>

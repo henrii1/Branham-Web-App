@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthGate";
 import { generateId } from "@/lib/utils/ids";
 import { processSSEStream } from "@/lib/sse/parser";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
+import { stripParagraphLetterSuffixes } from "@/lib/markdown/citations";
+import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import {
   fetchConversations,
   fetchConversation,
@@ -14,6 +17,9 @@ import {
   saveMessage,
   upsertRag,
   updateConversationAfterTurn,
+  renameConversation,
+  deleteConversation,
+  fetchSeoPageClient,
 } from "@/lib/db/queries";
 import type {
   Message,
@@ -113,6 +119,7 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
   const dbReadyRef = useRef<Promise<void>>(Promise.resolve());
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
+  const pendingFollowUpRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -184,11 +191,65 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
     initialLoadDone.current = true;
 
     loadConversations();
-    if (initialConversationId) {
+
+    const pendingSlug = localStorage.getItem("pending_seo_slug");
+    if (pendingSlug && !initialConversationId) {
+      localStorage.removeItem("pending_seo_slug");
+      (async () => {
+        try {
+          const seoData = await fetchSeoPageClient(pendingSlug);
+          if (!seoData) return;
+
+          const convId = generateId();
+          const userMsgId = generateId();
+          const assistantMsgId = generateId();
+
+          await createConversation(convId, user.id, seoData.question);
+          await saveMessage(userMsgId, convId, user.id, "user", seoData.question);
+          await saveMessage(assistantMsgId, convId, user.id, "assistant", seoData.answer_markdown);
+          await Promise.all([
+            upsertRag(convId, seoData.rag_context, seoData.question),
+            updateConversationAfterTurn(convId, seoData.conversation_summary),
+          ]);
+
+          setConversationId(convId);
+          setConversationExists(true);
+          setMessages([
+            { id: userMsgId, role: "user", content: seoData.question, createdAt: new Date().toISOString() },
+            { id: assistantMsgId, role: "assistant", content: seoData.answer_markdown, createdAt: new Date().toISOString() },
+          ]);
+          setRagData({ retrievalQuery: seoData.question, ragContext: seoData.rag_context, retrieval: [] });
+          setConversationSummary(seoData.conversation_summary);
+          window.history.replaceState(null, "", `/chat/${convId}`);
+          loadConversations();
+        } catch (err) {
+          console.error("Failed to seed conversation from SEO:", err);
+        }
+      })();
+    } else if (initialConversationId) {
+      const raw = localStorage.getItem("seo_followup");
+      if (raw) {
+        localStorage.removeItem("seo_followup");
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.conversationId === initialConversationId && parsed.query) {
+            pendingFollowUpRef.current = parsed.query;
+          }
+        } catch { /* malformed JSON — ignore */ }
+      }
       loadConversation(initialConversationId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
+
+  // ── Auto-send pending SEO follow-up after conversation loads ─────────
+  useEffect(() => {
+    if (conversationLoading || !conversationExists || !pendingFollowUpRef.current) return;
+    const query = pendingFollowUpRef.current;
+    pendingFollowUpRef.current = null;
+    handleSendMessage(query);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationLoading, conversationExists]);
 
   // ── Select conversation from sidebar ────────────────────────────────
   const handleSelectConversation = useCallback(
@@ -338,7 +399,9 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
               }
 
               case "final": {
-                const finalAnswer = stripAnswerPrefix(event.answer);
+                const finalAnswer = stripParagraphLetterSuffixes(
+                  stripAnswerPrefix(event.answer),
+                );
 
                 if (event.mode === "error") {
                   setError(finalAnswer || "An error occurred");
@@ -365,6 +428,8 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
                 if (currentUser) {
                   const currentRag = streamRagRef.current;
                   const summary = event.conversationSummary;
+                  const apiTitle = event.querySummary;
+                  const shouldUpdateTitle = isNew && !!apiTitle;
 
                   (async () => {
                     try {
@@ -380,7 +445,7 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
                         currentRag
                           ? upsertRag(
                               currentConvId,
-                              currentRag.ragContext,
+                              postprocessRag(currentRag.ragContext),
                               currentRag.retrievalQuery,
                               currentRag.retrieval,
                             )
@@ -389,6 +454,9 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
                           currentConvId,
                           summary ?? null,
                         ),
+                        shouldUpdateTitle
+                          ? renameConversation(currentConvId, apiTitle)
+                          : Promise.resolve(),
                       ]);
                       loadConversations();
                     } catch (err) {
@@ -460,6 +528,38 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
     window.history.replaceState(null, "", "/chat");
   }, []);
 
+  // ── Rename conversation ──────────────────────────────────────────────
+  const handleRenameConversation = useCallback(
+    async (id: string, newTitle: string) => {
+      try {
+        await renameConversation(id, newTitle);
+        setConversations((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)),
+        );
+      } catch (err) {
+        console.error("Failed to rename conversation:", err);
+      }
+    },
+    [],
+  );
+
+  // ── Delete conversation ─────────────────────────────────────────────
+  const handleDeleteConversation = useCallback(
+    async (id: string) => {
+      try {
+        await deleteConversation(id);
+        setConversations((prev) => prev.filter((c) => c.id !== id));
+
+        if (id === conversationId) {
+          handleNewConversation();
+        }
+      } catch (err) {
+        console.error("Failed to delete conversation:", err);
+      }
+    },
+    [conversationId, handleNewConversation],
+  );
+
   // ── Auth loading skeleton ───────────────────────────────────────────
   if (authLoading) {
     return (
@@ -493,22 +593,22 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div className="flex h-dvh bg-background">
-      {/* ── Desktop sidebar (logged-in only) ── */}
-      {!isAnonymous && (
-        <aside className="hidden w-64 flex-shrink-0 border-r border-zinc-200 lg:block dark:border-zinc-800">
-          <ConversationSidebar
-            user={user}
-            conversations={conversations}
-            activeConversationId={conversationId}
-            isLoading={conversationsLoading}
-            onNewChat={handleNewConversation}
-            onSelectConversation={handleSelectConversation}
-          />
-        </aside>
-      )}
+      {/* ── Desktop sidebar ── */}
+      <aside className="hidden w-64 flex-shrink-0 border-r border-zinc-200 lg:block dark:border-zinc-800">
+        <ConversationSidebar
+          user={user ?? null}
+          conversations={conversations}
+          activeConversationId={conversationId}
+          isLoading={conversationsLoading}
+          onNewChat={handleNewConversation}
+          onSelectConversation={handleSelectConversation}
+          onRenameConversation={handleRenameConversation}
+          onDeleteConversation={handleDeleteConversation}
+        />
+      </aside>
 
       {/* ── Mobile drawer overlay ── */}
-      {mobileDrawerOpen && !isAnonymous && (
+      {mobileDrawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
             className="absolute inset-0 bg-black/40"
@@ -517,12 +617,14 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
           />
           <aside className="relative z-50 h-full w-72 shadow-xl">
             <ConversationSidebar
-              user={user}
+              user={user ?? null}
               conversations={conversations}
               activeConversationId={conversationId}
               isLoading={conversationsLoading}
               onNewChat={handleNewConversation}
               onSelectConversation={handleSelectConversation}
+              onRenameConversation={handleRenameConversation}
+              onDeleteConversation={handleDeleteConversation}
               onClose={() => setMobileDrawerOpen(false)}
             />
           </aside>
@@ -644,53 +746,61 @@ function MobileHeader({
     <header className="flex flex-col border-b border-zinc-200 bg-white lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
-          {!isAnonymous && (
-            <button
-              type="button"
-              onClick={onMenuOpen}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-              aria-label="Open menu"
+          <button
+            type="button"
+            onClick={onMenuOpen}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            aria-label="Open menu"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                />
-              </svg>
-            </button>
-          )}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+              />
+            </svg>
+          </button>
           <span className="text-sm font-semibold text-foreground">
             Branham Sermons AI
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={onNewChat}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          aria-label="New chat"
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
+        <div className="flex items-center gap-2">
+          {!isAnonymous && (
+            <Link
+              href="/faq"
+              className="text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-200"
+            >
+              Popular Questions
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={onNewChat}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            aria-label="New chat"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-            />
-          </svg>
-        </button>
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Tab bar */}

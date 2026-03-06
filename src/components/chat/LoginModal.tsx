@@ -5,9 +5,11 @@ import Link from "next/link";
 
 interface LoginModalProps {
   onClose: () => void;
+  /** When set, signup/login links include ?seo_slug= for post-auth redirect. */
+  seoSlug?: string;
 }
 
-export function LoginModal({ onClose }: LoginModalProps) {
+export function LoginModal({ onClose, seoSlug }: LoginModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,13 +64,13 @@ export function LoginModal({ onClose }: LoginModalProps) {
 
           <div className="space-y-2">
             <Link
-              href="/signup"
+              href={seoSlug ? `/signup?seo_slug=${encodeURIComponent(seoSlug)}` : "/signup"}
               className="block w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               Sign up free
             </Link>
             <Link
-              href="/login"
+              href={seoSlug ? `/login?seo_slug=${encodeURIComponent(seoSlug)}` : "/login"}
               className="block w-full rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-750"
             >
               Log in

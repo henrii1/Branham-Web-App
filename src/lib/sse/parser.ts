@@ -18,6 +18,7 @@ export type ChatSSEEvent =
       answer: string;
       externalInfo: unknown;
       conversationSummary: string | null;
+      querySummary: string | null;
     }
   | { type: "done"; ok: boolean }
   | { type: "error"; mode: string; answer: string };
@@ -48,6 +49,7 @@ function parseChatEvent(raw: SSEEvent): ChatSSEEvent | null {
           answer: data.answer,
           externalInfo: data.external_info ?? null,
           conversationSummary: data.conversation_summary ?? null,
+          querySummary: data.query_summary ?? null,
         };
       case "done":
         return { type: "done", ok: data.ok };

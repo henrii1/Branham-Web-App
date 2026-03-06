@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #ffffff;
@@ -60,4 +61,93 @@ html {
   .overflow-y-auto::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.15);
   }
+}
+
+/* ── Citation pill (§8.3) — Chat panel only ────────────────────────── */
+.citation-pill {
+  display: inline;
+  padding: 2px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.8em;
+  line-height: 1.6;
+  white-space: nowrap;
+  transition: border-color 0.15s ease;
+}
+
+.citation-pill:hover {
+  border-color: #9ca3af;
+}
+
+@media (prefers-color-scheme: dark) {
+  .citation-pill {
+    border-color: #4b5563;
+  }
+  .citation-pill:hover {
+    border-color: #9ca3af;
+  }
+}
+
+/* ── Evidence label (§8.4) — metadata chip before citation groups ─── */
+.evidence-label {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-right: 4px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+@media (prefers-color-scheme: dark) {
+  .evidence-label {
+    background: #27272a;
+    color: #a1a1aa;
+  }
+}
+
+/* ── Markdown prose overrides for chat messages ────────────────────── */
+.chat-markdown hr {
+  margin-top: 1.25em;
+  margin-bottom: 0.75em;
+  border-color: #e5e7eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chat-markdown hr {
+    border-color: #3f3f46;
+  }
+}
+
+/* Tighten spacing around blockquotes in chat (for Quotes sections) */
+.chat-markdown blockquote {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1em;
+  border-left-width: 3px;
+  border-left-color: #d1d5db;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chat-markdown blockquote {
+    border-left-color: #4b5563;
+  }
+}
+
+/* Sources panel markdown: slightly muted, compact styling */
+.sources-markdown h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.sources-markdown h3:first-child {
+  margin-top: 0;
 }

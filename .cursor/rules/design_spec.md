@@ -237,11 +237,11 @@ The model response often begins with `"Answer:"`. **Always strip this prefix** b
 └──────────────┴───────────────────────────────────┘
 ```
 
-- **Sidebar** (~1/5 width): conversations list (logged-in only), new chat button, sign in/out.
+- **Sidebar** (~1/5 width): conversations list, new chat button, sign in/out (or Sign up/Log in when anonymous).
 - **Main panel**: vertically split into Sources (top) and Chat (bottom).
 - **Drag-to-resize**: vertical divider between Sources and Chat. Height changes only, width stays constant. Default split: ~40% Sources / 60% Chat. Minimum height for each panel (~15% of viewport).
 - **Composer**: anchored at bottom, always visible.
-- Anonymous users: sidebar hidden or collapsed. Show "Sign in to save history" nudge.
+- Anonymous users: sidebar visible with empty history ("Sign in to save history"); can start new chat but no persistence.
 
 ### 5.2 Small screens (phones)
 
@@ -282,7 +282,40 @@ The model response often begins with `"Answer:"`. **Always strip this prefix** b
 ### 6.3 Both panels render markdown
 - Sources panel: renders `rag_context` as markdown (received as a single string).
 - Chat panel: renders assistant messages as markdown.
-- Both use the same sanitized markdown renderer.
+- Both use the same sanitized markdown renderer (`marked` with custom security renderer).
+
+### 6.4 RAG context postprocessing (before markdown render)
+Applied to `rag_context` before rendering in Sources panel. Cleans up PDF-layout artifacts.
+
+**Inline sermon title dedup:**
+- Sermon titles appear in ALL CAPS within chunk text (e.g., `THE SERPENT'S SEED 23`).
+- These are page-header artifacts from the PDF layout, not part of the sermon prose.
+- Titles are extracted from the RAG section headers (`### N. TITLE — DATE_ID`).
+- Each title is removed when it appears inline in chunk text, optionally followed by a page number.
+- Section headers themselves are **not** modified.
+
+**"THE SPOKEN WORD" dedup:**
+- Remove `THE SPOKEN WORD` if present in all caps anywhere in RAG context.
+
+**Sermon boilerplate removal:**
+- Remove sermon reference/ending blocks that leak into chunk context, including:
+  - Date_ID + sermon name line (e.g., `57-0915E Hebrews, Chapter Seven #1`)
+  - Location (e.g., `Branham Tabernacle`, `Jeffersonville, Indiana U.S.A.`)
+  - `ENGLISH`, `©YYYY VGR, ALL RIGHTS RESERVED`
+  - `VOICE OF GOD RECORDINGS`, `P.O. BOX 950`, `www.branham.org`
+  - Copyright Notice text block
+- Detection: when boilerplate markers are found, expand to the nearest date_id line above and remove the entire block.
+
+### 6.5 Chat response formatting (before markdown render)
+Applied to assistant answers before markdown rendering in Chat panel.
+
+**Section dividers:**
+- Insert a markdown horizontal rule (`---`) above these section headings when present:
+  - `### Quotes` / `## Quotes`
+  - `### References` / `## References`
+  - `### Reader Note` / `## Reader Note`
+- Idempotent — safe to apply multiple times (won't double-add rules).
+- This visually separates the main answer from supporting sections.
 
 ---
 
@@ -548,8 +581,105 @@ Used by the welcome email sender. v1 ships with English content only.
 
 ### 12.5 SEO content workflow
 - **Stage**: user provides `question` (basic) and `robust_query` (enhanced) for each FAQ.
-- Developer calls Model API with `robust_query`, stores full result in `seo_cache`.
-- Page displays `question` as the heading, `answer_markdown` + `rag_context` as content.
+- **Seed script** (`scripts/seed-seo.ts`): takes the list of question + robust_query pairs, calls the Model API with each `robust_query`, parses the SSE response (rag, final events), and upserts into `seo_cache` with:
+  - `slug`: auto-generated from question (lowercase, hyphenated, e.g., "what-is-the-serpents-seed")
+  - `answer_markdown`: from `final.answer` (with "Answer:" prefix stripped)
+  - `rag_context`: from `rag` event
+  - `conversation_summary`: from `final.conversation_summary`
+  - `meta_title`: auto-generated (e.g., `"{question} | Branham Sermons AI"`)
+  - `meta_description`: auto-generated (first ~155 characters of the answer, plain text)
+  - `published`: set to `true`
+- Page displays `question` as the `<h1>` heading, `answer_markdown` + `rag_context` as content.
+
+### 12.6 FAQ index page (`/faq`)
+- Public route: `/faq`
+- Server-rendered page listing all published `seo_cache` entries.
+- Layout: **accordion cards** — each card shows the `question` as the heading; click to expand reveals a truncated excerpt of the answer (first ~2-3 sentences, plain text). A "Read full answer" link navigates to `/q/[slug]`.
+- Accordion pattern allows legitimate use of `FAQPage` JSON-LD schema (Google requires answers to be visible on-page for rich snippet eligibility).
+- The page is entirely auto-generated from published `seo_cache` rows — no manual curation beyond the initial seed.
+- Page metadata: `<title>Frequently Asked Questions | Branham Sermons AI</title>`, appropriate meta description.
+
+### 12.7 Structured data (JSON-LD)
+
+**Per-question pages (`/q/[slug]`):**
+- Embed `QAPage` schema in a `<script type="application/ld+json">` tag.
+- Auto-generated from `seo_cache` fields — no extra input needed.
+- Structure:
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "QAPage",
+  "mainEntity": {
+    "@type": "Question",
+    "name": "{question}",
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "{first ~300 words of answer, plain text}"
+    }
+  }
+}
+```
+
+**FAQ index page (`/faq`):**
+- Embed `FAQPage` schema containing all published Q&A pairs.
+- Structure:
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "{question}",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{truncated answer excerpt}"
+      }
+    }
+  ]
+}
+```
+
+### 12.8 Open Graph & social meta tags
+- Applied via Next.js `generateMetadata` on each `/q/[slug]` page and the `/faq` page.
+- All derived from existing `seo_cache` columns — no extra input needed.
+- Tags:
+  - `og:title` → `meta_title`
+  - `og:description` → `meta_description`
+  - `og:url` → canonical URL (`https://branhamsermons.ai/q/{slug}`)
+  - `og:type` → `"article"`
+  - `og:image` → app logo / OG brand image (`/og-image.png`)
+  - `og:site_name` → `"Branham Sermons AI"`
+  - `twitter:card` → `"summary_large_image"`
+  - `twitter:title` → `meta_title`
+  - `twitter:description` → `meta_description`
+  - `twitter:image` → same OG image
+
+### 12.9 Canonical URLs
+- Every `/q/[slug]` page includes `<link rel="canonical" href="https://branhamsermons.ai/q/{slug}" />`.
+- The `/faq` page includes `<link rel="canonical" href="https://branhamsermons.ai/faq" />`.
+- Set via `generateMetadata` → `alternates.canonical`.
+
+### 12.10 `robots.txt` and sitemap
+- Static `public/robots.txt`:
+```
+User-agent: *
+Allow: /
+Disallow: /chat/
+Disallow: /login
+Disallow: /signup
+Disallow: /onboarding/
+Disallow: /profile
+Disallow: /api/
+
+Sitemap: https://branhamsermons.ai/sitemap.xml
+```
+- `sitemap.xml`: dynamically generated from published `seo_cache` rows (Next.js `sitemap.ts` convention). Includes `/faq` and all `/q/[slug]` URLs with `lastmod` from `updated_at`.
+
+### 12.11 Semantic heading hierarchy
+- Each `/q/[slug]` page uses a single `<h1>` for the question text.
+- Answer content rendered under `<h2>`/`<h3>` headings as they appear in the markdown.
+- The `/faq` page uses `<h1>` for the page title ("Frequently Asked Questions") and `<h2>` for each question in the accordion.
 
 ---
 
@@ -603,8 +733,12 @@ branham-web-app/
 ├── open-next.config.ts                 # OpenNext adapter config
 ├── .env.local                          # Local dev env vars
 ├── .dev.vars                           # Cloudflare local dev vars
+├── scripts/
+│   └── seed-seo.ts                    # Calls Model API, populates seo_cache
 ├── public/
 │   ├── _headers                        # Static asset cache headers
+│   ├── robots.txt                      # Crawler directives + sitemap reference
+│   ├── og-image.png                    # Default Open Graph brand image
 │   ├── logo.svg
 │   └── favicon.ico
 ├── supabase/
@@ -623,7 +757,9 @@ branham-web-app/
 │   │   ├── (app)/
 │   │   │   ├── chat/page.tsx           # New chat
 │   │   │   ├── chat/[conversationId]/page.tsx
-│   │   │   └── q/[slug]/page.tsx       # SEO pages
+│   │   │   ├── q/[slug]/page.tsx       # SEO pages (QAPage JSON-LD)
+│   │   │   └── faq/page.tsx            # FAQ index (FAQPage JSON-LD, accordion)
+│   │   ├── sitemap.ts                  # Dynamic sitemap from seo_cache
 │   │   └── api/
 │   │       ├── chat/route.ts           # SSE proxy to Model API
 │   │       └── welcome-email/route.ts  # Postmark email sender
@@ -654,8 +790,10 @@ branham-web-app/
 │   │   ├── modelApi/
 │   │   │   └── client.ts              # SSE fetch + stream wrapper
 │   │   ├── markdown/
-│   │   │   ├── render.ts              # Markdown → safe HTML
-│   │   │   └── citations.ts           # Detect + style citation tokens
+│   │   │   ├── render.ts              # Markdown → safe HTML (marked + custom renderer)
+│   │   │   ├── citations.ts           # Detect + style citation pills & Evidence labels
+│   │   │   ├── ragPostprocess.ts      # Clean RAG context (inline title dedup, boilerplate removal)
+│   │   │   └── chatPostprocess.ts     # Format chat response (--- dividers above sections)
 │   │   ├── sse/
 │   │   │   └── parser.ts              # SSE event stream parser
 │   │   ├── db/
@@ -727,25 +865,32 @@ branham-web-app/
 - URL management: `window.history.replaceState` for in-app navigation (no full re-render)
 - DB query helpers in `src/lib/db/queries.ts`
 
-### Stage 5 — Markdown sanitization + citation styling
-- Lock safe markdown subset (§7)
-- Disable raw HTML
-- Link safety rules
-- Citation detection regex on final render
-- `Evidence:` label detection + evidence-row rendering
-- CitationPill component (CSS styled span, §8)
+### Stage 5 — Markdown sanitization + citation styling + postprocessing ✅
+- Lock safe markdown subset (§7): `marked` with custom renderer, raw HTML stripped
+- Disable raw HTML: custom `html()` renderer returns empty string
+- Link safety rules: only http/https, adds `rel="noopener noreferrer"` + `target="_blank"`
+- Citation detection regex on final render (`applyCitations` in `citations.ts`)
+- `Evidence:` label detection + evidence-label chip rendering
+- Citation pill CSS styling (inline `<span>`, thin border, rounded corners, monospace font, §8)
 - Apply only in Chat panel, not Sources
+- RAG postprocessing before markdown render (§6.4)
+- Chat response formatting: `---` dividers above Quotes/References/Reader Note sections (§6.5)
+- Tailwind Typography plugin (`@tailwindcss/typography`) for prose styling
 
 ### Stage 6 — SEO pages
 - **User provides**: list of `question` + `robust_query` pairs
-- Developer calls Model API, stores results in `seo_cache`
-- `/q/[slug]` SSR page: loads from `seo_cache`
+- `scripts/seed-seo.ts`: calls Model API with each `robust_query`, parses SSE, upserts into `seo_cache` with auto-generated slug, meta_title, meta_description
+- `/q/[slug]` SSR page: loads from `seo_cache`, `<h1>` for question
 - TypewriterRenderer for simulated streaming effect
 - Follow-up behavior: login modal → signup → seed conversation from SEO content
-- Noindex on all non-SEO routes
+- `/faq` index page: accordion cards for all published questions, expandable excerpts, links to `/q/[slug]`
+- `QAPage` JSON-LD on each `/q/[slug]` page (§12.7)
+- `FAQPage` JSON-LD on `/faq` page (§12.7)
+- Open Graph + Twitter card meta tags via `generateMetadata` (§12.8)
+- Canonical URLs on all SEO pages (§12.9)
+- `public/robots.txt` + dynamic `sitemap.ts` (§12.10)
+- Noindex on all non-SEO routes (`/chat/...`, `/login`, `/signup`, etc.)
 - 404 for unpublished slugs
-- Sitemap generation from published rows
-- meta_title, meta_description for each page
 
 ### Stage 7 — Welcome email
 - `sendWelcomeEmail()` abstraction (Postmark HTTP API)
@@ -762,12 +907,31 @@ branham-web-app/
 - Verify noindex is applied on all chat routes
 - **User provides**: release notes (static markdown in repo)
 
-### Stage 9 — Supabase plan upgrade + production config
+### Stage 9 — UI polish, miscellaneous improvements & logo
+- Design and integrate app logo (favicon, sidebar header, mobile PWA icon, Open Graph image — see §14)
+- UI refinements and visual polish across all screens (spacing, typography, colors, transitions)
+- Accessibility audit: keyboard navigation, ARIA labels, focus rings, contrast ratios
+- Mobile responsiveness review and fixes (tab switching, sidebar drawer, composer behavior)
+- Loading states and skeleton screens where missing
+- Error states and empty states polish (no conversations yet, network errors, etc.)
+- Minor bug fixes and UX improvements surfaced during development
+
+### Stage 10 — Supabase plan upgrade
 - Upgrade Supabase project to Pro plan (or appropriate paid tier)
 - Increase auth email rate limits (rate limits are low on free tier: ~3 emails/hour)
 - Configure custom SMTP for auth emails (optional, improves deliverability)
 - Review and tune Supabase connection pooling for production load
-- Verify all secrets are set in Cloudflare Workers (`wrangler secret put`)
+
+### Stage 11 — Cloudflare production deployment
+- **Domain verification**: confirm `branhamsermons.ai` DNS zone is active and verified in Cloudflare dashboard
+- **SSL/HTTPS**: ensure edge certificate is issued and valid; set SSL mode to Full (strict); confirm ACME challenge path (`/.well-known/acme-challenge/*`) is not blocked by Workers or Access policies
+- **Enable Cloudflare Web Analytics**: one-click enable in Workers & Pages → project → Metrics; auto-injects JS snippet on next deployment (no code changes needed, requires valid HTML output)
+- **Verify all Workers secrets**: run `wrangler secret put` for `CHAT_API_BEARER_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `POSTMARK_SERVER_TOKEN` and any other server-side secrets
+- **Verify production environment variables**: confirm `NEXT_PUBLIC_*` vars and `MODEL_API_BASE_URL` in `wrangler.jsonc`
+- **Configure Supabase Auth redirect URLs**: add production custom domain to Supabase Auth allowed redirect URLs
+- **Final deployment**: `npx opennextjs-cloudflare build && wrangler deploy`
+- **Production smoke test**: end-to-end verification of auth flow, chat streaming, DB persistence, rate limiting, citation rendering, and SEO pages
+- **DNS propagation check**: confirm domain resolves correctly, HTTPS padlock shows, no mixed content warnings
 
 ---
 
