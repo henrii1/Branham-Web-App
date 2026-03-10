@@ -13,9 +13,9 @@ interface SourcesPanelProps {
 function EmptyState() {
   return (
     <div className="flex h-full items-center justify-center p-4">
-      <div className="text-center">
+      <div className="max-w-sm rounded-[24px] border border-zinc-200 bg-[var(--surface-base)] px-6 py-7 text-center shadow-sm dark:border-zinc-700">
         <svg
-          className="mx-auto mb-2 h-8 w-8 text-zinc-300 dark:text-zinc-600"
+          className="mx-auto mb-3 h-9 w-9 text-zinc-400 dark:text-zinc-500"
           fill="none"
           viewBox="0 0 24 24"
           strokeWidth={1.5}
@@ -27,8 +27,10 @@ function EmptyState() {
             d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
           />
         </svg>
-        <p className="text-xs text-zinc-400 dark:text-zinc-500">
-          Sources will appear here
+        <p className="font-display text-xl text-foreground">Sources</p>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+          Retrieval passages, sermon excerpts, and grounding context will appear
+          here once a question is searched.
         </p>
       </div>
     </div>
@@ -38,7 +40,7 @@ function EmptyState() {
 function LoadingState() {
   return (
     <div className="flex h-full items-center justify-center p-4">
-      <div className="text-center">
+      <div className="rounded-2xl border border-zinc-200 bg-[var(--surface-base)] px-6 py-5 text-center shadow-sm dark:border-zinc-700">
         <div className="mx-auto mb-2 flex items-center justify-center gap-1">
           <span
             className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 dark:bg-zinc-500"
@@ -74,7 +76,7 @@ export function SourcesPanel({ ragData, streamingStatus }: SourcesPanelProps) {
   }, [ragData]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-[var(--surface-sources)]">
       <div className="flex items-center border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
         <h2 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
           Sources
@@ -90,7 +92,7 @@ export function SourcesPanel({ ragData, streamingStatus }: SourcesPanelProps) {
         {isLoading && <LoadingState />}
         {hasNoContent && !isLoading && <EmptyState />}
         {ragData && (
-          <div className="p-4">
+          <div className="mx-auto w-full max-w-5xl px-5 py-4 xl:max-w-[68rem]">
             <div
               className="sources-markdown prose prose-sm prose-zinc max-w-none dark:prose-invert"
               dangerouslySetInnerHTML={{ __html: renderedHtml }}

@@ -20,12 +20,23 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
 });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: ReactNode;
+  initialUser?: User | null;
+}) {
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
+  const [isLoading, setIsLoading] = useState(initialUser === undefined);
 
   useEffect(() => {
     const supabase = createClient();
+
+    void supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null);
+      setIsLoading(false);
+    });
 
     const {
       data: { subscription },

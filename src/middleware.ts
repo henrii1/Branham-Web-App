@@ -1,9 +1,8 @@
 import { type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-// OpenNext/Cloudflare adapter requires Edge middleware (proxy.ts not yet supported).
-// The Next.js 16 deprecation warning is cosmetic — migrate to proxy.ts when OpenNext
-// ships the Adapters API.
+// Next.js still expects the middleware file convention to use the experimental
+// edge runtime flag here. When proxy.ts is viable with OpenNext, migrate there.
 export const runtime = "experimental-edge";
 
 export async function middleware(request: NextRequest) {

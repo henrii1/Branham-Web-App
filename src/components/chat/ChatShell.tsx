@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthGate";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { generateId } from "@/lib/utils/ids";
 import { processSSEStream } from "@/lib/sse/parser";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
@@ -36,6 +37,8 @@ import { Composer } from "./Composer";
 import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
 import { LoginModal } from "./LoginModal";
+import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
+import { SidebarRail } from "./SidebarRail";
 
 const DEFAULT_PANEL_RATIO = 0.4;
 const MAX_TITLE_LENGTH = 50;
@@ -78,9 +81,13 @@ function rowToConversation(
 
 interface ChatShellProps {
   initialConversationId?: string;
+  triggerWelcomeEmail?: boolean;
 }
 
-export function ChatShell({ initialConversationId }: ChatShellProps) {
+export function ChatShell({
+  initialConversationId,
+  triggerWelcomeEmail = false,
+}: ChatShellProps) {
   const { user, isLoading: authLoading } = useAuth();
   const isAnonymous = !user;
 
@@ -109,6 +116,7 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
   const [activeTab, setActiveTab] = useState<"chat" | "sources">("chat");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // ── Refs ────────────────────────────────────────────────────────────
   const panelsRef = useRef<HTMLDivElement>(null);
@@ -207,8 +215,10 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
           await createConversation(convId, user.id, seoData.question);
           await saveMessage(userMsgId, convId, user.id, "user", seoData.question);
           await saveMessage(assistantMsgId, convId, user.id, "assistant", seoData.answer_markdown);
+          const processedSeoRag = postprocessRag(seoData.rag_context);
+
           await Promise.all([
-            upsertRag(convId, seoData.rag_context, seoData.question),
+            upsertRag(convId, processedSeoRag, seoData.question),
             updateConversationAfterTurn(convId, seoData.conversation_summary),
           ]);
 
@@ -218,7 +228,11 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
             { id: userMsgId, role: "user", content: seoData.question, createdAt: new Date().toISOString() },
             { id: assistantMsgId, role: "assistant", content: seoData.answer_markdown, createdAt: new Date().toISOString() },
           ]);
-          setRagData({ retrievalQuery: seoData.question, ragContext: seoData.rag_context, retrieval: [] });
+          setRagData({
+            retrievalQuery: seoData.question,
+            ragContext: processedSeoRag,
+            retrieval: [],
+          });
           setConversationSummary(seoData.conversation_summary);
           window.history.replaceState(null, "", `/chat/${convId}`);
           loadConversations();
@@ -593,18 +607,33 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div className="flex h-dvh bg-background">
+      <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
+
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden w-64 flex-shrink-0 border-r border-zinc-200 lg:block dark:border-zinc-800">
-        <ConversationSidebar
-          user={user ?? null}
-          conversations={conversations}
-          activeConversationId={conversationId}
-          isLoading={conversationsLoading}
-          onNewChat={handleNewConversation}
-          onSelectConversation={handleSelectConversation}
-          onRenameConversation={handleRenameConversation}
-          onDeleteConversation={handleDeleteConversation}
-        />
+      <aside
+        className={`hidden flex-shrink-0 border-r border-zinc-200 transition-[width] duration-200 lg:block dark:border-zinc-800 ${
+          sidebarCollapsed ? "w-16" : "w-72"
+        }`}
+      >
+        {sidebarCollapsed ? (
+          <SidebarRail
+            user={user ?? null}
+            onExpand={() => setSidebarCollapsed(false)}
+            onNewChat={handleNewConversation}
+          />
+        ) : (
+          <ConversationSidebar
+            user={user ?? null}
+            conversations={conversations}
+            activeConversationId={conversationId}
+            isLoading={conversationsLoading}
+            onNewChat={handleNewConversation}
+            onSelectConversation={handleSelectConversation}
+            onRenameConversation={handleRenameConversation}
+            onDeleteConversation={handleDeleteConversation}
+            onCollapse={() => setSidebarCollapsed(true)}
+          />
+        )}
       </aside>
 
       {/* ── Mobile drawer overlay ── */}
@@ -635,7 +664,6 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* ── Mobile header ── */}
         <MobileHeader
-          isAnonymous={isAnonymous}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onMenuOpen={() => setMobileDrawerOpen(true)}
@@ -657,7 +685,7 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
         >
           <div
             ref={sourcesRef}
-            className="min-h-0 overflow-hidden border-b border-zinc-100 dark:border-zinc-800"
+            className="min-h-0 overflow-hidden border-b border-zinc-200 dark:border-zinc-800"
             style={{ flex: `${panelRatio} 0 0` }}
           >
             <SourcesPanel ragData={ragData} streamingStatus={streamingStatus} />
@@ -726,7 +754,6 @@ export function ChatShell({ initialConversationId }: ChatShellProps) {
 // ── Mobile header with tabs ──────────────────────────────────────────
 
 interface MobileHeaderProps {
-  isAnonymous: boolean;
   activeTab: "chat" | "sources";
   setActiveTab: (tab: "chat" | "sources") => void;
   onMenuOpen: () => void;
@@ -735,7 +762,6 @@ interface MobileHeaderProps {
 }
 
 function MobileHeader({
-  isAnonymous,
   activeTab,
   setActiveTab,
   onMenuOpen,
@@ -743,8 +769,8 @@ function MobileHeader({
   hasRag,
 }: MobileHeaderProps) {
   return (
-    <header className="flex flex-col border-b border-zinc-200 bg-white lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center justify-between px-3 py-2">
+    <header className="flex flex-col border-b border-zinc-200 bg-[var(--surface-base)] lg:hidden dark:border-zinc-800">
+      <div className="flex items-center justify-between gap-3 px-3 py-2.5">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -766,20 +792,16 @@ function MobileHeader({
               />
             </svg>
           </button>
-          <span className="text-sm font-semibold text-foreground">
-            Branham Sermons AI
-          </span>
+          <BrandLogo href="/chat" size={30} nameClassName="text-sm" />
         </div>
 
         <div className="flex items-center gap-2">
-          {!isAnonymous && (
-            <Link
-              href="/faq"
-              className="text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-200"
-            >
-              Popular Questions
-            </Link>
-          )}
+          <Link
+            href="/faq"
+            className="hidden text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-700 sm:inline dark:hover:text-zinc-200"
+          >
+            Popular Questions
+          </Link>
           <button
             type="button"
             onClick={onNewChat}

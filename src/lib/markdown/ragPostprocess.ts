@@ -15,8 +15,10 @@
 
 // ── Section header regex ─────────────────────────────────────────────
 // Matches: ### N. SERMON TITLE — DATE_ID
+// Also tolerates non-markdown numbered headers from older/raw RAG payloads.
 // Captures group 1 = sermon title (everything between "N. " and " — ")
-const SECTION_HEADER_RE = /^###\s+\d+\.\s+(.+?)\s+[—–-]{1,3}\s+\d{4}-\d{2}-\d{2}/gm;
+const SECTION_HEADER_RE =
+  /^(?:###\s+)?\d+\.\s+(.+?)\s+[—–-]{1,3}\s+\d{4}-\d{2}-\d{2}/gm;
 
 // ── Boilerplate patterns ─────────────────────────────────────────────
 // Matches sermon location/copyright blocks that leak into chunk context.
@@ -99,19 +101,38 @@ function removeInlineTitles(text: string, titles: string[]): string {
 
   let result = text;
   for (const title of titles) {
-    // Build regex: exact title match, optionally followed by whitespace + page number
-    // Use word boundary awareness to avoid partial matches
-    const pattern = new RegExp(
-      `(?<!^###[^\\n]*)${escapeRegex(title)}(?:\\s+\\d{1,3})?`,
+    // Remove exact inline title matches, optionally followed by a page number.
+    const exactPattern = new RegExp(
+      `${escapeRegex(title)}(?:\\s+\\d{1,3})?`,
       "gm",
     );
-    result = result.replace(pattern, (match, offset) => {
-      // Safety: don't remove from header lines (lines starting with #)
+    result = result.replace(exactPattern, (match, offset) => {
       const lineStart = result.lastIndexOf("\n", offset) + 1;
       const linePrefix = result.slice(lineStart, offset);
       if (linePrefix.trimStart().startsWith("#")) return match;
       return "";
     });
+
+    // Some PDF extractions truncate the repeated inline title with an ellipsis:
+    // "THE BREACH BETWEEN THE SEVEN CHURCH AGES AND THE…"
+    // Build safe prefix variants from the real title and remove them only when
+    // they end with an ellipsis, which greatly reduces false positives.
+    const words = title.split(/\s+/).filter(Boolean);
+    if (words.length >= 4) {
+      for (let wordCount = words.length - 1; wordCount >= 4; wordCount--) {
+        const prefix = words.slice(0, wordCount).join(" ");
+        const truncatedPattern = new RegExp(
+          `${escapeRegex(prefix)}(?:…|\\.\\.\\.)`,
+          "gm",
+        );
+        result = result.replace(truncatedPattern, (match, offset) => {
+          const lineStart = result.lastIndexOf("\n", offset) + 1;
+          const linePrefix = result.slice(lineStart, offset);
+          if (linePrefix.trimStart().startsWith("#")) return match;
+          return "";
+        });
+      }
+    }
   }
 
   // Clean up double spaces left by removal

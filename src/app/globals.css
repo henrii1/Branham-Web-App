@@ -1,9 +1,21 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #f7f7f8;
+  --foreground: #1f1f1f;
+  --muted-foreground: #666873;
+  --border-subtle: #e4e4e7;
+  --surface-base: #ffffff;
+  --surface-soft: #f3f4f6;
+  --surface-muted: #ececf1;
+  --surface-chat: #fcfcfd;
+  --surface-sources: #f5f5f7;
+  --surface-sidebar: #eff0f3;
+  --shadow-color: 15 23 42;
+  --ring-color: #2563eb;
 }
 
 @theme inline {
@@ -13,17 +25,27 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  color-scheme: dark;
+  --background: #212327;
+  --foreground: #f3f4f6;
+  --muted-foreground: #b3b5bd;
+  --border-subtle: #3b3d45;
+  --surface-base: #2a2c31;
+  --surface-soft: #26282d;
+  --surface-muted: #303239;
+  --surface-chat: #2d3036;
+  --surface-sources: #292c31;
+  --surface-sidebar: #24262b;
+  --shadow-color: 2 6 23;
+  --ring-color: #7c96ff;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 html,
@@ -37,11 +59,27 @@ html {
   overscroll-behavior: none;
 }
 
+.font-display {
+  font-family: var(--font-newsreader), "Iowan Old Style", "Palatino Linotype",
+    "Book Antiqua", Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: rgb(37 99 235 / 0.16);
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring-color);
+  outline-offset: 2px;
+}
+
 /* Smooth scrolling in chat panels */
 .overflow-y-auto {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-foreground, #171717) transparent;
+  scrollbar-color: rgb(113 113 122 / 0.7) transparent;
 }
 
 .overflow-y-auto::-webkit-scrollbar {
@@ -53,14 +91,12 @@ html {
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgb(113 113 122 / 0.35);
   border-radius: 3px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-  }
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgb(161 161 170 / 0.32);
 }
 
 /* ── Citation pill (§8.3) — Chat panel only ────────────────────────── */
@@ -80,13 +116,12 @@ html {
   border-color: #9ca3af;
 }
 
-@media (prefers-color-scheme: dark) {
-  .citation-pill {
-    border-color: #4b5563;
-  }
-  .citation-pill:hover {
-    border-color: #9ca3af;
-  }
+.dark .citation-pill {
+  border-color: #4b5563;
+}
+
+.dark .citation-pill:hover {
+  border-color: #9ca3af;
 }
 
 /* ── Evidence label (§8.4) — metadata chip before citation groups ─── */
@@ -104,11 +139,9 @@ html {
   vertical-align: middle;
 }
 
-@media (prefers-color-scheme: dark) {
-  .evidence-label {
-    background: #27272a;
-    color: #a1a1aa;
-  }
+.dark .evidence-label {
+  background: #27272a;
+  color: #a1a1aa;
 }
 
 /* ── Markdown prose overrides for chat messages ────────────────────── */
@@ -118,10 +151,8 @@ html {
   border-color: #e5e7eb;
 }
 
-@media (prefers-color-scheme: dark) {
-  .chat-markdown hr {
-    border-color: #3f3f46;
-  }
+.dark .chat-markdown hr {
+  border-color: #3f3f46;
 }
 
 /* Tighten spacing around blockquotes in chat (for Quotes sections) */
@@ -134,10 +165,8 @@ html {
   font-style: italic;
 }
 
-@media (prefers-color-scheme: dark) {
-  .chat-markdown blockquote {
-    border-left-color: #4b5563;
-  }
+.dark .chat-markdown blockquote {
+  border-left-color: #4b5563;
 }
 
 /* Sources panel markdown: slightly muted, compact styling */
@@ -150,4 +179,9 @@ html {
 
 .sources-markdown h3:first-child {
   margin-top: 0;
+}
+
+.sources-markdown p,
+.sources-markdown li {
+  color: var(--muted-foreground);
 }

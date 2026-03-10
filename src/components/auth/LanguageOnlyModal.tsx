@@ -47,8 +47,8 @@ export function LanguageOnlyModal({
               upcoming updates.
             </p>
             <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-500">
-              Your language preference has been saved and will be used when
-              support becomes available.
+              For now, your app language will stay on English so the current
+              experience remains consistent everywhere.
             </p>
           </div>
 

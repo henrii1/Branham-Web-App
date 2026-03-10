@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -24,13 +24,18 @@ export function LanguagePicker({
   onSaved,
 }: LanguagePickerProps) {
   const router = useRouter();
-  const [selected, setSelected] = useState(currentLanguage);
+  const normalizedCurrentLanguage = normalizeLanguageCode(currentLanguage);
+  const [selected, setSelected] = useState(normalizedCurrentLanguage);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [pendingLanguage, setPendingLanguage] = useState<Language | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setSelected(normalizedCurrentLanguage);
+  }, [normalizedCurrentLanguage]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return LANGUAGES;
@@ -44,14 +49,18 @@ export function LanguagePicker({
   }, [search]);
 
   function handleSelect(lang: Language) {
-    setSelected(lang.code);
     setError(null);
     setSuccessMessage(null);
 
     if (!SUPPORTED_LANGUAGES.includes(lang.code)) {
       setPendingLanguage(lang);
       setShowModal(true);
+      setSelected("en");
+      return;
     }
+
+    setPendingLanguage(null);
+    setSelected(lang.code);
   }
 
   async function saveAndProceed(languageCode: string) {
@@ -82,7 +91,7 @@ export function LanguagePicker({
         return;
       }
 
-      router.push(redirectTo);
+      router.push(appendWelcomeEmailFlag(redirectTo));
       router.refresh();
     } else {
       setSuccessMessage("Language updated successfully.");
@@ -94,11 +103,12 @@ export function LanguagePicker({
   function handleModalContinue() {
     setShowModal(false);
     setPendingLanguage(null);
-    saveAndProceed(selected);
+    setSelected("en");
+    void saveAndProceed("en");
   }
 
   const isOnboarding = !!redirectTo;
-  const hasChanged = selected !== currentLanguage;
+  const hasChanged = selected !== normalizedCurrentLanguage;
 
   return (
     <>
@@ -181,4 +191,16 @@ export function LanguagePicker({
       )}
     </>
   );
+}
+
+function appendWelcomeEmailFlag(target: string): string {
+  const url = new URL(target, window.location.origin);
+  url.searchParams.set("welcomeEmail", "1");
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function normalizeLanguageCode(languageCode?: string | null): string {
+  return SUPPORTED_LANGUAGES.includes(languageCode ?? "")
+    ? languageCode!
+    : "en";
 }

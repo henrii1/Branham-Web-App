@@ -49,8 +49,8 @@ export function Composer({ onSend, disabled, streamingStatus }: ComposerProps) {
   );
 
   return (
-    <div className="flex-shrink-0 border-t border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
-      <div className="mx-auto flex max-w-3xl items-end gap-2">
+    <div className="flex-shrink-0 border-t border-zinc-200 bg-[var(--surface-base)] px-4 py-3 dark:border-zinc-700">
+      <div className="mx-auto flex max-w-4xl items-end gap-2 xl:max-w-[56rem]">
         <textarea
           ref={textareaRef}
           value={value}
@@ -64,7 +64,7 @@ export function Composer({ onSend, disabled, streamingStatus }: ComposerProps) {
           }
           disabled={isDisabled}
           rows={1}
-          className="flex-1 resize-none rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm text-foreground placeholder:text-zinc-400 transition-colors focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:focus:bg-zinc-800"
+          className="flex-1 resize-none rounded-2xl border border-zinc-300 bg-[var(--surface-soft)] px-4 py-3 text-sm text-foreground placeholder:text-zinc-400 transition-colors focus:border-blue-500 focus:bg-[var(--surface-base)] focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:focus:bg-zinc-800"
           aria-label="Message input"
           style={{ maxHeight: MAX_TEXTAREA_HEIGHT }}
         />
@@ -72,7 +72,7 @@ export function Composer({ onSend, disabled, streamingStatus }: ComposerProps) {
           type="button"
           onClick={handleSubmit}
           disabled={isDisabled || !value.trim()}
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           aria-label="Send message"
         >
           <svg

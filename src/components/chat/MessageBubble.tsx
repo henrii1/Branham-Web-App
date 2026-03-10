@@ -36,7 +36,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         role="article"
         aria-label="Your message"
       >
-        <div className="max-w-[85%] rounded-2xl bg-zinc-200 px-4 py-2.5 text-sm leading-relaxed text-zinc-900 sm:max-w-[75%] dark:bg-zinc-700 dark:text-zinc-100">
+        <div className="max-w-[85%] rounded-[24px] bg-zinc-200/90 px-4 py-3 text-sm leading-relaxed text-zinc-900 shadow-sm sm:max-w-[75%] dark:bg-zinc-700/90 dark:text-zinc-100">
           <div className="whitespace-pre-wrap break-words">
             {message.content}
           </div>

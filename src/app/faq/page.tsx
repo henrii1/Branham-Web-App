@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { fetchAllPublishedSeoPages } from "@/lib/db/seo-queries";
 import { FaqAccordion } from "@/components/seo/FaqAccordion";
 
 const SITE_URL = "https://branhamsermons.ai";
-const OG_IMAGE = "/og-image.png";
+const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
   title: { absolute: "Frequently Asked Questions | Branham Sermons AI" },
@@ -80,33 +82,41 @@ export default async function FaqPage() {
       />
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <header className="shrink-0 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-            <a
-              href="/"
-              className="text-sm font-semibold text-foreground"
-            >
-              Branham Sermons AI
-            </a>
-            <a
+          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 xl:max-w-[56rem]">
+            <BrandLogo href="/" priority />
+            <Link
               href="/chat"
-              className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               Ask a question
-            </a>
+            </Link>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 py-8">
-          <h1 className="mb-2 text-2xl font-bold text-foreground lg:text-3xl">
-            Frequently Asked Questions
-          </h1>
-          <p className="mb-8 text-sm text-zinc-500 dark:text-zinc-400">
-            Common questions about the sermons and teachings of William Marrion
-            Branham, answered from the original sermon texts.
-          </p>
+          <div className="mx-auto max-w-4xl px-4 py-10 xl:max-w-[56rem]">
+            <h1 className="font-display mb-2 text-3xl text-foreground lg:text-4xl">
+              Frequently Asked Questions
+            </h1>
+            <p className="mb-8 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
+              Common questions about the sermons and teachings of William Marrion
+              Branham, answered from the original sermon texts.
+            </p>
 
-          <FaqAccordion items={faqItems} />
+            <FaqAccordion items={faqItems} />
+
+            <div className="mt-10 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-5 py-4 shadow-sm dark:border-zinc-700">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Need help or want to share feedback? Email{" "}
+                <a
+                  href="mailto:info@branhamsermons.ai"
+                  className="font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-500 dark:text-zinc-100 dark:decoration-zinc-600"
+                >
+                  info@branhamsermons.ai
+                </a>
+                .
+              </p>
+            </div>
           </div>
         </main>
       </div>

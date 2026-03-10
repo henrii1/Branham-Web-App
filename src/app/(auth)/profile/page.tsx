@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { SUPPORTED_LANGUAGES } from "@/lib/constants/languages";
 import { ProfileContent } from "./ProfileContent";
 
 export default async function ProfilePage() {
@@ -19,7 +20,7 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <h1 className="font-display text-3xl text-foreground">
           Your profile
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -33,8 +34,12 @@ export default async function ProfilePage() {
           email: user.email ?? "",
           displayName: profile?.display_name ?? undefined,
         }}
-        currentLanguage={profile?.language ?? "en"}
+        currentLanguage={normalizeLanguagePreference(profile?.language)}
       />
     </div>
   );
+}
+
+function normalizeLanguagePreference(language?: string | null) {
+  return SUPPORTED_LANGUAGES.includes(language ?? "") ? language ?? "en" : "en";
 }

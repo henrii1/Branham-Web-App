@@ -1,5 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { INTERNAL_AUTH_HEADER } from "@/lib/security/requestHeaders";
+
+type CookieOptions = Parameters<NextResponse["cookies"]["set"]>[2];
 
 function sanitizeRedirectPath(path: string | null): string {
   if (!path || !path.startsWith("/") || path.startsWith("//")) return "/chat";
@@ -7,7 +10,25 @@ function sanitizeRedirectPath(path: string | null): string {
 }
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const requestHeaders = new Headers(request.headers);
+  const responseCookies = new Map<
+    string,
+    { name: string; value: string; options?: CookieOptions }
+  >();
+
+  const buildResponse = () => {
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+
+    responseCookies.forEach(({ name, value, options }) => {
+      response.cookies.set(name, value, options);
+    });
+
+    return response;
+  };
+
+  let supabaseResponse = buildResponse();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,10 +42,10 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            responseCookies.set(name, { name, value, options });
+          });
+          supabaseResponse = buildResponse();
         },
       },
     }
@@ -33,6 +54,9 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  requestHeaders.set(INTERNAL_AUTH_HEADER, user ? "1" : "0");
+  supabaseResponse = buildResponse();
 
   const { pathname } = request.nextUrl;
 

@@ -80,10 +80,10 @@ export function DragDivider({
 
   return (
     <div
-      className={`group relative z-10 flex h-2 flex-shrink-0 cursor-row-resize touch-none items-center justify-center transition-colors ${
+      className={`group relative z-10 flex h-3 flex-shrink-0 cursor-row-resize touch-none items-center justify-center transition-colors ${
         isDragging
-          ? "bg-blue-50 dark:bg-blue-900/20"
-          : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          ? "bg-zinc-200/80 dark:bg-zinc-700/50"
+          : "hover:bg-zinc-200/60 dark:hover:bg-zinc-700/40"
       }`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -109,10 +109,10 @@ export function DragDivider({
       }}
     >
       <div
-        className={`h-1 w-10 rounded-full transition-colors ${
+        className={`h-1.5 w-14 rounded-full transition-colors ${
           isDragging
-            ? "bg-blue-400 dark:bg-blue-500"
-            : "bg-zinc-300 group-hover:bg-zinc-400 dark:bg-zinc-600 dark:group-hover:bg-zinc-500"
+            ? "bg-zinc-500 dark:bg-zinc-300"
+            : "bg-zinc-400 group-hover:bg-zinc-500 dark:bg-zinc-500 dark:group-hover:bg-zinc-300"
         }`}
       />
     </div>

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthGate";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { generateId } from "@/lib/utils/ids";
 import {
   createConversation,
@@ -11,6 +12,8 @@ import {
   upsertRag,
   updateConversationAfterTurn,
   fetchConversations,
+  renameConversation,
+  deleteConversation,
 } from "@/lib/db/queries";
 import type { Conversation } from "@/lib/chat/types";
 import type { ConversationRow } from "@/lib/db/queries";
@@ -21,6 +24,7 @@ import { LoginModal } from "@/components/chat/LoginModal";
 import { DragDivider } from "@/components/chat/DragDivider";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { AnonymousBanner } from "@/components/chat/AnonymousBanner";
+import { SidebarRail } from "@/components/chat/SidebarRail";
 
 interface SeoShellProps {
   slug: string;
@@ -59,6 +63,7 @@ export function SeoShell({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const panelsRef = useRef<HTMLDivElement>(null);
   const sourcesRef = useRef<HTMLDivElement>(null);
@@ -67,15 +72,25 @@ export function SeoShell({
   const processedRag = postprocessRag(ragContext);
   const ragHtml = renderMarkdown(processedRag);
 
+  const loadSidebarConversations = useCallback(async () => {
+    if (!user) return;
+
+    setConversationsLoading(true);
+    try {
+      const rows = await fetchConversations(user.id);
+      setConversations(rows.map(rowToConversation));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setConversationsLoading(false);
+    }
+  }, [user]);
+
   // ── Load sidebar conversations (logged-in only) ─────────────────────
   useEffect(() => {
     if (!user) return;
-    setConversationsLoading(true);
-    fetchConversations(user.id)
-      .then((rows) => setConversations(rows.map(rowToConversation)))
-      .catch(console.error)
-      .finally(() => setConversationsLoading(false));
-  }, [user]);
+    void loadSidebarConversations();
+  }, [user, loadSidebarConversations]);
 
   const handleNewChat = useCallback(() => {
     router.push("/chat");
@@ -88,6 +103,38 @@ export function SeoShell({
       setMobileDrawerOpen(false);
     },
     [router],
+  );
+
+  const handleRenameConversation = useCallback(
+    async (id: string, newTitle: string) => {
+      try {
+        await renameConversation(id, newTitle);
+        setConversations((prev) =>
+          prev.map((conversation) =>
+            conversation.id === id
+              ? { ...conversation, title: newTitle }
+              : conversation,
+          ),
+        );
+      } catch (error) {
+        console.error("Failed to rename conversation:", error);
+      }
+    },
+    [],
+  );
+
+  const handleDeleteConversation = useCallback(
+    async (id: string) => {
+      try {
+        await deleteConversation(id);
+        setConversations((prev) =>
+          prev.filter((conversation) => conversation.id !== id),
+        );
+      } catch (error) {
+        console.error("Failed to delete conversation:", error);
+      }
+    },
+    [],
   );
 
   const handleComposerFocus = useCallback(() => {
@@ -135,17 +182,30 @@ export function SeoShell({
   return (
     <div className="flex h-dvh bg-background">
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden w-64 flex-shrink-0 border-r border-zinc-200 lg:block dark:border-zinc-800">
-        <ConversationSidebar
-          user={user ?? null}
-          conversations={conversations}
-          activeConversationId=""
-          isLoading={conversationsLoading}
-          onNewChat={handleNewChat}
-          onSelectConversation={handleSelectConversation}
-          onRenameConversation={() => {}}
-          onDeleteConversation={() => {}}
-        />
+      <aside
+        className={`hidden flex-shrink-0 border-r border-zinc-200 transition-[width] duration-200 lg:block dark:border-zinc-800 ${
+          sidebarCollapsed ? "w-16" : "w-72"
+        }`}
+      >
+        {sidebarCollapsed ? (
+          <SidebarRail
+            user={user ?? null}
+            onExpand={() => setSidebarCollapsed(false)}
+            onNewChat={handleNewChat}
+          />
+        ) : (
+          <ConversationSidebar
+            user={user ?? null}
+            conversations={conversations}
+            activeConversationId=""
+            isLoading={conversationsLoading}
+            onNewChat={handleNewChat}
+            onSelectConversation={handleSelectConversation}
+            onRenameConversation={handleRenameConversation}
+            onDeleteConversation={handleDeleteConversation}
+            onCollapse={() => setSidebarCollapsed(true)}
+          />
+        )}
       </aside>
 
       {/* ── Mobile drawer overlay ── */}
@@ -164,8 +224,8 @@ export function SeoShell({
               isLoading={conversationsLoading}
               onNewChat={handleNewChat}
               onSelectConversation={handleSelectConversation}
-              onRenameConversation={() => {}}
-              onDeleteConversation={() => {}}
+              onRenameConversation={handleRenameConversation}
+              onDeleteConversation={handleDeleteConversation}
               onClose={() => setMobileDrawerOpen(false)}
             />
           </aside>
@@ -175,8 +235,8 @@ export function SeoShell({
       {/* ── Main area ── */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* ── Mobile header ── */}
-        <header className="flex flex-col border-b border-zinc-200 bg-white lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex items-center justify-between px-3 py-2">
+        <header className="flex flex-col border-b border-zinc-200 bg-[var(--surface-base)] lg:hidden dark:border-zinc-800">
+          <div className="flex items-center justify-between gap-3 px-3 py-2.5">
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(true)}
@@ -198,20 +258,14 @@ export function SeoShell({
               </svg>
             </button>
 
-            <a href="/" className="text-sm font-semibold text-foreground">
-              Branham Sermons AI
-            </a>
+            <BrandLogo href="/" size={30} nameClassName="text-sm" />
 
-            {!isAnonymous ? (
-              <Link
-                href="/faq"
-                className="text-xs font-medium text-zinc-400 transition-colors hover:text-foreground"
-              >
-                Popular Questions
-              </Link>
-            ) : (
-              <div className="w-8" />
-            )}
+            <Link
+              href="/faq"
+              className="hidden text-xs font-medium text-zinc-500 transition-colors hover:text-foreground sm:inline"
+            >
+              Popular Questions
+            </Link>
           </div>
 
           <nav
@@ -250,7 +304,7 @@ export function SeoShell({
 
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
-          <div className="hidden border-b border-zinc-200 lg:block dark:border-zinc-800">
+          <div className="hidden lg:block">
             <AnonymousBanner />
           </div>
         )}
@@ -262,26 +316,24 @@ export function SeoShell({
         >
           <div
             ref={sourcesRef}
-            className="min-h-0 overflow-hidden border-b border-zinc-100 dark:border-zinc-800"
+            className="min-h-0 overflow-hidden border-b border-zinc-200 dark:border-zinc-800"
             style={{ flex: `${panelRatio} 0 0` }}
           >
-            <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2 dark:border-zinc-800">
+            <div className="flex h-full flex-col bg-[var(--surface-sources)]">
+              <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   Sources
                 </h2>
-                {!isAnonymous && (
-                  <Link
-                    href="/faq"
-                    className="text-xs font-medium text-zinc-400 transition-colors hover:text-foreground"
-                  >
-                    Popular Questions
-                  </Link>
-                )}
+                <Link
+                  href="/faq"
+                  className="text-xs font-medium text-zinc-500 transition-colors hover:text-foreground"
+                >
+                  Popular Questions
+                </Link>
               </div>
-              <div className="flex-1 overflow-y-auto px-4 py-3">
+              <div className="flex-1 overflow-y-auto">
                 <div
-                  className="sources-markdown prose prose-sm prose-zinc max-w-none dark:prose-invert"
+                  className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
                   dangerouslySetInnerHTML={{ __html: ragHtml }}
                 />
               </div>
@@ -297,11 +349,11 @@ export function SeoShell({
 
           <div
             ref={chatAreaRef}
-            className="min-h-0 overflow-hidden"
+            className="min-h-0 overflow-hidden bg-[var(--surface-chat)]"
             style={{ flex: `${1 - panelRatio} 0 0` }}
           >
-            <div className="flex h-full flex-col overflow-y-auto px-4 py-4">
-              <h1 className="mb-4 text-lg font-bold text-foreground lg:text-xl">
+            <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-y-auto px-5 py-6 xl:max-w-[56rem]">
+              <h1 className="font-display mb-4 text-2xl text-foreground lg:text-3xl">
                 {question}
               </h1>
               <TypewriterRenderer markdown={answerMarkdown} />
@@ -314,15 +366,15 @@ export function SeoShell({
           {isAnonymous && <AnonymousBanner />}
 
           {activeTab === "sources" ? (
-            <div className="flex-1 overflow-y-auto px-4 py-3">
+            <div className="flex-1 overflow-y-auto bg-[var(--surface-sources)]">
               <div
-                className="sources-markdown prose prose-sm prose-zinc max-w-none dark:prose-invert"
+                className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
                 dangerouslySetInnerHTML={{ __html: ragHtml }}
               />
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-4 py-4">
-              <h1 className="mb-4 text-lg font-bold text-foreground">
+            <div className="flex-1 overflow-y-auto bg-[var(--surface-chat)] px-4 py-5">
+              <h1 className="font-display mb-4 text-2xl text-foreground">
                 {question}
               </h1>
               <TypewriterRenderer markdown={answerMarkdown} />
@@ -377,9 +429,9 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
   return (
     <form
       onSubmit={handleSubmit}
-      className="border-t border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900"
+      className="border-t border-zinc-200 bg-[var(--surface-base)] px-4 py-3 dark:border-zinc-800"
     >
-      <div className="mx-auto flex max-w-3xl items-center gap-2">
+      <div className="mx-auto flex max-w-4xl items-center gap-2 xl:max-w-[56rem]">
         <input
           type="text"
           value={value}
@@ -394,12 +446,12 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
           }
           disabled={disabled}
           readOnly={isAnonymous}
-          className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:border-zinc-500"
+          className="flex-1 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-[var(--surface-base)] disabled:opacity-50 dark:border-zinc-700 dark:focus:border-zinc-500"
         />
         <button
           type="submit"
           disabled={disabled || (!value.trim() && !isAnonymous)}
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white transition-colors hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white transition-colors hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           aria-label="Send"
         >
           <svg

@@ -57,7 +57,7 @@
 - **`@supabase/ssr`** works in Workers runtime (uses `fetch`). No issue.
 - Do **not** add `export const runtime = 'edge'` — the OpenNext adapter does not support edge runtime declarations. Workers runtime with `nodejs_compat` is the default.
 - Use `@opennextjs/cloudflare` adapter for build and deployment. Build config in `wrangler.jsonc`.
-- Use `middleware.ts` with `export const runtime = 'edge'` (OpenNext does not yet support Next.js 16 `proxy.ts`; migrate when the Adapters API ships). The Next.js deprecation warning is cosmetic.
+- Use `middleware.ts` with `export const runtime = 'experimental-edge'` for the current Next.js/OpenNext combination. Migrate to `proxy.ts` when the OpenNext adapter supports it; the Next.js deprecation warning is cosmetic for now.
 
 ### 1.3 Environment variables (Cloudflare Workers secrets + `.env.local`)
 - `MODEL_API_BASE_URL` — Branham Model API base URL
@@ -66,6 +66,7 @@
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anonymous key
 - `SUPABASE_SERVICE_ROLE_KEY` — Supabase secret key (server-side only)
 - `POSTMARK_SERVER_TOKEN` — Postmark API token (server-side only)
+- `POSTMARK_FROM_EMAIL` — verified Postmark sender (server-side only; defaults to `support@branhamsermons.ai`)
 
 Server-side secrets are set via `wrangler secret put` (encrypted at rest). Client-side `NEXT_PUBLIC_*` vars go in `wrangler.jsonc` or `.env.local`.
 
@@ -545,7 +546,8 @@ Used by the welcome email sender. v1 ships with English content only.
 
 ### 11.3 Rate limiting
 - Anonymous `/api/chat` requests: simple rate limit (e.g., 10 requests/minute per IP).
-- Implement via Cloudflare rate limiting rules or in-function IP tracking.
+- Implement an app-level fallback in `/api/chat` via in-function IP tracking.
+- In production, optionally mirror the same threshold with Cloudflare rate limiting rules for cross-isolate enforcement.
 - Logged-in users: higher or no rate limit in v1.
 
 ### 11.4 General
@@ -710,8 +712,9 @@ Sitemap: https://branhamsermons.ai/sitemap.xml
 - Sent via **Postmark HTTP API** from a Workers route handler (`/api/welcome-email`).
 - Guard: only send if `profiles.welcome_email_sent_at IS NULL`.
 - On success: set `profiles.welcome_email_sent_at` to current timestamp.
-- Email content sourced from `intro_messages` table (English for v1).
+- Email content sourced from `intro_messages` table (English for v1), with a static in-repo English fallback so local/dev and first deploys still work before seed data is present.
 - Provider abstraction: `sendWelcomeEmail()` function wraps Postmark. Swappable later.
+- Quota/provider failures must not block chat access or post-signup redirect. If Postmark rejects the send (for example, monthly quota reached), the user proceeds normally without the release note email.
 
 ---
 
@@ -895,12 +898,13 @@ branham-web-app/
 ### Stage 7 — Welcome email
 - `sendWelcomeEmail()` abstraction (Postmark HTTP API)
 - `/api/welcome-email` route handler
-- Fire async after signup redirect (non-blocking)
+- Fire async after signup redirect (non-blocking, triggered from the destination chat route)
 - `welcome_email_sent_at` guard
-- Email content from `intro_messages` table (English)
+- Email content from `intro_messages` table (English) with static fallback
+- Postmark failure never blocks onboarding completion or chat access
 
 ### Stage 8 — Rate limiting + security hardening
-- Anonymous rate limiting on `/api/chat` (Cloudflare rate limiting or in-function)
+- Anonymous rate limiting on `/api/chat` (app-level in-function limiter, with optional Cloudflare edge rule parity in production)
 - Verify all RLS policies work correctly
 - Verify bearer token is never exposed in client bundles or network tab
 - Verify markdown sanitization blocks all XSS vectors

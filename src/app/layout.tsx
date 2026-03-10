@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthGate";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { createClient } from "@/lib/supabase/server";
+import {
+  THEME_COOKIE_NAME,
+  normalizeThemePreference,
+} from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,7 +20,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://branhamsermons.ai"),
   title: {
     default: "Branham Sermons AI",
     template: "%s | Branham Sermons AI",
@@ -26,17 +39,47 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const cookieTheme = cookieStore.get(THEME_COOKIE_NAME)?.value;
+  let initialTheme = normalizeThemePreference(cookieTheme);
+
+  if (user) {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("theme_preference")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!error) {
+      initialTheme = normalizeThemePreference(
+        profile?.theme_preference,
+        initialTheme,
+      );
+    }
+  }
+
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={initialTheme === "dark" ? "dark" : undefined}
+      data-theme={initialTheme}
+    >
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <ThemeProvider initialTheme={initialTheme}>
+          <AuthProvider initialUser={user}>{children}</AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

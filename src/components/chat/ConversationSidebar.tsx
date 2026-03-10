@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import type { Conversation } from "@/lib/chat/types";
-import { formatRelativeTime } from "@/lib/utils/time";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 interface ConversationSidebarProps {
   user: User | null;
@@ -17,6 +17,7 @@ interface ConversationSidebarProps {
   onRenameConversation: (id: string, newTitle: string) => void;
   onDeleteConversation: (id: string) => void;
   onClose?: () => void;
+  onCollapse?: () => void;
 }
 
 interface ConversationGroup {
@@ -282,6 +283,7 @@ export function ConversationSidebar({
   onRenameConversation,
   onDeleteConversation,
   onClose,
+  onCollapse,
 }: ConversationSidebarProps) {
   const [signingOut, setSigningOut] = useState(false);
   const groups = groupConversations(conversations);
@@ -294,33 +296,55 @@ export function ConversationSidebar({
   }, []);
 
   return (
-    <div className="flex h-full flex-col bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex h-full flex-col bg-[var(--surface-sidebar)]">
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <h1 className="text-sm font-semibold text-foreground">
-          Branham Sermons AI
-        </h1>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-            aria-label="Close sidebar"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
+        <BrandLogo priority showName size={34} />
+        <div className="flex items-center gap-1.5">
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              aria-label="Collapse sidebar"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18 18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.75 19.5 8.25 12l7.5-7.5"
+                />
+              </svg>
+            </button>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              aria-label="Close sidebar"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18 18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-3">
@@ -330,7 +354,7 @@ export function ConversationSidebar({
             onNewChat();
             onClose?.();
           }}
-          className="flex w-full items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          className="flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-3 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
           <svg
             className="h-4 w-4"
@@ -363,11 +387,18 @@ export function ConversationSidebar({
             ))}
           </div>
         ) : conversations.length === 0 ? (
-          <p className="px-2 py-8 text-center text-xs text-zinc-400 dark:text-zinc-500">
-            {user
-              ? "Your conversations will appear here"
-              : "Sign in to save your history"}
-          </p>
+          <div className="px-2 py-8">
+            <div className="rounded-2xl border border-dashed border-zinc-300 bg-[var(--surface-base)] px-4 py-6 text-center dark:border-zinc-700">
+              <p className="text-sm font-medium text-foreground">
+                {user ? "No conversations yet" : "History stays empty as a guest"}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400 dark:text-zinc-500">
+                {user
+                  ? "Your recent chats will show up here once you ask a question."
+                  : "Sign up to save your Branham Sermons AI conversations and return to them later."}
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="space-y-4 pb-3">
             {groups.map((group) => (
@@ -401,8 +432,14 @@ export function ConversationSidebar({
           href="/faq"
           className="mb-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         >
-          {user ? "Popular Questions" : "Browse FAQ"}
+          Popular Questions
         </Link>
+        <a
+          href="mailto:info@branhamsermons.ai"
+          className="mb-3 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        >
+          info@branhamsermons.ai
+        </a>
         {user ? (
           <>
             <Link

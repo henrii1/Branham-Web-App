@@ -81,7 +81,7 @@ export function MessageList({
 
   return (
     <div
-      className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-6"
+      className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-5 py-6 xl:max-w-[56rem]"
       role="log"
       aria-label="Chat messages"
       aria-live="polite"
