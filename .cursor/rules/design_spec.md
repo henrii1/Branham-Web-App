@@ -247,11 +247,12 @@ The model response often begins with `"Answer:"`. **Always strip this prefix** b
 ### 5.2 Small screens (phones)
 
 - **Tab interface**: two tabs — `Chat` | `Sources`.
-- **Smart auto-switching per turn:**
+- **Ready-cue handoff per turn:**
   1. User sends query → loading state on both tabs.
-  2. `rag` event arrives → auto-switch to **Sources tab**. RAG content renders.
-  3. First `delta` arrives → auto-switch to **Chat tab**. Streaming begins. Sources tab shows a green badge.
-  4. After that, user can freely toggle tabs.
+  2. `rag` event arrives → `Sources` content renders immediately. If the user is not already on `Sources`, the tab gets a visible `Ready` cue.
+  3. First `delta` arrives → `Chat` begins streaming. If the user is not already on `Chat`, the tab gets a visible `Ready` cue.
+  4. Mobile does **not** force auto-switching between tabs during a turn. The user stays on the current tab until they decide to switch.
+  5. On refresh or revisit of a mobile chat route, keep the last active tab instead of resetting to `Sources` just because RAG content exists.
 - Composer anchored at bottom.
 - Sidebar is a hamburger drawer.
 
@@ -373,6 +374,10 @@ Rendering rules on final chat render:
 - Keep semicolon-separated references visually grouped with consistent spacing.
 - Preserve punctuation in content, but do not style trailing punctuation as part of citation pills.
 - Apply this behavior in the Chat panel only (not Sources panel).
+- On small screens:
+  - render `Evidence` on its own line before the citation pills
+  - allow citation pills to wrap beneath it
+  - visually omit semicolons between adjacent citation pills when needed to avoid orphan punctuation lines
 
 Recommended structure:
 - `<span class=\"evidence-label\">Evidence</span>`

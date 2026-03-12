@@ -42,6 +42,18 @@ import { SidebarRail } from "./SidebarRail";
 
 const DEFAULT_PANEL_RATIO = 0.4;
 const MAX_TITLE_LENGTH = 50;
+const MOBILE_ACTIVE_TAB_KEY = "branham-mobile-active-tab";
+
+function getIsMobileViewport(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 1023px)").matches;
+}
+
+function getStoredMobileTab(): "chat" | "sources" {
+  if (typeof window === "undefined") return "chat";
+  const storedTab = window.sessionStorage.getItem(MOBILE_ACTIVE_TAB_KEY);
+  return storedTab === "chat" || storedTab === "sources" ? storedTab : "chat";
+}
 
 function generateTitle(query: string): string {
   const trimmed = query.trim();
@@ -90,7 +102,7 @@ export function ChatShell({
 }: ChatShellProps) {
   const { user, isLoading: authLoading } = useAuth();
   const isAnonymous = !user;
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(getIsMobileViewport);
 
   // ── Conversation state ──────────────────────────────────────────────
   const [conversationId, setConversationId] = useState(
@@ -114,7 +126,9 @@ export function ChatShell({
 
   // ── UI state ────────────────────────────────────────────────────────
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"chat" | "sources">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "sources">(
+    getStoredMobileTab,
+  );
   const [chatReady, setChatReady] = useState(false);
   const [sourcesReady, setSourcesReady] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -126,6 +140,7 @@ export function ChatShell({
   const sourcesRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const activeTabRef = useRef<"chat" | "sources">(activeTab);
   const streamRagRef = useRef<RagData | null>(null);
   const dbReadyRef = useRef<Promise<void>>(Promise.resolve());
   const loadIdRef = useRef(0);
@@ -147,7 +162,12 @@ export function ChatShell({
       if (!matches) {
         setChatReady(false);
         setSourcesReady(false);
+        return;
       }
+
+      const storedTab = getStoredMobileTab();
+      activeTabRef.current = storedTab;
+      setActiveTab(storedTab);
     };
 
     applyViewport(mediaQuery.matches);
@@ -160,7 +180,14 @@ export function ChatShell({
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    if (typeof window === "undefined" || !isMobileViewport) return;
+    window.sessionStorage.setItem(MOBILE_ACTIVE_TAB_KEY, activeTab);
+  }, [activeTab, isMobileViewport]);
+
   const handleTabChange = useCallback((tab: "chat" | "sources") => {
+    activeTabRef.current = tab;
     setActiveTab(tab);
     if (tab === "chat") {
       setChatReady(false);
@@ -215,7 +242,12 @@ export function ChatShell({
         setStreamingStatus("idle");
         setChatReady(false);
         setSourcesReady(false);
-        setActiveTab(rag ? "sources" : "chat");
+        const nextTab = isMobileViewport
+          ? activeTabRef.current
+          : rag
+            ? "sources"
+            : "chat";
+        setActiveTab(nextTab);
       } catch (err) {
         if (loadIdRef.current !== thisLoadId) return;
         console.error("Failed to load conversation:", err);
@@ -226,7 +258,7 @@ export function ChatShell({
         }
       }
     },
-    [user],
+    [isMobileViewport, user],
   );
 
   // ── Initial data load (runs once after auth resolves) ───────────────
@@ -438,7 +470,7 @@ export function ChatShell({
                 setRagData(rag);
                 setStreamingStatus("rag_received");
                 if (isMobileViewport) {
-                  if (activeTab !== "sources") {
+                  if (activeTabRef.current !== "sources") {
                     setSourcesReady(true);
                   }
                 } else {
@@ -454,7 +486,8 @@ export function ChatShell({
                   firstDelta = false;
                   setStreamingStatus("streaming");
                   if (isMobileViewport) {
-                    if (activeTab !== "chat") {
+                    if (activeTabRef.current !== "chat") {
+                      setSourcesReady(false);
                       setChatReady(true);
                     }
                   } else {
@@ -572,7 +605,6 @@ export function ChatShell({
       conversationId,
       conversationSummary,
       conversationExists,
-      activeTab,
       isMobileViewport,
       loadConversations,
     ],
