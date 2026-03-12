@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import logo from "../../../logo.jpg";
+import logo from "../../../logo.png";
 
 interface BrandLogoProps {
   href?: string;

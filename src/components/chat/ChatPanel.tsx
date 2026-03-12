@@ -3,7 +3,7 @@
 import Image from "next/image";
 import type { Message, StreamingStatus } from "@/lib/chat/types";
 import { MessageList } from "./MessageList";
-import logo from "../../../logo.jpg";
+import logo from "../../../logo.png";
 
 interface ChatPanelProps {
   messages: Message[];

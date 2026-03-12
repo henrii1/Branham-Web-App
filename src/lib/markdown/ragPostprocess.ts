@@ -5,10 +5,11 @@
  * Removes:
  *  1. Inline sermon titles (ALL CAPS) that bleed into chunk text
  *     from the original PDF layout. Keeps the section headers intact.
- *  2. "THE SPOKEN WORD" if present in all caps.
- *  3. Sermon end metadata: from date_id (61-0212M) or section marker (U+F6E1) to end of line.
+ *  2. Sermon start marker (U+F6E1 / ) when it prefixes the first paragraph.
+ *  3. "THE SPOKEN WORD" if present in all caps.
+ *  4. Sermon end metadata: from date_id (61-0212M) or section marker (U+F6E1) to end of line.
  *     E.g., "...Brother Buntain. 61-0212M Jehovah-Jireh First Assembly..."
- *  4. Sermon boilerplate (copyright notices, VGR info, location blocks).
+ *  5. Sermon boilerplate (copyright notices, VGR info, location blocks).
  *
  * Apply before saving to DB and during render for historic data.
  */
@@ -39,6 +40,30 @@ const DATE_ID_LINE_RE = /^\d{2}-\d{4}[A-Z]?\s+/;
 
 // ── THE SPOKEN WORD dedup ────────────────────────────────────────────
 const SPOKEN_WORD_RE = /THE\s+SPOKEN\s+WORD/g;
+
+// ── Sermon start marker (U+F6E1 / ) ────────────────────────────────
+// Removes the marker when it prefixes the opening sermon paragraph.
+// Examples:
+//   "¶1–¶2 Thank you, Brother Neville."  -> "¶1–¶2 Thank you, Brother Neville."
+//   "Good evening, friends."             -> "Good evening, friends."
+const SERMON_START_INLINE_MARKER_RE =
+  /(^|\n)(\s*(?:-\s*)?¶\d+[a-z]?(?:[—–-]+¶?\d+[a-z]?)?\s+)\uF6E1\s*/gimu;
+const SERMON_START_LINE_MARKER_RE =
+  /(^|\n)(\s*)\uF6E1\s*(?=\S)/gimu;
+
+function removeSermonStartMarkers(text: string): string {
+  let result = text.replace(
+    SERMON_START_INLINE_MARKER_RE,
+    (_match, lineStart: string, paragraphPrefix: string) =>
+      `${lineStart}${paragraphPrefix}`,
+  );
+  result = result.replace(
+    SERMON_START_LINE_MARKER_RE,
+    (_match, lineStart: string, indentation: string) =>
+      `${lineStart}${indentation}`,
+  );
+  return result;
+}
 
 // ── Sermon end metadata ──────────────────────────────────────────────
 // Inline date_id followed by sermon title + location at end of a chunk.
@@ -227,16 +252,19 @@ export function postprocessRag(ragContext: string): string {
   // 2. Remove inline sermon titles from chunk text
   result = removeInlineTitles(result, titles);
 
-  // 3. Remove "THE SPOKEN WORD" occurrences
+  // 3. Remove sermon start markers () when they prefix the opening paragraph
+  result = removeSermonStartMarkers(result);
+
+  // 4. Remove "THE SPOKEN WORD" occurrences
   result = result.replace(SPOKEN_WORD_RE, "");
 
-  // 4. Remove sermon end metadata (date_id + title + location at end of chunks)
+  // 5. Remove sermon end metadata (date_id + title + location at end of chunks)
   result = removeSermonEndMetadata(result);
 
-  // 5. Remove sermon boilerplate (copyright, VGR, location blocks)
+  // 6. Remove sermon boilerplate (copyright, VGR, location blocks)
   result = removeBoilerplate(result);
 
-  // 6. Collapse 3+ consecutive blank lines to 2
+  // 7. Collapse 3+ consecutive blank lines to 2
   result = result.replace(/\n{3,}/g, "\n\n");
 
   return result.trim();
