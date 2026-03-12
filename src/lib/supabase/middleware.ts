@@ -9,7 +9,26 @@ function sanitizeRedirectPath(path: string | null): string {
   return path;
 }
 
+function shouldForceHttps(request: NextRequest): boolean {
+  if (process.env.NODE_ENV !== "production") {
+    return false;
+  }
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedProto) {
+    return forwardedProto.toLowerCase() === "http";
+  }
+
+  return request.nextUrl.protocol === "http:";
+}
+
 export async function updateSession(request: NextRequest) {
+  if (shouldForceHttps(request)) {
+    const httpsUrl = request.nextUrl.clone();
+    httpsUrl.protocol = "https:";
+    return NextResponse.redirect(httpsUrl, 308);
+  }
+
   const requestHeaders = new Headers(request.headers);
   const responseCookies = new Map<
     string,

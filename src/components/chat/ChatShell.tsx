@@ -90,6 +90,7 @@ export function ChatShell({
 }: ChatShellProps) {
   const { user, isLoading: authLoading } = useAuth();
   const isAnonymous = !user;
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   // ── Conversation state ──────────────────────────────────────────────
   const [conversationId, setConversationId] = useState(
@@ -114,6 +115,8 @@ export function ChatShell({
   // ── UI state ────────────────────────────────────────────────────────
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "sources">("chat");
+  const [chatReady, setChatReady] = useState(false);
+  const [sourcesReady, setSourcesReady] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -133,6 +136,37 @@ export function ChatShell({
     return () => {
       abortRef.current?.abort();
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const applyViewport = (matches: boolean) => {
+      setIsMobileViewport(matches);
+      if (!matches) {
+        setChatReady(false);
+        setSourcesReady(false);
+      }
+    };
+
+    applyViewport(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      applyViewport(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  const handleTabChange = useCallback((tab: "chat" | "sources") => {
+    setActiveTab(tab);
+    if (tab === "chat") {
+      setChatReady(false);
+      return;
+    }
+    setSourcesReady(false);
   }, []);
 
   // ── Load conversations list (sidebar) ───────────────────────────────
@@ -179,6 +213,8 @@ export function ChatShell({
         setConversationExists(true);
         setStreamBuffer("");
         setStreamingStatus("idle");
+        setChatReady(false);
+        setSourcesReady(false);
         setActiveTab(rag ? "sources" : "chat");
       } catch (err) {
         if (loadIdRef.current !== thisLoadId) return;
@@ -234,6 +270,8 @@ export function ChatShell({
             retrieval: [],
           });
           setConversationSummary(seoData.conversation_summary);
+          setChatReady(false);
+          setSourcesReady(false);
           window.history.replaceState(null, "", `/chat/${convId}`);
           loadConversations();
         } catch (err) {
@@ -314,6 +352,8 @@ export function ChatShell({
       setStreamBuffer("");
       setRagData(null);
       setError(null);
+      setChatReady(false);
+      setSourcesReady(false);
       streamRagRef.current = null;
 
       abortRef.current?.abort();
@@ -397,7 +437,13 @@ export function ChatShell({
                 streamRagRef.current = rag;
                 setRagData(rag);
                 setStreamingStatus("rag_received");
-                setActiveTab("sources");
+                if (isMobileViewport) {
+                  if (activeTab !== "sources") {
+                    setSourcesReady(true);
+                  }
+                } else {
+                  setActiveTab("sources");
+                }
                 break;
               }
 
@@ -407,7 +453,13 @@ export function ChatShell({
                 if (firstDelta) {
                   firstDelta = false;
                   setStreamingStatus("streaming");
-                  setActiveTab("chat");
+                  if (isMobileViewport) {
+                    if (activeTab !== "chat") {
+                      setChatReady(true);
+                    }
+                  } else {
+                    setActiveTab("chat");
+                  }
                 }
                 break;
               }
@@ -520,6 +572,8 @@ export function ChatShell({
       conversationId,
       conversationSummary,
       conversationExists,
+      activeTab,
+      isMobileViewport,
       loadConversations,
     ],
   );
@@ -535,6 +589,8 @@ export function ChatShell({
     setConversationSummary(null);
     setError(null);
     setActiveTab("chat");
+    setChatReady(false);
+    setSourcesReady(false);
     setConversationExists(false);
     setConversationLoading(false);
     streamRagRef.current = null;
@@ -665,10 +721,12 @@ export function ChatShell({
         {/* ── Mobile header ── */}
         <MobileHeader
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          onTabChange={handleTabChange}
           onMenuOpen={() => setMobileDrawerOpen(true)}
           onNewChat={handleNewConversation}
           hasRag={!!ragData}
+          chatReady={chatReady}
+          sourcesReady={sourcesReady}
         />
 
         {/* ── Anonymous banner (desktop only) ── */}
@@ -755,19 +813,30 @@ export function ChatShell({
 
 interface MobileHeaderProps {
   activeTab: "chat" | "sources";
-  setActiveTab: (tab: "chat" | "sources") => void;
+  onTabChange: (tab: "chat" | "sources") => void;
   onMenuOpen: () => void;
   onNewChat: () => void;
   hasRag: boolean;
+  chatReady: boolean;
+  sourcesReady: boolean;
 }
 
 function MobileHeader({
   activeTab,
-  setActiveTab,
+  onTabChange,
   onMenuOpen,
   onNewChat,
   hasRag,
+  chatReady,
+  sourcesReady,
 }: MobileHeaderProps) {
+  const statusMessage =
+    activeTab !== "sources" && sourcesReady
+      ? "Sources ready"
+      : activeTab !== "chat" && chatReady
+        ? "Answer ready"
+        : null;
+
   return (
     <header className="flex flex-col border-b border-zinc-200 bg-[var(--surface-base)] lg:hidden dark:border-zinc-800">
       <div className="flex items-center justify-between gap-3 px-3 py-2.5">
@@ -835,32 +904,55 @@ function MobileHeader({
           type="button"
           role="tab"
           aria-selected={activeTab === "chat"}
-          onClick={() => setActiveTab("chat")}
-          className={`flex-1 py-2 text-center text-xs font-medium transition-colors ${
+          onClick={() => onTabChange("chat")}
+          className={`relative flex-1 py-2 text-center text-xs font-medium transition-colors ${
             activeTab === "chat"
               ? "border-b-2 border-zinc-900 text-foreground dark:border-zinc-100"
+              : chatReady
+                ? "mobile-ready-tab text-blue-700 dark:text-blue-300"
               : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
           }`}
         >
           Chat
+          {chatReady && activeTab !== "chat" && (
+            <span className="mobile-ready-badge ml-1 inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+              Ready
+            </span>
+          )}
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={activeTab === "sources"}
-          onClick={() => setActiveTab("sources")}
+          onClick={() => onTabChange("sources")}
           className={`relative flex-1 py-2 text-center text-xs font-medium transition-colors ${
             activeTab === "sources"
               ? "border-b-2 border-zinc-900 text-foreground dark:border-zinc-100"
+              : sourcesReady
+                ? "mobile-ready-tab text-blue-700 dark:text-blue-300"
               : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
           }`}
         >
           Sources
-          {hasRag && activeTab !== "sources" && (
-            <span className="absolute top-1.5 ml-1 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+          {sourcesReady && activeTab !== "sources" ? (
+            <span className="mobile-ready-badge ml-1 inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+              Ready
+            </span>
+          ) : (
+            hasRag && activeTab !== "sources" && (
+              <span className="absolute top-1.5 ml-1 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+            )
           )}
         </button>
       </nav>
+      {statusMessage && (
+        <p
+          className="border-t border-zinc-100 px-3 py-1.5 text-[11px] font-medium text-blue-700 dark:border-zinc-800 dark:text-blue-300"
+          aria-live="polite"
+        >
+          {statusMessage}
+        </p>
+      )}
     </header>
   );
 }

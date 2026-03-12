@@ -20,6 +20,10 @@ const CITATION_RE =
 // ── Evidence block regex ─────────────────────────────────────────────
 // Matches: "Evidence:" at the start of a line or after whitespace
 const EVIDENCE_PREFIX_RE = /Evidence:/g;
+const EVIDENCE_ROW_RE =
+  /(<span class="evidence-label">Evidence<\/span>(?:\s|&nbsp;)*(?:<span class="citation-pill">\[[\s\S]*?<\/span>\s*(?:[;,.]\s*)?)+)/g;
+const CITATION_SEPARATOR_RE =
+  /(<\/span>);\s*(<span class="citation-pill">)/g;
 
 /**
  * Strips letter suffixes from paragraph refs (¶10c → ¶10, ¶11a → ¶11).
@@ -58,6 +62,19 @@ export function applyCitations(html: string): string {
 
   // Step 2: Replace "Evidence:" text with styled label
   result = result.replace(EVIDENCE_PREFIX_RE, makeEvidenceLabel());
+
+  // Step 3: Wrap semicolon separators between adjacent citation pills so
+  // mobile can hide the punctuation without changing desktop formatting.
+  result = result.replace(
+    CITATION_SEPARATOR_RE,
+    '$1<span class="citation-separator">;</span> $2',
+  );
+
+  // Step 4: Wrap evidence groups so mobile can move them onto their own line
+  result = result.replace(
+    EVIDENCE_ROW_RE,
+    '<span class="evidence-row">$1</span>',
+  );
 
   return result;
 }

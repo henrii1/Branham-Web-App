@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { logoDataUrl } from "@/lib/brand/logoDataUrl";
+import { BrandMarkImage } from "@/lib/brand/BrandMarkImage";
 
 export const size = {
   width: 512,
@@ -21,29 +21,7 @@ export default function Icon() {
           background: "#f7f7f8",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 420,
-            height: 420,
-            borderRadius: 96,
-            background: "#ffffff",
-            boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
-          }}
-        >
-          <img
-            src={logoDataUrl}
-            alt="Branham Sermons AI logo"
-            width="320"
-            height="320"
-            style={{
-              borderRadius: 72,
-              objectFit: "cover",
-            }}
-          />
-        </div>
+        <BrandMarkImage size={360} cornerRadius={88} />
       </div>
     ),
     size,

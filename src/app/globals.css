@@ -101,15 +101,19 @@ html {
 
 /* ── Citation pill (§8.3) — Chat panel only ────────────────────────── */
 .citation-pill {
-  display: inline;
+  display: inline-block;
+  max-width: 100%;
   padding: 2px 8px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.8em;
   line-height: 1.6;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   transition: border-color 0.15s ease;
+  vertical-align: baseline;
 }
 
 .citation-pill:hover {
@@ -144,6 +148,34 @@ html {
   color: #a1a1aa;
 }
 
+.evidence-row {
+  display: inline;
+}
+
+.citation-separator {
+  display: inline;
+}
+
+@keyframes mobile-ready-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0.08);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: inset 0 0 0 999px rgba(37, 99, 235, 0.12);
+    transform: scale(1.015);
+  }
+}
+
+.mobile-ready-tab {
+  animation: mobile-ready-pulse 1.8s ease-in-out infinite;
+}
+
+.mobile-ready-badge {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
 /* ── Markdown prose overrides for chat messages ────────────────────── */
 .chat-markdown hr {
   margin-top: 1.25em;
@@ -167,6 +199,26 @@ html {
 
 .dark .chat-markdown blockquote {
   border-left-color: #4b5563;
+}
+
+@media (max-width: 767px) {
+  .chat-markdown p,
+  .chat-markdown li,
+  .chat-markdown blockquote {
+    text-align: justify;
+    text-justify: inter-word;
+  }
+
+  .chat-markdown .evidence-row {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    text-align: left;
+  }
+
+  .chat-markdown .citation-separator {
+    display: none;
+  }
 }
 
 /* Sources panel markdown: slightly muted, compact styling */
