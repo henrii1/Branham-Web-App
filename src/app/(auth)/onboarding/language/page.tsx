@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { LanguagePicker } from "@/components/auth/LanguagePicker";
+import { OnboardingPreferencesForm } from "@/components/auth/OnboardingPreferencesForm";
 import { SignOutButton } from "./SignOutButton";
 
 export default async function LanguageSelectionPage({
@@ -29,7 +29,10 @@ export default async function LanguageSelectionPage({
         </p>
       </div>
 
-      <LanguagePicker userId={user.id} redirectTo={next || "/chat"} />
+      <OnboardingPreferencesForm
+        userId={user.id}
+        redirectTo={next || "/chat"}
+      />
 
       <div className="text-center">
         <SignOutButton />
