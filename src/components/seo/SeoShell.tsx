@@ -64,14 +64,13 @@ export function SeoShell({
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  // Live swipe animation state
-  const [dragX, setDragX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
 
   const panelsRef = useRef<HTMLDivElement>(null);
   const sourcesRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
-  // Swipe tracking refs
+  // Imperative slider ref — animated via direct DOM writes, not React state.
+  const mobileSliderRef = useRef<HTMLDivElement>(null);
+  const isInitialSliderMount = useRef(true);
   const swipeTouchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeIsHorizontal = useRef<boolean | null>(null);
   const swipeDragX = useRef(0);
@@ -150,15 +149,34 @@ export function SeoShell({
     activeTabRef.current = activeTab;
   }, [activeTab]);
 
-  // ── Animated swipe handlers (same logic as ChatShell) ───────────────
+  // Sync slider position imperatively when tab changes (tap or swipe commit).
+  useEffect(() => {
+    const el = mobileSliderRef.current;
+    if (!el) return;
+    const target = activeTab === "sources" ? "translateX(-50%)" : "translateX(0%)";
+    if (isInitialSliderMount.current) {
+      isInitialSliderMount.current = false;
+      el.style.transition = "none";
+      el.style.transform = target;
+      return;
+    }
+    el.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+    el.style.transform = target;
+  }, [activeTab]);
+
+  // ── Imperative swipe handlers — zero React re-renders during drag ────
   const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
     const t = e.touches[0];
     swipeTouchStart.current = { x: t.clientX, y: t.clientY };
     swipeIsHorizontal.current = null;
+    swipeDragX.current = 0;
+    const el = mobileSliderRef.current;
+    if (el) el.style.transition = "none";
   }, []);
 
   const handleSwipeTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!swipeTouchStart.current) return;
+    const el = mobileSliderRef.current;
+    if (!swipeTouchStart.current || !el) return;
     const t = e.touches[0];
     const dx = t.clientX - swipeTouchStart.current.x;
     const dy = t.clientY - swipeTouchStart.current.y;
@@ -169,31 +187,41 @@ export function SeoShell({
       }
       return;
     }
-
     if (!swipeIsHorizontal.current) return;
 
     const clamped =
       activeTabRef.current === "chat" ? Math.min(0, dx) : Math.max(0, dx);
-
     swipeDragX.current = clamped;
-    setIsDragging(true);
-    setDragX(clamped);
+    const base = activeTabRef.current === "sources" ? "-50%" : "0%";
+    el.style.transform = `translateX(calc(${base} + ${clamped}px))`;
   }, []);
 
   const handleSwipeTouchEnd = useCallback(() => {
+    const el = mobileSliderRef.current;
     swipeTouchStart.current = null;
     const dx = swipeDragX.current;
     swipeDragX.current = 0;
-    setIsDragging(false);
-    setDragX(0);
-
-    if (swipeIsHorizontal.current !== true) return;
+    const wasHorizontal = swipeIsHorizontal.current === true;
     swipeIsHorizontal.current = null;
 
-    if (dx < -80 && activeTabRef.current === "chat") {
+    if (!el) return;
+    el.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+
+    if (!wasHorizontal || Math.abs(dx) <= 80) {
+      el.style.transform =
+        activeTabRef.current === "sources" ? "translateX(-50%)" : "translateX(0%)";
+      return;
+    }
+
+    if (dx < 0 && activeTabRef.current === "chat") {
+      el.style.transform = "translateX(-50%)";
       setActiveTab("sources");
-    } else if (dx > 80 && activeTabRef.current === "sources") {
+    } else if (dx > 0 && activeTabRef.current === "sources") {
+      el.style.transform = "translateX(0%)";
       setActiveTab("chat");
+    } else {
+      el.style.transform =
+        activeTabRef.current === "sources" ? "translateX(-50%)" : "translateX(0%)";
     }
   }, []);
 
@@ -427,20 +455,18 @@ export function SeoShell({
 
           <div className="relative flex-1 overflow-hidden">
             <div
+              ref={mobileSliderRef}
               style={{
                 display: "flex",
                 width: "200%",
                 height: "100%",
-                transform: `translateX(calc(${activeTab === "sources" ? "-50%" : "0%"} + ${dragX}px))`,
-                transition: isDragging
-                  ? "none"
-                  : "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                 willChange: "transform",
                 touchAction: "pan-y",
               }}
               onTouchStart={handleSwipeTouchStart}
               onTouchMove={handleSwipeTouchMove}
               onTouchEnd={handleSwipeTouchEnd}
+              onTouchCancel={handleSwipeTouchEnd}
             >
               {/* Answer / Chat panel */}
               <div

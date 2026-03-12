@@ -132,9 +132,6 @@ export function ChatShell({
   const [chatReady, setChatReady] = useState(false);
   const [sourcesReady, setSourcesReady] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  // Live drag offset (px) while swiping between tabs. 0 when idle.
-  const [dragX, setDragX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -149,12 +146,14 @@ export function ChatShell({
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
   const pendingFollowUpRef = useRef<string | null>(null);
-  // ── Swipe-to-switch-tab tracking refs ──────────────────────────────
-  // Records touch start. Shared across start/move/end handlers.
+  // ── Swipe-to-switch-tab refs ────────────────────────────────────────
+  // Direct ref to the 200%-wide slider div — lets us animate via DOM instead
+  // of React state, so zero re-renders happen while the finger is moving.
+  const mobileSliderRef = useRef<HTMLDivElement>(null);
+  // Skip the animated transition on the very first mount (just position it).
+  const isInitialSliderMount = useRef(true);
   const swipeTouchStart = useRef<{ x: number; y: number } | null>(null);
-  // null = direction not determined yet, true = horizontal, false = vertical
   const swipeIsHorizontal = useRef<boolean | null>(null);
-  // Latest drag offset in px — read in touchEnd without needing state
   const swipeDragX = useRef(0);
 
   useEffect(() => {
@@ -196,6 +195,24 @@ export function ChatShell({
     window.sessionStorage.setItem(MOBILE_ACTIVE_TAB_KEY, activeTab);
   }, [activeTab, isMobileViewport]);
 
+  // ── Sync mobile slider position imperatively when activeTab changes ──
+  // This runs after tab-button taps, sidebar nav, and post-swipe state updates.
+  // On the very first mount we skip the transition so the panel starts at the
+  // correct position immediately (no animation flash on load).
+  useEffect(() => {
+    const el = mobileSliderRef.current;
+    if (!el) return;
+    const target = activeTab === "sources" ? "translateX(-50%)" : "translateX(0%)";
+    if (isInitialSliderMount.current) {
+      isInitialSliderMount.current = false;
+      el.style.transition = "none";
+      el.style.transform = target;
+      return;
+    }
+    el.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+    el.style.transform = target;
+  }, [activeTab]);
+
   const handleTabChange = useCallback((tab: "chat" | "sources") => {
     activeTabRef.current = tab;
     setActiveTab(tab);
@@ -206,58 +223,78 @@ export function ChatShell({
     setSourcesReady(false);
   }, []);
 
-  // ── Animated swipe-to-switch-tab (mobile only) ──────────────────────
-  // The two panels sit side-by-side in a 200%-wide slider. translateX moves
-  // between them. During a drag we update dragX live so the user sees the
-  // panels glide as their finger moves.
+  // ── Animated swipe-to-switch-tab — fully imperative, zero re-renders ──
+  // We drive the slider DOM node directly during the gesture so React's
+  // reconciler is never involved until the swipe commits (tab change).
 
   const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
     const t = e.touches[0];
     swipeTouchStart.current = { x: t.clientX, y: t.clientY };
     swipeIsHorizontal.current = null;
+    swipeDragX.current = 0;
+    // Disable CSS transition while the finger is down — must be instant.
+    const el = mobileSliderRef.current;
+    if (el) el.style.transition = "none";
   }, []);
 
   const handleSwipeTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!swipeTouchStart.current) return;
+    const el = mobileSliderRef.current;
+    if (!swipeTouchStart.current || !el) return;
     const t = e.touches[0];
     const dx = t.clientX - swipeTouchStart.current.x;
     const dy = t.clientY - swipeTouchStart.current.y;
 
-    // On the first significant movement, lock the gesture direction.
+    // Lock gesture direction on first significant movement.
     if (swipeIsHorizontal.current === null) {
       if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
         swipeIsHorizontal.current = Math.abs(dx) > Math.abs(dy);
       }
       return;
     }
+    if (!swipeIsHorizontal.current) return; // vertical — ignore
 
-    // Vertical gesture — let the browser scroll; don't animate the slider.
-    if (!swipeIsHorizontal.current) return;
-
-    // Clamp: on Chat only allow swiping left, on Sources only right.
+    // Clamp: Chat only swipes left (→ Sources), Sources only swipes right (→ Chat).
     const clamped =
       activeTabRef.current === "chat" ? Math.min(0, dx) : Math.max(0, dx);
-
     swipeDragX.current = clamped;
-    setIsDragging(true);
-    setDragX(clamped);
+
+    // Direct DOM write — the only thing that moves the slider during drag.
+    const base = activeTabRef.current === "sources" ? "-50%" : "0%";
+    el.style.transform = `translateX(calc(${base} + ${clamped}px))`;
   }, []);
 
+  // Also fires on touchcancel so a cancelled gesture snaps back cleanly.
   const handleSwipeTouchEnd = useCallback(() => {
+    const el = mobileSliderRef.current;
     swipeTouchStart.current = null;
     const dx = swipeDragX.current;
     swipeDragX.current = 0;
-    setIsDragging(false);
-    setDragX(0);
-
-    // Commit the swipe if the finger travelled > 80 px horizontally.
-    if (swipeIsHorizontal.current !== true) return;
+    const wasHorizontal = swipeIsHorizontal.current === true;
     swipeIsHorizontal.current = null;
 
-    if (dx < -80 && activeTabRef.current === "chat") {
+    if (!el) return;
+
+    // Re-enable transition for the snap/commit animation.
+    el.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+
+    if (!wasHorizontal || Math.abs(dx) <= 80) {
+      // Not a swipe, or too short — snap back to current tab.
+      el.style.transform =
+        activeTabRef.current === "sources" ? "translateX(-50%)" : "translateX(0%)";
+      return;
+    }
+
+    if (dx < 0 && activeTabRef.current === "chat") {
+      // Committed swipe left → Sources.
+      el.style.transform = "translateX(-50%)";
       handleTabChange("sources");
-    } else if (dx > 80 && activeTabRef.current === "sources") {
+    } else if (dx > 0 && activeTabRef.current === "sources") {
+      // Committed swipe right → Chat.
+      el.style.transform = "translateX(0%)";
       handleTabChange("chat");
+    } else {
+      el.style.transform =
+        activeTabRef.current === "sources" ? "translateX(-50%)" : "translateX(0%)";
     }
   }, [handleTabChange]);
 
@@ -875,21 +912,20 @@ export function ChatShell({
           {isAnonymous && <AnonymousBanner />}
 
           <div className="relative flex-1 overflow-hidden">
+            {/* transform/transition are managed imperatively via mobileSliderRef */}
             <div
+              ref={mobileSliderRef}
               style={{
                 display: "flex",
                 width: "200%",
                 height: "100%",
-                transform: `translateX(calc(${activeTab === "sources" ? "-50%" : "0%"} + ${dragX}px))`,
-                transition: isDragging
-                  ? "none"
-                  : "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                 willChange: "transform",
                 touchAction: "pan-y",
               }}
               onTouchStart={handleSwipeTouchStart}
               onTouchMove={handleSwipeTouchMove}
               onTouchEnd={handleSwipeTouchEnd}
+              onTouchCancel={handleSwipeTouchEnd}
             >
               {/* Chat — 50% of 200% inner = 100% of viewport */}
               <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
