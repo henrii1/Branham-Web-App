@@ -468,27 +468,28 @@ export function SeoShell({
               onTouchEnd={handleSwipeTouchEnd}
               onTouchCancel={handleSwipeTouchEnd}
             >
-              {/* Answer / Chat panel — overflow-y-auto for vertical scroll */}
-              <div
-                style={{ width: "50%", height: "100%" }}
-                className="overflow-y-auto bg-[var(--surface-chat)]"
-              >
-                <div className="px-4 py-5">
-                  <h1 className="font-display mb-4 text-2xl text-foreground">
-                    {question}
-                  </h1>
-                  <TypewriterRenderer markdown={answerMarkdown} />
+              {/* Answer / Chat panel
+                  Outer wrapper is overflow:hidden so the browser skips scroll
+                  detection on the slider's direct child — matching ChatShell's
+                  panel structure. Scroll happens on the inner div. */}
+              <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
+                <div className="h-full overflow-y-auto bg-[var(--surface-chat)]">
+                  <div className="px-4 py-5">
+                    <h1 className="font-display mb-4 text-2xl text-foreground">
+                      {question}
+                    </h1>
+                    <TypewriterRenderer markdown={answerMarkdown} />
+                  </div>
                 </div>
               </div>
-              {/* Sources panel — overflow-y-auto for vertical scroll */}
-              <div
-                style={{ width: "50%", height: "100%" }}
-                className="overflow-y-auto bg-[var(--surface-sources)]"
-              >
-                <div
-                  className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
-                  dangerouslySetInnerHTML={{ __html: ragHtml }}
-                />
+              {/* Sources panel — same outer/inner scroll split */}
+              <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
+                <div className="h-full overflow-y-auto bg-[var(--surface-sources)]">
+                  <div
+                    className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
+                    dangerouslySetInnerHTML={{ __html: ragHtml }}
+                  />
+                </div>
               </div>
             </div>
           </div>
