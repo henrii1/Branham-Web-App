@@ -132,6 +132,9 @@ export function ChatShell({
   const [chatReady, setChatReady] = useState(false);
   const [sourcesReady, setSourcesReady] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  // Live drag offset (px) while swiping between tabs. 0 when idle.
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -146,8 +149,13 @@ export function ChatShell({
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
   const pendingFollowUpRef = useRef<string | null>(null);
-  // Tracks the starting position of a touch gesture for swipe-to-switch-tab.
+  // ── Swipe-to-switch-tab tracking refs ──────────────────────────────
+  // Records touch start. Shared across start/move/end handlers.
   const swipeTouchStart = useRef<{ x: number; y: number } | null>(null);
+  // null = direction not determined yet, true = horizontal, false = vertical
+  const swipeIsHorizontal = useRef<boolean | null>(null);
+  // Latest drag offset in px — read in touchEnd without needing state
+  const swipeDragX = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -198,39 +206,60 @@ export function ChatShell({
     setSourcesReady(false);
   }, []);
 
-  // ── Swipe-to-switch-tab (mobile only) ───────────────────────────────
-  // Records touch start position.
-  const handleSwipeTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      const t = e.touches[0];
-      swipeTouchStart.current = { x: t.clientX, y: t.clientY };
-    },
-    [],
-  );
+  // ── Animated swipe-to-switch-tab (mobile only) ──────────────────────
+  // The two panels sit side-by-side in a 200%-wide slider. translateX moves
+  // between them. During a drag we update dragX live so the user sees the
+  // panels glide as their finger moves.
 
-  // On touch end, determine if the gesture was a mostly-horizontal swipe.
-  // Requires ≥ 50px horizontal movement and more horizontal than vertical
-  // displacement — this avoids triggering during normal vertical scrolling.
-  const handleSwipeTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      if (!swipeTouchStart.current) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - swipeTouchStart.current.x;
-      const dy = t.clientY - swipeTouchStart.current.y;
-      swipeTouchStart.current = null;
+  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeTouchStart.current = { x: t.clientX, y: t.clientY };
+    swipeIsHorizontal.current = null;
+  }, []);
 
-      if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy)) return;
+  const handleSwipeTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!swipeTouchStart.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - swipeTouchStart.current.x;
+    const dy = t.clientY - swipeTouchStart.current.y;
 
-      if (dx < 0 && activeTabRef.current === "chat") {
-        // Swipe left → Sources
-        handleTabChange("sources");
-      } else if (dx > 0 && activeTabRef.current === "sources") {
-        // Swipe right → Chat
-        handleTabChange("chat");
+    // On the first significant movement, lock the gesture direction.
+    if (swipeIsHorizontal.current === null) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        swipeIsHorizontal.current = Math.abs(dx) > Math.abs(dy);
       }
-    },
-    [handleTabChange],
-  );
+      return;
+    }
+
+    // Vertical gesture — let the browser scroll; don't animate the slider.
+    if (!swipeIsHorizontal.current) return;
+
+    // Clamp: on Chat only allow swiping left, on Sources only right.
+    const clamped =
+      activeTabRef.current === "chat" ? Math.min(0, dx) : Math.max(0, dx);
+
+    swipeDragX.current = clamped;
+    setIsDragging(true);
+    setDragX(clamped);
+  }, []);
+
+  const handleSwipeTouchEnd = useCallback(() => {
+    swipeTouchStart.current = null;
+    const dx = swipeDragX.current;
+    swipeDragX.current = 0;
+    setIsDragging(false);
+    setDragX(0);
+
+    // Commit the swipe if the finger travelled > 80 px horizontally.
+    if (swipeIsHorizontal.current !== true) return;
+    swipeIsHorizontal.current = null;
+
+    if (dx < -80 && activeTabRef.current === "chat") {
+      handleTabChange("sources");
+    } else if (dx > 80 && activeTabRef.current === "sources") {
+      handleTabChange("chat");
+    }
+  }, [handleTabChange]);
 
   // ── Load conversations list (sidebar) ───────────────────────────────
   const loadConversations = useCallback(async () => {
@@ -840,29 +869,46 @@ export function ChatShell({
           </div>
         </div>
 
-        {/* ── Mobile: tab content — swipe left/right to switch tabs ── */}
-        <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden"
-          onTouchStart={handleSwipeTouchStart}
-          onTouchEnd={handleSwipeTouchEnd}
-        >
+        {/* ── Mobile: sliding tab panels ── */}
+        {/* Both panels sit side-by-side in a 200%-wide inner div.           translateX(0%)  → Chat visible                                    translateX(-50%) → Sources visible (−50% of 200% = −100vw)       During a drag, dragX shifts the position live so panels glide.    touch-action:pan-y lets the browser handle vertical scroll inside     each panel without interfering with our horizontal swipe detection. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
           {isAnonymous && <AnonymousBanner />}
 
-          <div className="flex-1 overflow-hidden">
-            {activeTab === "sources" ? (
-              <SourcesPanel
-                ragData={ragData}
-                streamingStatus={streamingStatus}
-              />
-            ) : (
-              <ChatPanel
-                messages={messages}
-                streamingStatus={streamingStatus}
-                streamBuffer={streamBuffer}
-                error={error}
-                isLoading={conversationLoading}
-              />
-            )}
+          <div className="relative flex-1 overflow-hidden">
+            <div
+              style={{
+                display: "flex",
+                width: "200%",
+                height: "100%",
+                transform: `translateX(calc(${activeTab === "sources" ? "-50%" : "0%"} + ${dragX}px))`,
+                transition: isDragging
+                  ? "none"
+                  : "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                willChange: "transform",
+                touchAction: "pan-y",
+              }}
+              onTouchStart={handleSwipeTouchStart}
+              onTouchMove={handleSwipeTouchMove}
+              onTouchEnd={handleSwipeTouchEnd}
+            >
+              {/* Chat — 50% of 200% inner = 100% of viewport */}
+              <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
+                <ChatPanel
+                  messages={messages}
+                  streamingStatus={streamingStatus}
+                  streamBuffer={streamBuffer}
+                  error={error}
+                  isLoading={conversationLoading}
+                />
+              </div>
+              {/* Sources — 50% of 200% inner = 100% of viewport */}
+              <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
+                <SourcesPanel
+                  ragData={ragData}
+                  streamingStatus={streamingStatus}
+                />
+              </div>
+            </div>
           </div>
         </div>
 

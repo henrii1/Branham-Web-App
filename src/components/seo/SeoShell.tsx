@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthGate";
@@ -64,10 +64,18 @@ export function SeoShell({
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Live swipe animation state
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const panelsRef = useRef<HTMLDivElement>(null);
   const sourcesRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
+  // Swipe tracking refs
+  const swipeTouchStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeIsHorizontal = useRef<boolean | null>(null);
+  const swipeDragX = useRef(0);
+  const activeTabRef = useRef<"chat" | "sources">(activeTab);
 
   const processedRag = postprocessRag(ragContext);
   const ragHtml = renderMarkdown(processedRag);
@@ -136,6 +144,58 @@ export function SeoShell({
     },
     [],
   );
+
+  // Keep activeTabRef in sync so swipe handlers always see the latest tab.
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  // ── Animated swipe handlers (same logic as ChatShell) ───────────────
+  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeTouchStart.current = { x: t.clientX, y: t.clientY };
+    swipeIsHorizontal.current = null;
+  }, []);
+
+  const handleSwipeTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!swipeTouchStart.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - swipeTouchStart.current.x;
+    const dy = t.clientY - swipeTouchStart.current.y;
+
+    if (swipeIsHorizontal.current === null) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        swipeIsHorizontal.current = Math.abs(dx) > Math.abs(dy);
+      }
+      return;
+    }
+
+    if (!swipeIsHorizontal.current) return;
+
+    const clamped =
+      activeTabRef.current === "chat" ? Math.min(0, dx) : Math.max(0, dx);
+
+    swipeDragX.current = clamped;
+    setIsDragging(true);
+    setDragX(clamped);
+  }, []);
+
+  const handleSwipeTouchEnd = useCallback(() => {
+    swipeTouchStart.current = null;
+    const dx = swipeDragX.current;
+    swipeDragX.current = 0;
+    setIsDragging(false);
+    setDragX(0);
+
+    if (swipeIsHorizontal.current !== true) return;
+    swipeIsHorizontal.current = null;
+
+    if (dx < -80 && activeTabRef.current === "chat") {
+      setActiveTab("sources");
+    } else if (dx > 80 && activeTabRef.current === "sources") {
+      setActiveTab("chat");
+    }
+  }, []);
 
   const handleComposerFocus = useCallback(() => {
     if (isAnonymous) {
@@ -361,25 +421,51 @@ export function SeoShell({
           </div>
         </div>
 
-        {/* ── Mobile: tab content ── */}
+        {/* ── Mobile: sliding tab panels ── */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
           {isAnonymous && <AnonymousBanner />}
 
-          {activeTab === "sources" ? (
-            <div className="flex-1 overflow-y-auto bg-[var(--surface-sources)]">
+          <div className="relative flex-1 overflow-hidden">
+            <div
+              style={{
+                display: "flex",
+                width: "200%",
+                height: "100%",
+                transform: `translateX(calc(${activeTab === "sources" ? "-50%" : "0%"} + ${dragX}px))`,
+                transition: isDragging
+                  ? "none"
+                  : "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                willChange: "transform",
+                touchAction: "pan-y",
+              }}
+              onTouchStart={handleSwipeTouchStart}
+              onTouchMove={handleSwipeTouchMove}
+              onTouchEnd={handleSwipeTouchEnd}
+            >
+              {/* Answer / Chat panel */}
               <div
-                className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
-                dangerouslySetInnerHTML={{ __html: ragHtml }}
-              />
+                style={{ width: "50%", height: "100%", overflow: "hidden" }}
+                className="overflow-y-auto bg-[var(--surface-chat)]"
+              >
+                <div className="px-4 py-5">
+                  <h1 className="font-display mb-4 text-2xl text-foreground">
+                    {question}
+                  </h1>
+                  <TypewriterRenderer markdown={answerMarkdown} />
+                </div>
+              </div>
+              {/* Sources panel */}
+              <div
+                style={{ width: "50%", height: "100%", overflow: "hidden" }}
+                className="overflow-y-auto bg-[var(--surface-sources)]"
+              >
+                <div
+                  className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
+                  dangerouslySetInnerHTML={{ __html: ragHtml }}
+                />
+              </div>
             </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto bg-[var(--surface-chat)] px-4 py-5">
-              <h1 className="font-display mb-4 text-2xl text-foreground">
-                {question}
-              </h1>
-              <TypewriterRenderer markdown={answerMarkdown} />
-            </div>
-          )}
+          </div>
         </div>
 
         {/* ── Composer ── */}
