@@ -146,6 +146,8 @@ export function ChatShell({
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
   const pendingFollowUpRef = useRef<string | null>(null);
+  // Tracks the starting position of a touch gesture for swipe-to-switch-tab.
+  const swipeTouchStart = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -195,6 +197,40 @@ export function ChatShell({
     }
     setSourcesReady(false);
   }, []);
+
+  // ── Swipe-to-switch-tab (mobile only) ───────────────────────────────
+  // Records touch start position.
+  const handleSwipeTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const t = e.touches[0];
+      swipeTouchStart.current = { x: t.clientX, y: t.clientY };
+    },
+    [],
+  );
+
+  // On touch end, determine if the gesture was a mostly-horizontal swipe.
+  // Requires ≥ 50px horizontal movement and more horizontal than vertical
+  // displacement — this avoids triggering during normal vertical scrolling.
+  const handleSwipeTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (!swipeTouchStart.current) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - swipeTouchStart.current.x;
+      const dy = t.clientY - swipeTouchStart.current.y;
+      swipeTouchStart.current = null;
+
+      if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy)) return;
+
+      if (dx < 0 && activeTabRef.current === "chat") {
+        // Swipe left → Sources
+        handleTabChange("sources");
+      } else if (dx > 0 && activeTabRef.current === "sources") {
+        // Swipe right → Chat
+        handleTabChange("chat");
+      }
+    },
+    [handleTabChange],
+  );
 
   // ── Load conversations list (sidebar) ───────────────────────────────
   const loadConversations = useCallback(async () => {
@@ -804,8 +840,12 @@ export function ChatShell({
           </div>
         </div>
 
-        {/* ── Mobile: tab content ── */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
+        {/* ── Mobile: tab content — swipe left/right to switch tabs ── */}
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden"
+          onTouchStart={handleSwipeTouchStart}
+          onTouchEnd={handleSwipeTouchEnd}
+        >
           {isAnonymous && <AnonymousBanner />}
 
           <div className="flex-1 overflow-hidden">
