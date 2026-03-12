@@ -486,8 +486,9 @@ export function ChatShell({
                   firstDelta = false;
                   setStreamingStatus("streaming");
                   if (isMobileViewport) {
+                    // Only show "Chat ready" badge if user is NOT already on chat.
+                    // Do NOT clear sourcesReady here — both notifications can coexist.
                     if (activeTabRef.current !== "chat") {
-                      setSourcesReady(false);
                       setChatReady(true);
                     }
                   } else {
@@ -862,12 +863,9 @@ function MobileHeader({
   chatReady,
   sourcesReady,
 }: MobileHeaderProps) {
-  const statusMessage =
-    activeTab !== "sources" && sourcesReady
-      ? "Sources ready"
-      : activeTab !== "chat" && chatReady
-        ? "Answer ready"
-        : null;
+  // Show notification for the tab that has new content but is not currently active.
+  const sourcesNotif = activeTab !== "sources" && sourcesReady;
+  const chatNotif = activeTab !== "chat" && chatReady;
 
   return (
     <header className="flex flex-col border-b border-zinc-200 bg-[var(--surface-base)] lg:hidden dark:border-zinc-800">
@@ -932,58 +930,106 @@ function MobileHeader({
         role="tablist"
         aria-label="Chat panels"
       >
+        {/* Chat tab */}
         <button
           type="button"
           role="tab"
           aria-selected={activeTab === "chat"}
           onClick={() => onTabChange("chat")}
-          className={`relative flex-1 py-2 text-center text-xs font-medium transition-colors ${
+          className={`relative flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-all ${
             activeTab === "chat"
               ? "border-b-2 border-zinc-900 text-foreground dark:border-zinc-100"
               : chatReady
-                ? "mobile-ready-tab text-blue-700 dark:text-blue-300"
-              : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                ? "mobile-ready-tab border-b-2 border-blue-400 text-blue-700 dark:border-blue-500 dark:text-blue-300"
+                : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
           }`}
         >
-          Chat
-          {chatReady && activeTab !== "chat" && (
-            <span className="mobile-ready-badge ml-1 inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-              Ready
+          {/* Chat icon */}
+          <svg
+            className={`h-3.5 w-3.5 shrink-0 ${chatReady ? "mobile-ready-icon" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={activeTab === "chat" ? 2 : 1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
+            />
+          </svg>
+          <span>Chat</span>
+          {/* "New" badge when chat result just arrived */}
+          {chatNotif && (
+            <span className="mobile-ready-badge inline-flex items-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white shadow-sm dark:bg-blue-500">
+              NEW
             </span>
           )}
         </button>
+
+        {/* Sources tab */}
         <button
           type="button"
           role="tab"
           aria-selected={activeTab === "sources"}
           onClick={() => onTabChange("sources")}
-          className={`relative flex-1 py-2 text-center text-xs font-medium transition-colors ${
+          className={`relative flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-all ${
             activeTab === "sources"
               ? "border-b-2 border-zinc-900 text-foreground dark:border-zinc-100"
               : sourcesReady
-                ? "mobile-ready-tab text-blue-700 dark:text-blue-300"
-              : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                ? "mobile-ready-tab border-b-2 border-blue-400 text-blue-700 dark:border-blue-500 dark:text-blue-300"
+                : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
           }`}
         >
-          Sources
-          {sourcesReady && activeTab !== "sources" ? (
-            <span className="mobile-ready-badge ml-1 inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-              Ready
+          {/* Sources / book icon — swells when ready */}
+          <span className={`relative shrink-0 ${sourcesReady ? "mobile-ready-icon" : ""}`}>
+            <svg
+              className="h-3.5 w-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={activeTab === "sources" ? 2 : 1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
+              />
+            </svg>
+            {/* Persistent green dot when rag is available but not yet "ready-notif" */}
+            {hasRag && !sourcesReady && activeTab !== "sources" && (
+              <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-green-500" />
+            )}
+          </span>
+          <span>Sources</span>
+          {/* "NEW" badge when sources just arrived */}
+          {sourcesNotif && (
+            <span className="mobile-ready-badge inline-flex items-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white shadow-sm dark:bg-blue-500">
+              NEW
             </span>
-          ) : (
-            hasRag && activeTab !== "sources" && (
-              <span className="absolute top-1.5 ml-1 inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
-            )
           )}
         </button>
       </nav>
-      {statusMessage && (
-        <p
-          className="border-t border-zinc-100 px-3 py-1.5 text-[11px] font-medium text-blue-700 dark:border-zinc-800 dark:text-blue-300"
+
+      {/* Notification strip — shown when content is ready on the other tab */}
+      {(sourcesNotif || chatNotif) && (
+        <div
+          className="mobile-ready-notif flex items-center gap-2 border-t border-blue-100 bg-blue-50 px-3 py-2 dark:border-blue-900/40 dark:bg-blue-950/30"
           aria-live="polite"
         >
-          {statusMessage}
-        </p>
+          {/* Animated pulse dot */}
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400" />
+          </span>
+          <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+            {sourcesNotif && chatNotif
+              ? "Sources & answer ready — tap a tab to view"
+              : sourcesNotif
+                ? "Sources ready — tap Sources to view"
+                : "Answer ready — tap Chat to view"}
+          </p>
+        </div>
       )}
     </header>
   );
