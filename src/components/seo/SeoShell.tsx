@@ -468,9 +468,9 @@ export function SeoShell({
               onTouchEnd={handleSwipeTouchEnd}
               onTouchCancel={handleSwipeTouchEnd}
             >
-              {/* Answer / Chat panel */}
+              {/* Answer / Chat panel — overflow-y-auto for vertical scroll */}
               <div
-                style={{ width: "50%", height: "100%", overflow: "hidden" }}
+                style={{ width: "50%", height: "100%" }}
                 className="overflow-y-auto bg-[var(--surface-chat)]"
               >
                 <div className="px-4 py-5">
@@ -480,9 +480,9 @@ export function SeoShell({
                   <TypewriterRenderer markdown={answerMarkdown} />
                 </div>
               </div>
-              {/* Sources panel */}
+              {/* Sources panel — overflow-y-auto for vertical scroll */}
               <div
-                style={{ width: "50%", height: "100%", overflow: "hidden" }}
+                style={{ width: "50%", height: "100%" }}
                 className="overflow-y-auto bg-[var(--surface-sources)]"
               >
                 <div
