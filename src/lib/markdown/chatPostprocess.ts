@@ -7,6 +7,8 @@
  * 2. Downsizes Reader Note heading from ### to ##### (two levels smaller).
  *    Only "Reader Note" stays capitalized; trailing text is sentence-cased.
  *    #### or ##### Reader Note headings are left as-is.
+ * 3. Strips bold markers from the Reader Note section body — only the
+ *    "Reader Note:" label itself remains bold; body text is plain.
  */
 
 // Matches Quotes, References, and Unverified/External Information section headings (## or ###).
@@ -74,6 +76,42 @@ export function postprocessChatResponse(text: string): string {
       return `---\n${heading}`;
     },
   );
+
+  // Step 4: Strip bold markers from Reader Note section body.
+  // Walk through the text and de-bold everything after a Reader Note heading
+  // until the next --- divider, any heading (##…), or end of string.
+  // The heading line itself is left untouched so **Reader Note:** stays bold.
+  {
+    const headingRe = /(?:^|\n)(#{3,5}\s+\*\*Reader Note:\*\*[^\n]*\n)/g;
+    let match: RegExpExecArray | null;
+    const parts: string[] = [];
+    let cursor = 0;
+
+    while ((match = headingRe.exec(result)) !== null) {
+      const headingStart = match.index + (match[0].startsWith("\n") ? 1 : 0);
+      const headingEnd = headingStart + match[1].length;
+
+      // Everything before this heading — copy verbatim.
+      parts.push(result.slice(cursor, headingEnd));
+
+      // Body: from end of heading line until the next --- or ## heading or EOS.
+      const bodyStart = headingEnd;
+      const nextSectionRe = /\n(?=---|#{2,}\s)/g;
+      nextSectionRe.lastIndex = bodyStart;
+      const nextMatch = nextSectionRe.exec(result);
+      const bodyEnd = nextMatch ? nextMatch.index : result.length;
+
+      const body = result.slice(bodyStart, bodyEnd);
+      // Strip ** and __ bold markers from the body only.
+      parts.push(body.replace(/\*\*([\s\S]+?)\*\*/g, "$1").replace(/__([\s\S]+?)__/g, "$1"));
+
+      cursor = bodyEnd;
+      headingRe.lastIndex = bodyEnd;
+    }
+
+    parts.push(result.slice(cursor));
+    result = parts.join("");
+  }
 
   return result;
 }

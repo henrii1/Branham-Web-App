@@ -10,7 +10,7 @@ export function isThemePreference(value: string | null | undefined): value is Th
 
 export function normalizeThemePreference(
   value: string | null | undefined,
-  fallback: ThemePreference = "light",
+  fallback: ThemePreference = "dark",
 ): ThemePreference {
   return isThemePreference(value) ? value : fallback;
 }
