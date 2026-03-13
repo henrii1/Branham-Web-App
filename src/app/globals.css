@@ -5,8 +5,8 @@
 :root {
   color-scheme: light;
   --background: #f7f7f8;
-  --foreground: #1f1f1f;
-  --muted-foreground: #666873;
+  --foreground: #111112;
+  --muted-foreground: #4a4b57;
   --border-subtle: #e4e4e7;
   --surface-base: #ffffff;
   --surface-soft: #f3f4f6;
@@ -28,8 +28,8 @@
 .dark {
   color-scheme: dark;
   --background: #212327;
-  --foreground: #f3f4f6;
-  --muted-foreground: #b3b5bd;
+  --foreground: #f5f6f8;
+  --muted-foreground: #cacbd4;
   --border-subtle: #3b3d45;
   --surface-base: #2a2c31;
   --surface-soft: #26282d;
@@ -286,4 +286,23 @@ html {
 .sources-markdown p,
 .sources-markdown li {
   color: var(--muted-foreground);
+}
+
+/* ── Mobile: larger readable fonts + prevent input zoom ─────────────── */
+@media (max-width: 1023px) {
+  /* Increase prose body text from 14 → 16 px on mobile for readability */
+  .chat-markdown,
+  .sources-markdown {
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  /* Prevent iOS Safari from zooming on input focus (font-size < 16px triggers it) */
+  textarea,
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  select {
+    font-size: 16px;
+  }
 }

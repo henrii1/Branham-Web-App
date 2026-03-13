@@ -64,7 +64,7 @@ export function Composer({ onSend, disabled, streamingStatus }: ComposerProps) {
           }
           disabled={isDisabled}
           rows={1}
-          className="flex-1 resize-none rounded-2xl border border-zinc-300 bg-[var(--surface-soft)] px-4 py-3 text-sm text-foreground placeholder:text-zinc-400 transition-colors focus:border-blue-500 focus:bg-[var(--surface-base)] focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:focus:bg-zinc-800"
+          className="flex-1 resize-none rounded-2xl border border-zinc-300 bg-[var(--surface-soft)] px-4 py-3 text-base lg:text-sm text-foreground placeholder:text-zinc-400 transition-colors focus:border-blue-500 focus:bg-[var(--surface-base)] focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:focus:bg-zinc-800"
           aria-label="Message input"
           style={{ maxHeight: MAX_TEXTAREA_HEIGHT }}
         />

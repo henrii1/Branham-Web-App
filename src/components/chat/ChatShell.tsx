@@ -152,9 +152,20 @@ export function ChatShell({
   const mobileSliderRef = useRef<HTMLDivElement>(null);
   // Skip the animated transition on the very first mount (just position it).
   const isInitialSliderMount = useRef(true);
+  // Prevent the activeTab useEffect from re-running a CSS transition that was
+  // already started imperatively in handleSwipeTouchEnd (would cause a hang).
+  const skipNextSliderSync = useRef(false);
   const swipeTouchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeIsHorizontal = useRef<boolean | null>(null);
   const swipeDragX = useRef(0);
+
+  // ── Animated mobile drawer refs ─────────────────────────────────────
+  const drawerPanelRef = useRef<HTMLDivElement>(null);
+  const drawerBackdropRef = useRef<HTMLDivElement>(null);
+  const isInitialDrawerMount = useRef(true);
+  const skipDrawerStateSync = useRef(false);
+  const drawerTouchStartX = useRef<number | null>(null);
+  const drawerDragX = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -199,9 +210,16 @@ export function ChatShell({
   // This runs after tab-button taps, sidebar nav, and post-swipe state updates.
   // On the very first mount we skip the transition so the panel starts at the
   // correct position immediately (no animation flash on load).
+  // After a swipe commit we skip it entirely — the imperative animation already
+  // ran in handleSwipeTouchEnd, and re-setting the transform mid-flight would
+  // cause a visible stutter/hang on iOS Safari.
   useEffect(() => {
     const el = mobileSliderRef.current;
     if (!el) return;
+    if (skipNextSliderSync.current) {
+      skipNextSliderSync.current = false;
+      return;
+    }
     const target = activeTab === "sources" ? "translateX(-50%)" : "translateX(0%)";
     if (isInitialSliderMount.current) {
       isInitialSliderMount.current = false;
@@ -209,9 +227,33 @@ export function ChatShell({
       el.style.transform = target;
       return;
     }
-    el.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+    el.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
     el.style.transform = target;
   }, [activeTab]);
+
+  // ── Sync animated drawer with mobileDrawerOpen state ─────────────────
+  useEffect(() => {
+    const el = drawerPanelRef.current;
+    const bd = drawerBackdropRef.current;
+    if (!el) return;
+    if (skipDrawerStateSync.current) {
+      skipDrawerStateSync.current = false;
+      return;
+    }
+    if (isInitialDrawerMount.current) {
+      isInitialDrawerMount.current = false;
+      el.style.transition = "none";
+      el.style.transform = "translateX(-100%)";
+      if (bd) { bd.style.transition = "none"; bd.style.opacity = "0"; }
+      return;
+    }
+    el.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
+    el.style.transform = mobileDrawerOpen ? "translateX(0)" : "translateX(-100%)";
+    if (bd) {
+      bd.style.transition = "opacity 0.25s";
+      bd.style.opacity = mobileDrawerOpen ? "0.4" : "0";
+    }
+  }, [mobileDrawerOpen]);
 
   const handleTabChange = useCallback((tab: "chat" | "sources") => {
     activeTabRef.current = tab;
@@ -266,6 +308,7 @@ export function ChatShell({
   // Also fires on touchcancel so a cancelled gesture snaps back cleanly.
   const handleSwipeTouchEnd = useCallback(() => {
     const el = mobileSliderRef.current;
+    const startX = swipeTouchStart.current?.x ?? Infinity;
     swipeTouchStart.current = null;
     const dx = swipeDragX.current;
     swipeDragX.current = 0;
@@ -275,9 +318,17 @@ export function ChatShell({
     if (!el) return;
 
     // Re-enable transition for the snap/commit animation.
-    el.style.transition = "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+    const transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
+    el.style.transition = transition;
 
-    if (!wasHorizontal || Math.abs(dx) <= 80) {
+    // Right-swipe from the left edge of the chat panel opens the drawer.
+    if (wasHorizontal && dx > 60 && startX < 44 && activeTabRef.current === "chat") {
+      el.style.transform = "translateX(0%)";
+      setMobileDrawerOpen(true);
+      return;
+    }
+
+    if (!wasHorizontal || Math.abs(dx) <= 60) {
       // Not a swipe, or too short — snap back to current tab.
       el.style.transform =
         activeTabRef.current === "sources" ? "translateX(-50%)" : "translateX(0%)";
@@ -287,16 +338,61 @@ export function ChatShell({
     if (dx < 0 && activeTabRef.current === "chat") {
       // Committed swipe left → Sources.
       el.style.transform = "translateX(-50%)";
+      skipNextSliderSync.current = true;
       handleTabChange("sources");
     } else if (dx > 0 && activeTabRef.current === "sources") {
       // Committed swipe right → Chat.
       el.style.transform = "translateX(0%)";
+      skipNextSliderSync.current = true;
       handleTabChange("chat");
     } else {
       el.style.transform =
         activeTabRef.current === "sources" ? "translateX(-50%)" : "translateX(0%)";
     }
   }, [handleTabChange]);
+
+  // ── Animated drawer touch handlers ──────────────────────────────────
+  const handleDrawerTouchStart = useCallback((e: React.TouchEvent) => {
+    drawerTouchStartX.current = e.touches[0].clientX;
+    drawerDragX.current = 0;
+    const el = drawerPanelRef.current;
+    const bd = drawerBackdropRef.current;
+    if (el) el.style.transition = "none";
+    if (bd) bd.style.transition = "none";
+  }, []);
+
+  const handleDrawerTouchMove = useCallback((e: React.TouchEvent) => {
+    if (drawerTouchStartX.current === null) return;
+    const dx = e.touches[0].clientX - drawerTouchStartX.current;
+    const clamped = Math.min(0, dx); // only leftward drag (closing)
+    drawerDragX.current = clamped;
+    const el = drawerPanelRef.current;
+    if (el) el.style.transform = `translateX(${clamped}px)`;
+    const bd = drawerBackdropRef.current;
+    if (bd) bd.style.opacity = `${Math.max(0, 0.4 * (1 + clamped / 288))}`;
+  }, []);
+
+  const handleDrawerTouchEnd = useCallback(() => {
+    const dx = drawerDragX.current;
+    drawerDragX.current = 0;
+    drawerTouchStartX.current = null;
+    const el = drawerPanelRef.current;
+    const bd = drawerBackdropRef.current;
+    if (!el) return;
+    const transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
+    el.style.transition = transition;
+    if (dx < -60) {
+      // Committed close — animate out then update state.
+      el.style.transform = "translateX(-100%)";
+      if (bd) { bd.style.transition = "opacity 0.25s"; bd.style.opacity = "0"; }
+      skipDrawerStateSync.current = true;
+      setTimeout(() => setMobileDrawerOpen(false), 250);
+    } else {
+      // Snap back open.
+      el.style.transform = "translateX(0)";
+      if (bd) { bd.style.transition = "opacity 0.25s"; bd.style.opacity = "0.4"; }
+    }
+  }, []);
 
   // ── Load conversations list (sidebar) ───────────────────────────────
   const loadConversations = useCallback(async () => {
@@ -827,29 +923,41 @@ export function ChatShell({
         )}
       </aside>
 
-      {/* ── Mobile drawer overlay ── */}
-      {mobileDrawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileDrawerOpen(false)}
-            aria-hidden="true"
+      {/* ── Mobile drawer overlay — always in DOM, animated via refs ── */}
+      <div
+        className="fixed inset-0 z-40 lg:hidden"
+        style={{ pointerEvents: mobileDrawerOpen ? "auto" : "none" }}
+        aria-hidden={!mobileDrawerOpen}
+      >
+        <div
+          ref={drawerBackdropRef}
+          className="absolute inset-0 bg-black"
+          style={{ opacity: 0 }}
+          onClick={() => setMobileDrawerOpen(false)}
+          aria-hidden="true"
+        />
+        <div
+          ref={drawerPanelRef}
+          className="relative z-50 h-full w-72 shadow-xl"
+          style={{ transform: "translateX(-100%)", touchAction: "pan-y" }}
+          onTouchStart={handleDrawerTouchStart}
+          onTouchMove={handleDrawerTouchMove}
+          onTouchEnd={handleDrawerTouchEnd}
+          onTouchCancel={handleDrawerTouchEnd}
+        >
+          <ConversationSidebar
+            user={user ?? null}
+            conversations={conversations}
+            activeConversationId={conversationId}
+            isLoading={conversationsLoading}
+            onNewChat={handleNewConversation}
+            onSelectConversation={handleSelectConversation}
+            onRenameConversation={handleRenameConversation}
+            onDeleteConversation={handleDeleteConversation}
+            onClose={() => setMobileDrawerOpen(false)}
           />
-          <aside className="relative z-50 h-full w-72 shadow-xl">
-            <ConversationSidebar
-              user={user ?? null}
-              conversations={conversations}
-              activeConversationId={conversationId}
-              isLoading={conversationsLoading}
-              onNewChat={handleNewConversation}
-              onSelectConversation={handleSelectConversation}
-              onRenameConversation={handleRenameConversation}
-              onDeleteConversation={handleDeleteConversation}
-              onClose={() => setMobileDrawerOpen(false)}
-            />
-          </aside>
         </div>
-      )}
+      </div>
 
       {/* ── Main area ── */}
       <div className="flex min-w-0 flex-1 flex-col">

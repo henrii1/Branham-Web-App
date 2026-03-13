@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthGate";
@@ -24,6 +24,13 @@ const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://branhamsermons.ai"),
