@@ -2,6 +2,8 @@
  * Chat response postprocessing — formats the assistant response
  * markdown before rendering in the Chat panel.
  *
+ * 0. Inline-bold Reader Note → label-only bold:
+ *    **Reader Note: body** → **Reader Note:** body
  * 1. Adds horizontal rule (---) dividers above distinct sections:
  *    - Quotes, References, Reader Note headings
  * 2. Downsizes Reader Note heading from ### to ##### (two levels smaller).
@@ -44,6 +46,15 @@ export function postprocessChatResponse(text: string): string {
   if (!text) return text;
 
   let result = text;
+
+  // Step 0: Inline-bold Reader Note — the API sometimes returns the entire
+  // note as **Reader Note: body text** (all bold).
+  // Convert to **Reader Note:** body text (label-only bold, body is plain).
+  // Idempotent: **Reader Note:** with no trailing ** won't match.
+  result = result.replace(
+    /\*\*Reader\s+Note:\s*([\s\S]+?)\*\*(?!\*)/g,
+    (_, body: string) => `**Reader Note:** ${body.trimEnd()}`,
+  );
 
   // Step 1: Downsize Reader Note headings (### → #####) and sentence-case trailing text.
   // Only downsizes ## and ###; leaves #### and ##### as-is.
