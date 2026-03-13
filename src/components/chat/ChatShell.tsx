@@ -160,10 +160,12 @@ export function ChatShell({
   const swipeDragX = useRef(0);
 
   // ── Animated mobile drawer refs ─────────────────────────────────────
+  // drawerShouldRender keeps the DOM alive during the close animation
+  // so the CSS transition plays before the element is unmounted.
+  const [drawerShouldRender, setDrawerShouldRender] = useState(false);
+  const drawerCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drawerPanelRef = useRef<HTMLDivElement>(null);
   const drawerBackdropRef = useRef<HTMLDivElement>(null);
-  const isInitialDrawerMount = useRef(true);
-  const skipDrawerStateSync = useRef(false);
   const drawerTouchStartX = useRef<number | null>(null);
   const drawerDragX = useRef(0);
 
@@ -231,29 +233,28 @@ export function ChatShell({
     el.style.transform = target;
   }, [activeTab]);
 
-  // ── Sync animated drawer with mobileDrawerOpen state ─────────────────
-  useEffect(() => {
-    const el = drawerPanelRef.current;
-    const bd = drawerBackdropRef.current;
-    if (!el) return;
-    if (skipDrawerStateSync.current) {
-      skipDrawerStateSync.current = false;
-      return;
+  // Open: mount → next paint → CSS transition slides in.
+  const openMobileDrawer = useCallback(() => {
+    if (drawerCloseTimerRef.current) {
+      clearTimeout(drawerCloseTimerRef.current);
+      drawerCloseTimerRef.current = null;
     }
-    if (isInitialDrawerMount.current) {
-      isInitialDrawerMount.current = false;
-      el.style.transition = "none";
-      el.style.transform = "translateX(-100%)";
-      if (bd) { bd.style.transition = "none"; bd.style.opacity = "0"; }
-      return;
-    }
-    el.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
-    el.style.transform = mobileDrawerOpen ? "translateX(0)" : "translateX(-100%)";
-    if (bd) {
-      bd.style.transition = "opacity 0.25s";
-      bd.style.opacity = mobileDrawerOpen ? "0.4" : "0";
-    }
-  }, [mobileDrawerOpen]);
+    setDrawerShouldRender(true);
+    // Two rAFs ensure the element is painted at translateX(-100%) before
+    // we flip mobileDrawerOpen → true (which triggers the CSS transition).
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setMobileDrawerOpen(true)),
+    );
+  }, []);
+
+  // Close: CSS transition plays while still mounted, then unmount.
+  const closeMobileDrawer = useCallback(() => {
+    setMobileDrawerOpen(false);
+    drawerCloseTimerRef.current = setTimeout(() => {
+      setDrawerShouldRender(false);
+      drawerCloseTimerRef.current = null;
+    }, 260);
+  }, []);
 
   const handleTabChange = useCallback((tab: "chat" | "sources") => {
     activeTabRef.current = tab;
@@ -324,7 +325,7 @@ export function ChatShell({
     // Right-swipe from the left edge of the chat panel opens the drawer.
     if (wasHorizontal && dx > 60 && startX < 44 && activeTabRef.current === "chat") {
       el.style.transform = "translateX(0%)";
-      setMobileDrawerOpen(true);
+      openMobileDrawer();
       return;
     }
 
@@ -379,20 +380,18 @@ export function ChatShell({
     const el = drawerPanelRef.current;
     const bd = drawerBackdropRef.current;
     if (!el) return;
-    const transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
-    el.style.transition = transition;
+    el.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
     if (dx < -60) {
-      // Committed close — animate out then update state.
+      // Committed close — animate out, then let closeMobileDrawer schedule unmount.
       el.style.transform = "translateX(-100%)";
       if (bd) { bd.style.transition = "opacity 0.25s"; bd.style.opacity = "0"; }
-      skipDrawerStateSync.current = true;
-      setTimeout(() => setMobileDrawerOpen(false), 250);
+      closeMobileDrawer();
     } else {
       // Snap back open.
       el.style.transform = "translateX(0)";
       if (bd) { bd.style.transition = "opacity 0.25s"; bd.style.opacity = "0.4"; }
     }
-  }, []);
+  }, [closeMobileDrawer]);
 
   // ── Load conversations list (sidebar) ───────────────────────────────
   const loadConversations = useCallback(async () => {
@@ -923,41 +922,52 @@ export function ChatShell({
         )}
       </aside>
 
-      {/* ── Mobile drawer overlay — always in DOM, animated via refs ── */}
-      <div
-        className="fixed inset-0 z-40 lg:hidden"
-        style={{ pointerEvents: mobileDrawerOpen ? "auto" : "none" }}
-        aria-hidden={!mobileDrawerOpen}
-      >
+      {/* ── Mobile drawer overlay ── */}
+      {/* Conditionally mounted; drawerShouldRender stays true during the
+          close animation so the CSS transition finishes before unmounting. */}
+      {drawerShouldRender && (
         <div
-          ref={drawerBackdropRef}
-          className="absolute inset-0 bg-black"
-          style={{ opacity: 0 }}
-          onClick={() => setMobileDrawerOpen(false)}
-          aria-hidden="true"
-        />
-        <div
-          ref={drawerPanelRef}
-          className="relative z-50 h-full w-72 shadow-xl"
-          style={{ transform: "translateX(-100%)", touchAction: "pan-y" }}
-          onTouchStart={handleDrawerTouchStart}
-          onTouchMove={handleDrawerTouchMove}
-          onTouchEnd={handleDrawerTouchEnd}
-          onTouchCancel={handleDrawerTouchEnd}
+          className="fixed inset-0 z-40 lg:hidden"
+          style={{ pointerEvents: mobileDrawerOpen ? "auto" : "none" }}
+          aria-hidden={!mobileDrawerOpen}
         >
-          <ConversationSidebar
-            user={user ?? null}
-            conversations={conversations}
-            activeConversationId={conversationId}
-            isLoading={conversationsLoading}
-            onNewChat={handleNewConversation}
-            onSelectConversation={handleSelectConversation}
-            onRenameConversation={handleRenameConversation}
-            onDeleteConversation={handleDeleteConversation}
-            onClose={() => setMobileDrawerOpen(false)}
+          <div
+            ref={drawerBackdropRef}
+            className="absolute inset-0 bg-black"
+            style={{
+              opacity: mobileDrawerOpen ? 0.4 : 0,
+              transition: "opacity 0.25s",
+            }}
+            onClick={closeMobileDrawer}
+            aria-hidden="true"
           />
+          <div
+            ref={drawerPanelRef}
+            className="relative z-50 h-full w-72 shadow-xl"
+            style={{
+              transform: mobileDrawerOpen ? "translateX(0)" : "translateX(-100%)",
+              transition: "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)",
+              touchAction: "pan-y",
+            }}
+            onTouchStart={handleDrawerTouchStart}
+            onTouchMove={handleDrawerTouchMove}
+            onTouchEnd={handleDrawerTouchEnd}
+            onTouchCancel={handleDrawerTouchEnd}
+          >
+            <ConversationSidebar
+              user={user ?? null}
+              conversations={conversations}
+              activeConversationId={conversationId}
+              isLoading={conversationsLoading}
+              onNewChat={handleNewConversation}
+              onSelectConversation={handleSelectConversation}
+              onRenameConversation={handleRenameConversation}
+              onDeleteConversation={handleDeleteConversation}
+              onClose={closeMobileDrawer}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Main area ── */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -965,7 +975,7 @@ export function ChatShell({
         <MobileHeader
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          onMenuOpen={() => setMobileDrawerOpen(true)}
+          onMenuOpen={openMobileDrawer}
           onNewChat={handleNewConversation}
           hasRag={!!ragData}
           chatReady={chatReady}

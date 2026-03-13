@@ -57,12 +57,17 @@ export function SeoShell({
   const isAnonymous = !user;
 
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"chat" | "sources">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "sources">(() => {
+    if (typeof window === "undefined") return "chat";
+    const stored = window.sessionStorage.getItem("branham-mobile-active-tab");
+    return stored === "chat" || stored === "sources" ? stored : "chat";
+  });
   const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
   const [seeding, setSeeding] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [drawerShouldRender, setDrawerShouldRender] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const panelsRef = useRef<HTMLDivElement>(null);
@@ -78,10 +83,9 @@ export function SeoShell({
   const activeTabRef = useRef<"chat" | "sources">(activeTab);
 
   // ── Animated mobile drawer refs ─────────────────────────────────────
+  const drawerCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drawerPanelRef = useRef<HTMLDivElement>(null);
   const drawerBackdropRef = useRef<HTMLDivElement>(null);
-  const isInitialDrawerMount = useRef(true);
-  const skipDrawerStateSync = useRef(false);
   const drawerTouchStartX = useRef<number | null>(null);
   const drawerDragX = useRef(0);
 
@@ -153,9 +157,12 @@ export function SeoShell({
     [],
   );
 
-  // Keep activeTabRef in sync so swipe handlers always see the latest tab.
+  // Keep activeTabRef in sync and persist to sessionStorage so refresh restores the tab.
   useEffect(() => {
     activeTabRef.current = activeTab;
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("branham-mobile-active-tab", activeTab);
+    }
   }, [activeTab]);
 
   // Sync slider position imperatively when tab changes (tap or swipe commit).
@@ -178,29 +185,24 @@ export function SeoShell({
     el.style.transform = target;
   }, [activeTab]);
 
-  // ── Sync animated drawer with mobileDrawerOpen state ─────────────────
-  useEffect(() => {
-    const el = drawerPanelRef.current;
-    const bd = drawerBackdropRef.current;
-    if (!el) return;
-    if (skipDrawerStateSync.current) {
-      skipDrawerStateSync.current = false;
-      return;
+  const openMobileDrawer = useCallback(() => {
+    if (drawerCloseTimerRef.current) {
+      clearTimeout(drawerCloseTimerRef.current);
+      drawerCloseTimerRef.current = null;
     }
-    if (isInitialDrawerMount.current) {
-      isInitialDrawerMount.current = false;
-      el.style.transition = "none";
-      el.style.transform = "translateX(-100%)";
-      if (bd) { bd.style.transition = "none"; bd.style.opacity = "0"; }
-      return;
-    }
-    el.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
-    el.style.transform = mobileDrawerOpen ? "translateX(0)" : "translateX(-100%)";
-    if (bd) {
-      bd.style.transition = "opacity 0.25s";
-      bd.style.opacity = mobileDrawerOpen ? "0.4" : "0";
-    }
-  }, [mobileDrawerOpen]);
+    setDrawerShouldRender(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setMobileDrawerOpen(true)),
+    );
+  }, []);
+
+  const closeMobileDrawer = useCallback(() => {
+    setMobileDrawerOpen(false);
+    drawerCloseTimerRef.current = setTimeout(() => {
+      setDrawerShouldRender(false);
+      drawerCloseTimerRef.current = null;
+    }, 260);
+  }, []);
 
   // ── Imperative swipe handlers — zero React re-renders during drag ────
   const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
@@ -246,10 +248,10 @@ export function SeoShell({
     if (!el) return;
     el.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
 
-    // Right-swipe from the left edge of the chat panel opens the drawer.
+    // Right-swipe from the left edge opens the drawer.
     if (wasHorizontal && dx > 60 && startX < 44 && activeTabRef.current === "chat") {
       el.style.transform = "translateX(0%)";
-      setMobileDrawerOpen(true);
+      openMobileDrawer();
       return;
     }
 
@@ -305,13 +307,12 @@ export function SeoShell({
     if (dx < -60) {
       el.style.transform = "translateX(-100%)";
       if (bd) { bd.style.transition = "opacity 0.25s"; bd.style.opacity = "0"; }
-      skipDrawerStateSync.current = true;
-      setTimeout(() => setMobileDrawerOpen(false), 250);
+      closeMobileDrawer();
     } else {
       el.style.transform = "translateX(0)";
       if (bd) { bd.style.transition = "opacity 0.25s"; bd.style.opacity = "0.4"; }
     }
-  }, []);
+  }, [closeMobileDrawer]);
 
   const handleComposerFocus = useCallback(() => {
     if (isAnonymous) {
@@ -384,41 +385,50 @@ export function SeoShell({
         )}
       </aside>
 
-      {/* ── Mobile drawer overlay — always in DOM, animated via refs ── */}
-      <div
-        className="fixed inset-0 z-40 lg:hidden"
-        style={{ pointerEvents: mobileDrawerOpen ? "auto" : "none" }}
-        aria-hidden={!mobileDrawerOpen}
-      >
+      {/* ── Mobile drawer overlay ── */}
+      {drawerShouldRender && (
         <div
-          ref={drawerBackdropRef}
-          className="absolute inset-0 bg-black"
-          style={{ opacity: 0 }}
-          onClick={() => setMobileDrawerOpen(false)}
-          aria-hidden="true"
-        />
-        <div
-          ref={drawerPanelRef}
-          className="relative z-50 h-full w-72 shadow-xl"
-          style={{ transform: "translateX(-100%)", touchAction: "pan-y" }}
-          onTouchStart={handleDrawerTouchStart}
-          onTouchMove={handleDrawerTouchMove}
-          onTouchEnd={handleDrawerTouchEnd}
-          onTouchCancel={handleDrawerTouchEnd}
+          className="fixed inset-0 z-40 lg:hidden"
+          style={{ pointerEvents: mobileDrawerOpen ? "auto" : "none" }}
+          aria-hidden={!mobileDrawerOpen}
         >
-          <ConversationSidebar
-            user={user ?? null}
-            conversations={conversations}
-            activeConversationId=""
-            isLoading={conversationsLoading}
-            onNewChat={handleNewChat}
-            onSelectConversation={handleSelectConversation}
-            onRenameConversation={handleRenameConversation}
-            onDeleteConversation={handleDeleteConversation}
-            onClose={() => setMobileDrawerOpen(false)}
+          <div
+            ref={drawerBackdropRef}
+            className="absolute inset-0 bg-black"
+            style={{
+              opacity: mobileDrawerOpen ? 0.4 : 0,
+              transition: "opacity 0.25s",
+            }}
+            onClick={closeMobileDrawer}
+            aria-hidden="true"
           />
+          <div
+            ref={drawerPanelRef}
+            className="relative z-50 h-full w-72 shadow-xl"
+            style={{
+              transform: mobileDrawerOpen ? "translateX(0)" : "translateX(-100%)",
+              transition: "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)",
+              touchAction: "pan-y",
+            }}
+            onTouchStart={handleDrawerTouchStart}
+            onTouchMove={handleDrawerTouchMove}
+            onTouchEnd={handleDrawerTouchEnd}
+            onTouchCancel={handleDrawerTouchEnd}
+          >
+            <ConversationSidebar
+              user={user ?? null}
+              conversations={conversations}
+              activeConversationId=""
+              isLoading={conversationsLoading}
+              onNewChat={handleNewChat}
+              onSelectConversation={handleSelectConversation}
+              onRenameConversation={handleRenameConversation}
+              onDeleteConversation={handleDeleteConversation}
+              onClose={closeMobileDrawer}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Main area ── */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -427,7 +437,7 @@ export function SeoShell({
           <div className="flex items-center justify-between gap-3 px-3 py-2.5">
             <button
               type="button"
-              onClick={() => setMobileDrawerOpen(true)}
+              onClick={openMobileDrawer}
               className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
               aria-label="Open menu"
             >
