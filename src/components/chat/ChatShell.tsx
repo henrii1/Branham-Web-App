@@ -1131,7 +1131,7 @@ function MobileHeader({
               />
             </svg>
           </button>
-          <BrandLogo href="/chat" size={30} nameClassName="text-sm" />
+          <BrandLogo href="/chat" size={30} showName={false} />
         </div>
 
         <div className="flex items-center gap-2">
