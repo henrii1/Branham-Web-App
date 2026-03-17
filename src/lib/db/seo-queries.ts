@@ -47,6 +47,22 @@ export async function fetchSeoPage(
   return data;
 }
 
+export async function fetchTopPublishedSeoPages(
+  limit = 8,
+): Promise<Pick<SeoCacheRow, "slug" | "question">[]> {
+  const supabase = getPublicClient();
+  const { data, error } = await supabase
+    .from("seo_cache")
+    .select("slug, question")
+    .eq("published", true)
+    .eq("language", "en")
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function fetchAllPublishedSeoPages(): Promise<SeoCacheRow[]> {
   const supabase = getPublicClient();
   const { data, error } = await supabase

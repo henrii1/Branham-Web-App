@@ -8,15 +8,15 @@ const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
-  title: { absolute: "Frequently Asked Questions | Branham Sermons AI" },
+  title: { absolute: "Popular Questions About Bro Branham | Branham Sermons AI" },
   description:
-    "Find answers to common questions about the sermons and teachings of William Marrion Branham, powered by AI search grounded in the original sermon texts.",
+    "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham — answered from the original sermon texts.",
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/faq` },
   openGraph: {
-    title: "Frequently Asked Questions | Branham Sermons AI",
+    title: "Popular Questions About Bro Branham | Branham Sermons AI",
     description:
-      "Find answers to common questions about the sermons and teachings of William Marrion Branham.",
+      "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham.",
     url: `${SITE_URL}/faq`,
     type: "website",
     images: [{ url: OG_IMAGE }],
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Frequently Asked Questions | Branham Sermons AI",
+    title: "Popular Questions About Bro Branham | Branham Sermons AI",
     description:
-      "Find answers to common questions about the sermons and teachings of William Marrion Branham.",
+      "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham.",
     images: [OG_IMAGE],
   },
 };
@@ -102,6 +102,17 @@ export default async function FaqPage() {
               Common questions about the sermons and teachings of William Marrion
               Branham, answered from the original sermon texts.
             </p>
+
+            {/* Hidden links for search crawlers to discover /q/ pages.
+                Visually hidden via sr-only; identical content users navigate
+                to via the accordion. */}
+            <nav className="sr-only" aria-label="All questions">
+              {faqItems.map((item) => (
+                <Link key={item.slug} href={`/q/${item.slug}`}>
+                  {item.question}
+                </Link>
+              ))}
+            </nav>
 
             <FaqAccordion items={faqItems} />
 

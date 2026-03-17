@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { fetchSeoPage } from "@/lib/db/seo-queries";
 import { SeoShell } from "@/components/seo/SeoShell";
+import { renderMarkdown } from "@/lib/markdown/render";
+import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 
 const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = "/og-image.png";
@@ -77,24 +79,60 @@ export default async function SeoQuestionPage({ params }: PageProps) {
 
   const answerPlainExcerpt = getFirst300Words(page.answer_markdown);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "QAPage",
-    mainEntity: {
-      "@type": "Question",
-      name: page.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: answerPlainExcerpt,
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "QAPage",
+      mainEntity: {
+        "@type": "Question",
+        name: page.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: answerPlainExcerpt,
+        },
       },
     },
-  };
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: `${SITE_URL}/chat`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "FAQ",
+          item: `${SITE_URL}/faq`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: page.question,
+          item: `${SITE_URL}/q/${slug}`,
+        },
+      ],
+    },
+  ];
+
+  const processedAnswer = postprocessChatResponse(page.answer_markdown);
+  const ssrAnswerHtml = renderMarkdown(processedAnswer);
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* Full answer rendered server-side for search crawlers.
+          Visually hidden; identical to what users see after the typewriter animation. */}
+      <div
+        className="sr-only"
+        aria-hidden="true"
+        dangerouslySetInnerHTML={{ __html: ssrAnswerHtml }}
       />
       <SeoShell
         slug={slug}

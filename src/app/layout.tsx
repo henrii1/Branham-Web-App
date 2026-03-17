@@ -46,6 +46,32 @@ export const metadata: Metadata = {
   },
 };
 
+const siteLevelJsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://branhamsermons.ai/#website",
+    name: "Branham Sermons AI",
+    url: "https://branhamsermons.ai",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://branhamsermons.ai/#organization",
+    name: "Branham Sermons AI",
+    url: "https://branhamsermons.ai",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://branhamsermons.ai/og-image.png",
+    },
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: "info@branhamsermons.ai",
+      contactType: "customer support",
+    },
+  },
+];
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -81,6 +107,12 @@ export default async function RootLayout({
       className={initialTheme === "dark" ? "dark" : undefined}
       data-theme={initialTheme}
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteLevelJsonLd) }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} antialiased`}
       >

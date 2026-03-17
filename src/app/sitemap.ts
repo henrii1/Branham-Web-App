@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     {
-      url: SITE_URL,
+      url: `${SITE_URL}/chat`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1.0,
