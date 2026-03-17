@@ -1,5 +1,4 @@
 import { ImageResponse } from "next/og";
-import { BrandMarkImage } from "@/lib/brand/BrandMarkImage";
 
 export const size = {
   width: 1200,
@@ -39,7 +38,7 @@ export default function OpenGraphImage() {
               fontWeight: 700,
             }}
           >
-            Branham Sermons AI
+            Branham Sermons Study Assistant
           </div>
           <div
             style={{
@@ -53,7 +52,15 @@ export default function OpenGraphImage() {
           </div>
         </div>
 
-        <BrandMarkImage size={320} cornerRadius={56} />
+        {/* App logo from public/logo.png */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://branhamsermons.ai/logo.png"
+          width={280}
+          height={280}
+          alt=""
+          style={{ borderRadius: 56, boxShadow: "0 16px 36px rgba(15,23,42,0.18)" }}
+        />
       </div>
     ),
     size,

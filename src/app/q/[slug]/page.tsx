@@ -42,7 +42,7 @@ export async function generateMetadata({
     return { title: "Not Found" };
   }
 
-  const title = page.meta_title || `${page.question} | Branham Sermons AI`;
+  const title = page.meta_title || `${page.question} | Branham Sermons Study Assistant`;
   const description =
     page.meta_description || stripMarkdownToPlain(page.answer_markdown).slice(0, 155);
   const canonicalUrl = `${SITE_URL}/q/${slug}`;
@@ -58,7 +58,7 @@ export async function generateMetadata({
       url: canonicalUrl,
       type: "article",
       images: [{ url: OG_IMAGE }],
-      siteName: "Branham Sermons AI",
+      siteName: "Branham Sermons Study Assistant",
     },
     twitter: {
       card: "summary_large_image",
@@ -79,53 +79,57 @@ export default async function SeoQuestionPage({ params }: PageProps) {
 
   const answerPlainExcerpt = getFirst300Words(page.answer_markdown);
 
-  const jsonLd = [
-    {
-      "@context": "https://schema.org",
-      "@type": "QAPage",
-      mainEntity: {
-        "@type": "Question",
-        name: page.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: answerPlainExcerpt,
-        },
+  const qaPageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity: {
+      "@type": "Question",
+      name: page.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: answerPlainExcerpt,
       },
     },
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Home",
-          item: `${SITE_URL}/chat`,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: "FAQ",
-          item: `${SITE_URL}/faq`,
-        },
-        {
-          "@type": "ListItem",
-          position: 3,
-          name: page.question,
-          item: `${SITE_URL}/q/${slug}`,
-        },
-      ],
-    },
-  ];
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${SITE_URL}/chat`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "FAQ",
+        item: `${SITE_URL}/faq`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: page.question,
+        item: `${SITE_URL}/q/${slug}`,
+      },
+    ],
+  };
 
   const processedAnswer = postprocessChatResponse(page.answer_markdown);
   const ssrAnswerHtml = renderMarkdown(processedAnswer);
 
   return (
     <>
+      {/* Each structured data type in its own script tag — required by Google */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(qaPageJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       {/* Full answer rendered server-side for search crawlers.
           Visually hidden; identical to what users see after the typewriter animation. */}

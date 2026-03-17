@@ -19,7 +19,7 @@ export default async function SignupPage({
           Create your account
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Join Branham Sermons AI to save your conversations
+          Join Branham Sermons Study Assistant to save your conversations
         </p>
       </div>
 

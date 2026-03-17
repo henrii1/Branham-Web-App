@@ -8,23 +8,23 @@ const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
-  title: { absolute: "Popular Questions About Bro Branham | Branham Sermons AI" },
+  title: { absolute: "Popular Questions About Bro Branham | Branham Sermons Study Assistant" },
   description:
     "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham — answered from the original sermon texts.",
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/faq` },
   openGraph: {
-    title: "Popular Questions About Bro Branham | Branham Sermons AI",
+    title: "Popular Questions About Bro Branham | Branham Sermons Study Assistant",
     description:
       "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham.",
     url: `${SITE_URL}/faq`,
     type: "website",
     images: [{ url: OG_IMAGE }],
-    siteName: "Branham Sermons AI",
+    siteName: "Branham Sermons Study Assistant",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Popular Questions About Bro Branham | Branham Sermons AI",
+    title: "Popular Questions About Bro Branham | Branham Sermons Study Assistant",
     description:
       "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham.",
     images: [OG_IMAGE],

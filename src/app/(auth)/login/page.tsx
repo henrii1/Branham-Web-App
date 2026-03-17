@@ -19,7 +19,7 @@ export default async function LoginPage({
           Welcome back
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Log in to Branham Sermons AI
+          Log in to Branham Sermons Study Assistant
         </p>
       </div>
 

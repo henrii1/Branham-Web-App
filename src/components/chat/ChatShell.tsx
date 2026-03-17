@@ -1262,39 +1262,59 @@ function MobileHeader({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400" />
           </span>
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+          <p className="flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
             {sourcesNotif && chatNotif ? (
               <>Sources &amp; answer ready — swipe or tap a tab</>
             ) : sourcesNotif ? (
               <>
                 Sources ready — swipe
-                {/* Animated left-nudge chevron */}
-                <svg
-                  className="swipe-hint-left h-3 w-3 shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2.5}
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                </svg>
+                {/* Double sweeping chevrons pointing RIGHT → Sources is to the right */}
+                <span className="relative ml-0.5 inline-flex items-center" aria-hidden="true">
+                  <svg
+                    className="swipe-hint-right h-3 w-3 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={3}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                  <svg
+                    className="swipe-hint-right-trail -ml-1.5 h-3 w-3 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={3}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </span>
                 or tap Sources
               </>
             ) : (
               <>
                 Answer ready — swipe
-                {/* Animated right-nudge chevron */}
-                <svg
-                  className="swipe-hint-right h-3 w-3 shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2.5}
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
+                {/* Double sweeping chevrons pointing LEFT ← Chat is to the left */}
+                <span className="relative ml-0.5 inline-flex items-center" aria-hidden="true">
+                  <svg
+                    className="swipe-hint-left h-3 w-3 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={3}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                  </svg>
+                  <svg
+                    className="swipe-hint-left-trail -ml-1.5 h-3 w-3 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={3}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                  </svg>
+                </span>
                 or tap Chat
               </>
             )}

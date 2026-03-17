@@ -25,7 +25,7 @@ export default async function LanguageSelectionPage({
           Choose your language
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Select your preferred language for Branham Sermons AI
+          Select your preferred language for Branham Sermons Study Assistant
         </p>
       </div>
 

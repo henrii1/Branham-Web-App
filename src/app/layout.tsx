@@ -35,42 +35,56 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://branhamsermons.ai"),
   title: {
-    default: "Branham Sermons AI",
-    template: "%s | Branham Sermons AI",
+    default: "Branham Sermons Study Assistant",
+    template: "%s | Branham Sermons Study Assistant",
   },
   description:
-    "Ask questions about the sermons of William Marrion Branham. AI-powered search and answers grounded in the original sermon texts.",
+    "Ask questions about the sermons of William Marrion Branham. Answers grounded in the original sermon texts.",
   robots: {
     index: false,
     follow: false,
   },
 };
 
-const siteLevelJsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "@id": "https://branhamsermons.ai/#website",
-    name: "Branham Sermons AI",
-    url: "https://branhamsermons.ai",
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "https://branhamsermons.ai/#website",
+  name: "Branham Sermons Study Assistant",
+  alternateName: "Branham Sermons AI",
+  url: "https://branhamsermons.ai",
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://branhamsermons.ai/#organization",
+  name: "Branham Sermons Study Assistant",
+  alternateName: "Branham Sermons AI",
+  url: "https://branhamsermons.ai",
+  logo: {
+    "@type": "ImageObject",
+    url: "https://branhamsermons.ai/logo.png",
+    width: 1024,
+    height: 1024,
   },
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "@id": "https://branhamsermons.ai/#organization",
-    name: "Branham Sermons AI",
-    url: "https://branhamsermons.ai",
-    logo: {
-      "@type": "ImageObject",
-      url: "https://branhamsermons.ai/og-image.png",
-    },
-    contactPoint: {
-      "@type": "ContactPoint",
-      email: "info@branhamsermons.ai",
-      contactType: "customer support",
-    },
+  image: "https://branhamsermons.ai/logo.png",
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "info@branhamsermons.ai",
+    contactType: "customer support",
   },
-];
+};
+
+const siteNavigationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SiteNavigationElement",
+  name: ["Chat", "Popular Questions"],
+  url: [
+    "https://branhamsermons.ai/chat",
+    "https://branhamsermons.ai/faq",
+  ],
+};
 
 export default async function RootLayout({
   children,
@@ -110,7 +124,15 @@ export default async function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteLevelJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteNavigationJsonLd) }}
         />
       </head>
       <body
