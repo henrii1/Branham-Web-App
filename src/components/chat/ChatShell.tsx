@@ -1262,12 +1262,42 @@ function MobileHeader({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400" />
           </span>
-          <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-            {sourcesNotif && chatNotif
-              ? "Sources & answer ready — tap a tab to view"
-              : sourcesNotif
-                ? "Sources ready — tap Sources to view"
-                : "Answer ready — tap Chat to view"}
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+            {sourcesNotif && chatNotif ? (
+              <>Sources &amp; answer ready — swipe or tap a tab</>
+            ) : sourcesNotif ? (
+              <>
+                Sources ready — swipe
+                {/* Animated left-nudge chevron */}
+                <svg
+                  className="swipe-hint-left h-3 w-3 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+                or tap Sources
+              </>
+            ) : (
+              <>
+                Answer ready — swipe
+                {/* Animated right-nudge chevron */}
+                <svg
+                  className="swipe-hint-right h-3 w-3 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+                or tap Chat
+              </>
+            )}
           </p>
         </div>
       )}

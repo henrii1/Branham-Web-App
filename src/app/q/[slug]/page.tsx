@@ -6,7 +6,7 @@ import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 
 const SITE_URL = "https://branhamsermons.ai";
-const OG_IMAGE = "/og-image.png";
+const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
