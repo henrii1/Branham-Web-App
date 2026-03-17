@@ -38,7 +38,7 @@ export default function OpenGraphImage() {
               fontWeight: 700,
             }}
           >
-            Branham Sermons Study Assistant
+            Branham Sermons Assistant
           </div>
           <div
             style={{

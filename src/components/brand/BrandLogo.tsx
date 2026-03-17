@@ -33,7 +33,7 @@ export function BrandLogo({
         <span
           className={`font-display text-base leading-none font-semibold text-foreground ${nameClassName}`.trim()}
         >
-          Branham Sermons Study Assistant
+          Branham Sermons Assistant
         </span>
       )}
     </>
@@ -43,7 +43,7 @@ export function BrandLogo({
     <Link
       href={href}
       className={`inline-flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-90 ${className}`.trim()}
-      aria-label="Branham Sermons Study Assistant home"
+      aria-label="Branham Sermons Assistant home"
     >
       {content}
     </Link>

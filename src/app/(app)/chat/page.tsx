@@ -8,24 +8,24 @@ const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Branham Sermons Study Assistant — Ask Questions About Bro Branham's Sermons",
+    absolute: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
   },
   description:
     "Ask questions about the sermons of Bro. Branham. Find answers grounded in the original sermon texts, explore doctrines, quotes, Scripture references, and teachings.",
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/chat` },
   openGraph: {
-    title: "Branham Sermons Study Assistant — Ask Questions About Bro Branham's Sermons",
+    title: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
     description:
       "Ask questions about the sermons of Bro. Branham. Find answers grounded in the original sermon texts, explore doctrines, quotes, and teachings.",
     url: `${SITE_URL}/chat`,
     type: "website",
     images: [{ url: OG_IMAGE }],
-    siteName: "Branham Sermons Study Assistant",
+    siteName: "Branham Sermons Assistant",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Branham Sermons Study Assistant — Ask Questions About Bro Branham's Sermons",
+    title: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
     description:
       "Ask questions about the sermons of Bro. Branham. Find answers grounded in the original sermon texts, explore doctrines, quotes, and teachings.",
     images: [OG_IMAGE],

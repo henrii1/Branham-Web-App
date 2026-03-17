@@ -42,7 +42,7 @@ export async function generateMetadata({
     return { title: "Not Found" };
   }
 
-  const title = page.meta_title || `${page.question} | Branham Sermons Study Assistant`;
+  const title = page.meta_title || `${page.question} | Branham Sermons Assistant`;
   const description =
     page.meta_description || stripMarkdownToPlain(page.answer_markdown).slice(0, 155);
   const canonicalUrl = `${SITE_URL}/q/${slug}`;
@@ -58,7 +58,7 @@ export async function generateMetadata({
       url: canonicalUrl,
       type: "article",
       images: [{ url: OG_IMAGE }],
-      siteName: "Branham Sermons Study Assistant",
+      siteName: "Branham Sermons Assistant",
     },
     twitter: {
       card: "summary_large_image",

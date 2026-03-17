@@ -395,7 +395,7 @@ export function ConversationSidebar({
               <p className="mt-1 text-xs leading-relaxed text-zinc-400 dark:text-zinc-500">
                 {user
                   ? "Your recent chats will show up here once you ask a question."
-                  : "Sign up to save your Branham Sermons Study Assistant conversations and return to them later."}
+                  : "Sign up to save your Branham Sermons Assistant conversations and return to them later."}
               </p>
             </div>
           </div>

@@ -35,8 +35,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://branhamsermons.ai"),
   title: {
-    default: "Branham Sermons Study Assistant",
-    template: "%s | Branham Sermons Study Assistant",
+    default: "Branham Sermons Assistant",
+    template: "%s | Branham Sermons Assistant",
   },
   description:
     "Ask questions about the sermons of William Marrion Branham. Answers grounded in the original sermon texts.",
@@ -50,7 +50,7 @@ const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "@id": "https://branhamsermons.ai/#website",
-  name: "Branham Sermons Study Assistant",
+  name: "Branham Sermons Assistant",
   alternateName: "Branham Sermons AI",
   url: "https://branhamsermons.ai",
 };
@@ -59,7 +59,7 @@ const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   "@id": "https://branhamsermons.ai/#organization",
-  name: "Branham Sermons Study Assistant",
+  name: "Branham Sermons Assistant",
   alternateName: "Branham Sermons AI",
   url: "https://branhamsermons.ai",
   logo: {

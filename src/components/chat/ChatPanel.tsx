@@ -19,14 +19,14 @@ function WelcomeState() {
       <div className="max-w-lg rounded-[28px] border border-zinc-200 bg-[var(--surface-base)] px-8 py-10 text-center shadow-sm dark:border-zinc-700">
         <Image
           src={logo}
-          alt="Branham Sermons Study Assistant logo"
+          alt="Branham Sermons Assistant logo"
           width={76}
           height={76}
           priority
           className="mx-auto mb-5 rounded-2xl object-cover shadow-sm"
         />
         <h2 className="font-display mb-3 text-3xl text-foreground">
-          Branham Sermons Study Assistant
+          Branham Sermons Assistant
         </h2>
         <p className="text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
           Ask questions about the sermons of William Marrion Branham. Your
