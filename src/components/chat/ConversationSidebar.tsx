@@ -297,10 +297,8 @@ export function ConversationSidebar({
 
   return (
     <div className="flex h-full flex-col bg-[var(--surface-sidebar)]">
-      <div className="relative flex items-center border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <BrandLogo priority showName={false} size={34} className="pointer-events-auto" />
-        </div>
+      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <BrandLogo priority showName={false} size={34} />
         <div className="flex items-center gap-1.5">
           {onCollapse && (
             <button
