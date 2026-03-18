@@ -1066,6 +1066,23 @@ export function ChatShell({
           </div>
         </div>
 
+        {/* New-topic nudge — visible only once there are messages */}
+        {messages.length > 0 && (
+          <div className="bg-[var(--surface-base)] px-4 pb-1.5 pt-1 text-center">
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
+              Switching topics?{" "}
+              <button
+                type="button"
+                onClick={handleNewConversation}
+                className="underline transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                Start a new chat
+              </button>{" "}
+              for more relevant passages.
+            </p>
+          </div>
+        )}
+
         {/* ── Composer (always visible) ── */}
         <Composer
           onSend={handleSendMessage}
@@ -1241,7 +1258,7 @@ function MobileHeader({
               <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-green-500" />
             )}
           </span>
-          <span>Sources</span>
+          <span>Passages</span>
           {/* "NEW" badge when sources just arrived */}
           {sourcesNotif && (
             <span className="mobile-ready-badge inline-flex items-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white shadow-sm dark:bg-blue-500">
@@ -1264,10 +1281,10 @@ function MobileHeader({
           </span>
           <p className="flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
             {sourcesNotif && chatNotif ? (
-              <>Sources &amp; answer ready — swipe or tap a tab</>
+              <>Passages &amp; answer ready — swipe or tap a tab</>
             ) : sourcesNotif ? (
               <>
-                Sources ready — swipe
+                Passages ready — swipe
                 {/* Double sweeping chevrons pointing RIGHT → Sources is to the right */}
                 <span className="relative ml-0.5 inline-flex items-center" aria-hidden="true">
                   <svg

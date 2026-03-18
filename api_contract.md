@@ -39,7 +39,7 @@ This document is the frontend instruction guide for request payloads and SSE res
 ## Request Field Rules
 
 - `conversation_id` (required, string)
-  - Stable ID for one conversation.
+  - Stable ID for one conversation.[ask-confirmation.d.ts](node_modules/%40opennextjs/cloudflare/dist/cli/utils/ask-confirmation.d.ts)
   - Keep the same value across turns in the same chat.
   - Backward-compatible alias accepted by backend: `session_id`.
 
