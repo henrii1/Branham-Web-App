@@ -25,6 +25,7 @@ import { DragDivider } from "@/components/chat/DragDivider";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { AnonymousBanner } from "@/components/chat/AnonymousBanner";
 import { SidebarRail } from "@/components/chat/SidebarRail";
+import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
 
 interface SeoShellProps {
   slug: string;
@@ -636,6 +637,7 @@ interface SeoComposerProps {
 
 function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerProps) {
   const [value, setValue] = useState("");
+  const [interimTranscript, setInterimTranscript] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -647,7 +649,28 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
     if (!trimmed || disabled) return;
     onSubmit(trimmed);
     setValue("");
+    setInterimTranscript("");
   };
+
+  const { isSupported, isRecording, startRecording, stopRecording } =
+    useVoiceInput({
+      onInterimResult: useCallback((transcript: string) => {
+        setInterimTranscript(transcript);
+      }, []),
+      onFinalResult: useCallback((transcript: string) => {
+        setInterimTranscript("");
+        setValue((prev) => {
+          const base = prev.trimEnd();
+          return base ? `${base} ${transcript}` : transcript;
+        });
+      }, []),
+    });
+
+  const displayValue = interimTranscript
+    ? value.trimEnd()
+      ? `${value.trimEnd()} ${interimTranscript}`
+      : interimTranscript
+    : value;
 
   return (
     <form
@@ -657,8 +680,11 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
       <div className="mx-auto flex max-w-4xl items-center gap-2 xl:max-w-[56rem]">
         <input
           type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          value={displayValue}
+          onChange={(e) => {
+            if (isRecording) return;
+            setValue(e.target.value);
+          }}
           onFocus={isAnonymous ? onFocus : undefined}
           placeholder={
             isAnonymous
@@ -669,8 +695,50 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
           }
           disabled={disabled}
           readOnly={isAnonymous}
-          className="flex-1 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-[var(--surface-base)] disabled:opacity-50 dark:border-zinc-700 dark:focus:border-zinc-500"
+          className={`flex-1 rounded-2xl border bg-[var(--surface-soft)] px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-400 disabled:opacity-50 ${
+            isRecording
+              ? "border-red-400 bg-red-50 focus:border-red-400 dark:bg-red-950/20 dark:border-red-600"
+              : "border-zinc-200 focus:border-zinc-400 focus:bg-[var(--surface-base)] dark:border-zinc-700 dark:focus:border-zinc-500"
+          }`}
         />
+
+        {/* Microphone button — hidden when browser doesn't support it */}
+        {isSupported && !isAnonymous && (
+          <button
+            type="button"
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={disabled}
+            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+              isRecording
+                ? "bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-400"
+                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+            }`}
+            aria-label={isRecording ? "Stop recording" : "Use voice input"}
+          >
+            {isRecording ? (
+              <span className="relative flex h-3 w-3 items-center justify-center">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+              </span>
+            ) : (
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.75}
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 0 1 6 0v8.25a3 3 0 0 1-3 3Z"
+                />
+              </svg>
+            )}
+          </button>
+        )}
+
         <button
           type="submit"
           disabled={disabled || (!value.trim() && !isAnonymous)}
