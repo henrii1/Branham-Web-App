@@ -496,7 +496,7 @@ export function SeoShell({
                   : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
               }`}
             >
-              Sources
+              Passages
             </button>
           </nav>
         </header>
@@ -521,7 +521,7 @@ export function SeoShell({
             <div className="flex h-full flex-col bg-[var(--surface-sources)]">
               <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Sources
+                  Passages
                 </h2>
                 <Link
                   href="/faq"

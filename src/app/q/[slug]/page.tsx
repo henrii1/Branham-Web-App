@@ -78,6 +78,13 @@ export default async function SeoQuestionPage({ params }: PageProps) {
   }
 
   const answerPlainExcerpt = getFirst300Words(page.answer_markdown);
+  const canonicalUrl = `${SITE_URL}/q/${slug}`;
+
+  const appOrg = {
+    "@type": "Organization",
+    name: "Branham Sermons AI",
+    url: SITE_URL,
+  };
 
   const qaPageJsonLd = {
     "@context": "https://schema.org",
@@ -85,9 +92,17 @@ export default async function SeoQuestionPage({ params }: PageProps) {
     mainEntity: {
       "@type": "Question",
       name: page.question,
+      text: page.question,
+      answerCount: 1,
+      datePublished: page.created_at,
+      author: appOrg,
       acceptedAnswer: {
         "@type": "Answer",
         text: answerPlainExcerpt,
+        url: canonicalUrl,
+        datePublished: page.updated_at,
+        upvoteCount: 0,
+        author: appOrg,
       },
     },
   };
@@ -112,7 +127,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
         "@type": "ListItem",
         position: 3,
         name: page.question,
-        item: `${SITE_URL}/q/${slug}`,
+        item: canonicalUrl,
       },
     ],
   };
