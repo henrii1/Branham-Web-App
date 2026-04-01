@@ -66,7 +66,7 @@
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anonymous key
 - `SUPABASE_SERVICE_ROLE_KEY` — Supabase secret key (server-side only)
 - `POSTMARK_SERVER_TOKEN` — Postmark API token (server-side only)
-- `POSTMARK_FROM_EMAIL` — verified Postmark sender (server-side only; defaults to `support@branhamsermons.ai`)
+- `POSTMARK_FROM_EMAIL` — verified Postmark sender (server-side only; defaults to `info@branhamsermons.ai`)
 
 Server-side secrets are set via `wrangler secret put` (encrypted at rest). Client-side `NEXT_PUBLIC_*` vars go in `wrangler.jsonc` or `.env.local`.
 

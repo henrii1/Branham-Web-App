@@ -25,7 +25,7 @@ Each response includes explicit sermon references so that users can easily locat
 
 After logging in, users can view past conversations and continue their studies from where they left off.
 
-We sincerely appreciate feedback and recommendations from both people who are new to the Message and those whom God has graciously helped to study many of the sermons already. You can reach us at support@branhamsermons.ai
+We sincerely appreciate feedback and recommendations from both people who are new to the Message and those whom God has graciously helped to study many of the sermons already. You can reach us at info@branhamsermons.ai
 .
 
 Admin
