@@ -46,6 +46,12 @@ import { SidebarRail } from "./SidebarRail";
 const DEFAULT_PANEL_RATIO = 0.4;
 const MAX_TITLE_LENGTH = 50;
 const MOBILE_ACTIVE_TAB_KEY = "branham-mobile-active-tab";
+// Mirror the server's per-message and per-window limits in
+// src/app/api/chat/route.ts. The cap is enforced upstream — we trim here
+// so a long seeded assistant message (e.g. an SEO answer used as
+// follow-up context) doesn't trip the proxy's payload validator.
+const HISTORY_MAX_MESSAGES = 12;
+const HISTORY_MAX_MESSAGE_CHARS = 3900;
 
 function getIsMobileViewport(): boolean {
   if (typeof window === "undefined") return false;
@@ -815,9 +821,20 @@ export function ChatShell({
         return;
       }
 
+      // Keep the last N turns and truncate any oversized message so the
+      // proxy's per-message validator doesn't 400 us. The full assistant
+      // answer always lives in `messages` for rendering; the history we
+      // send is just enough recent context for the LLM to follow up.
+      const recentMessages = messages.slice(-HISTORY_MAX_MESSAGES);
       const historyWindow =
-        messages.length > 0
-          ? messages.map((m) => ({ role: m.role, content: m.content }))
+        recentMessages.length > 0
+          ? recentMessages.map((m) => ({
+              role: m.role,
+              content:
+                m.content.length > HISTORY_MAX_MESSAGE_CHARS
+                  ? m.content.slice(0, HISTORY_MAX_MESSAGE_CHARS) + "…"
+                  : m.content,
+            }))
           : undefined;
 
       const requestBody: Record<string, unknown> = {
@@ -826,7 +843,10 @@ export function ChatShell({
         user_language: "en",
       };
       if (conversationSummary) {
-        requestBody.conversation_summary = conversationSummary;
+        requestBody.conversation_summary =
+          conversationSummary.length > HISTORY_MAX_MESSAGE_CHARS
+            ? conversationSummary.slice(0, HISTORY_MAX_MESSAGE_CHARS) + "…"
+            : conversationSummary;
       }
       if (historyWindow) {
         requestBody.history_window = historyWindow;
