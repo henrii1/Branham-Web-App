@@ -39,6 +39,7 @@ import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
 import { LoginModal } from "./LoginModal";
 import { OfflineModal } from "./OfflineModal";
+import { SwipeAffordance } from "./SwipeAffordance";
 import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
 
@@ -1127,6 +1128,17 @@ export function ChatShell({
                 />
               </div>
             </div>
+
+            {/* Swipe-direction affordance — outline-only chevron pinned to
+                whichever edge points toward the ready-but-unread tab.
+                Conditionally rendered so the active animation runs fresh
+                each time the affordance becomes applicable. */}
+            {activeTab === "chat" && sourcesReady && (
+              <SwipeAffordance direction="right" />
+            )}
+            {activeTab === "sources" && chatReady && (
+              <SwipeAffordance direction="left" />
+            )}
           </div>
         </div>
 
@@ -1340,76 +1352,6 @@ function MobileHeader({
         </button>
       </nav>
 
-      {/* Notification strip — shown when content is ready on the other tab */}
-      {(sourcesNotif || chatNotif) && (
-        <div
-          className="mobile-ready-notif flex items-center gap-2 border-t border-blue-100 bg-blue-50 px-3 py-2 dark:border-blue-900/40 dark:bg-blue-950/30"
-          aria-live="polite"
-        >
-          {/* Animated pulse dot */}
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400" />
-          </span>
-          <p className="flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-            {sourcesNotif && chatNotif ? (
-              <>Passages &amp; answer ready — swipe or tap a tab</>
-            ) : sourcesNotif ? (
-              <>
-                Passages ready — swipe
-                {/* Double sweeping chevrons pointing RIGHT → Sources is to the right */}
-                <span className="relative ml-0.5 inline-flex items-center" aria-hidden="true">
-                  <svg
-                    className="swipe-hint-right h-3 w-3 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={3}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                  <svg
-                    className="swipe-hint-right-trail -ml-1.5 h-3 w-3 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={3}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </span>
-                or tap Sources
-              </>
-            ) : (
-              <>
-                Answer ready — swipe
-                {/* Double sweeping chevrons pointing LEFT ← Chat is to the left */}
-                <span className="relative ml-0.5 inline-flex items-center" aria-hidden="true">
-                  <svg
-                    className="swipe-hint-left h-3 w-3 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={3}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                  </svg>
-                  <svg
-                    className="swipe-hint-left-trail -ml-1.5 h-3 w-3 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={3}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                  </svg>
-                </span>
-                or tap Chat
-              </>
-            )}
-          </p>
-        </div>
-      )}
     </header>
   );
 }
