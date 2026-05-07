@@ -21,11 +21,13 @@ import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { TypewriterRenderer } from "./TypewriterRenderer";
 import { LoginModal } from "@/components/chat/LoginModal";
+import { OfflineModal } from "@/components/chat/OfflineModal";
 import { DragDivider } from "@/components/chat/DragDivider";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { AnonymousBanner } from "@/components/chat/AnonymousBanner";
 import { SidebarRail } from "@/components/chat/SidebarRail";
 import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
+import { isOfflineError } from "@/lib/utils/networkError";
 
 interface SeoShellProps {
   slug: string;
@@ -58,6 +60,10 @@ export function SeoShell({
   const isAnonymous = !user;
 
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [offlineModalOpen, setOfflineModalOpen] = useState(false);
+  // Cached follow-up content so the offline-modal Retry button can re-run
+  // the seed without the user having to retype.
+  const pendingFollowUpRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "sources">(() => {
     if (typeof window === "undefined") return "chat";
     const stored = window.sessionStorage.getItem("branham-mobile-active-tab");
@@ -329,6 +335,7 @@ export function SeoShell({
         return;
       }
       if (seeding || !user) return;
+      pendingFollowUpRef.current = content;
       setSeeding(true);
 
       try {
@@ -348,14 +355,30 @@ export function SeoShell({
           "seo_followup",
           JSON.stringify({ conversationId: convId, query: content }),
         );
+        pendingFollowUpRef.current = null;
         router.push(`/chat/${convId}`);
       } catch (err) {
         console.error("Failed to seed conversation from SEO:", err);
         setSeeding(false);
+        if (isOfflineError(err)) {
+          setOfflineModalOpen(true);
+        }
       }
     },
     [isAnonymous, user, seeding, question, answerMarkdown, ragContext, conversationSummary, router],
   );
+
+  const handleOfflineRetry = useCallback(() => {
+    const content = pendingFollowUpRef.current;
+    setOfflineModalOpen(false);
+    if (!content) return;
+    void handleFollowUp(content);
+  }, [handleFollowUp]);
+
+  const handleOfflineDismiss = useCallback(() => {
+    setOfflineModalOpen(false);
+    pendingFollowUpRef.current = null;
+  }, []);
 
   return (
     <div className="flex h-dvh bg-background">
@@ -620,6 +643,14 @@ export function SeoShell({
         <LoginModal
           onClose={() => setShowLoginModal(false)}
           seoSlug={slug}
+        />
+      )}
+
+      {/* ── Offline modal ── */}
+      {offlineModalOpen && (
+        <OfflineModal
+          onRetry={handleOfflineRetry}
+          onDismiss={handleOfflineDismiss}
         />
       )}
     </div>

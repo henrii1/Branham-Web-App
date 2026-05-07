@@ -230,16 +230,76 @@ export async function POST(request: NextRequest) {
     }
 
     // Explicit pull-based pipe to guarantee chunk-by-chunk streaming
-    // (avoids potential buffering when passing upstream.body directly)
+    // (avoids potential buffering when passing upstream.body directly).
+    //
+    // Also synthesizes a terminal `error` + `done` SSE pair if the upstream
+    // stream EOFs without sending one (Cloud Run OOM kill, instance recycle,
+    // network drop, etc.). Without this, the FE state machine has no signal
+    // that the request failed and gets stuck on "Finalizing response…".
     const upstreamReader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    const TERMINAL_MARKERS = ["event: final", "event: error", "event: done"];
+
+    const synthesizeTerminal = (message: string) =>
+      encoder.encode(
+        `event: error\ndata: ${JSON.stringify({ mode: "error", answer: message })}\n\n` +
+          `event: done\ndata: ${JSON.stringify({ ok: false })}\n\n`,
+      );
+
+    let sawTerminal = false;
+    let tail = "";
+
     const stream = new ReadableStream({
       async pull(controller) {
-        const { done, value } = await upstreamReader.read();
-        if (done) {
-          controller.close();
-          return;
+        try {
+          const { done, value } = await upstreamReader.read();
+          if (done) {
+            if (!sawTerminal) {
+              try {
+                controller.enqueue(
+                  synthesizeTerminal(
+                    "The service was momentarily unavailable. Please try again.",
+                  ),
+                );
+              } catch {
+                // Downstream already closed — nothing to do.
+              }
+            }
+            controller.close();
+            return;
+          }
+
+          if (!sawTerminal) {
+            const combined = tail + decoder.decode(value, { stream: true });
+            if (TERMINAL_MARKERS.some((m) => combined.includes(m))) {
+              sawTerminal = true;
+              tail = "";
+            } else {
+              // Keep enough tail bytes to catch markers split across chunks.
+              tail = combined.slice(-32);
+            }
+          }
+
+          controller.enqueue(value);
+        } catch {
+          if (!sawTerminal) {
+            try {
+              controller.enqueue(
+                synthesizeTerminal(
+                  "The connection to the model service was interrupted. Please try again.",
+                ),
+              );
+            } catch {
+              // Downstream already closed.
+            }
+          }
+          try {
+            controller.close();
+          } catch {
+            // Already closed/errored.
+          }
         }
-        controller.enqueue(value);
       },
       cancel() {
         upstreamReader.cancel();

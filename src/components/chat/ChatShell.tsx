@@ -9,6 +9,7 @@ import { processSSEStream } from "@/lib/sse/parser";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 import { stripParagraphLetterSuffixes } from "@/lib/markdown/citations";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
+import { isOfflineError } from "@/lib/utils/networkError";
 import {
   fetchConversations,
   fetchConversation,
@@ -37,6 +38,7 @@ import { Composer } from "./Composer";
 import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
 import { LoginModal } from "./LoginModal";
+import { OfflineModal } from "./OfflineModal";
 import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
 
@@ -91,6 +93,15 @@ function rowToConversation(
   };
 }
 
+interface SendArgs {
+  userMessage: Message;
+  requestBody: Record<string, unknown>;
+  content: string;
+  isNew: boolean;
+  currentUser: { id: string } | null;
+  currentConvId: string;
+}
+
 interface ChatShellProps {
   initialConversationId?: string;
   triggerWelcomeEmail?: boolean;
@@ -126,6 +137,7 @@ export function ChatShell({
 
   // ── UI state ────────────────────────────────────────────────────────
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "sources">(
     getStoredMobileTab,
   );
@@ -142,7 +154,10 @@ export function ChatShell({
   const abortRef = useRef<AbortController | null>(null);
   const activeTabRef = useRef<"chat" | "sources">(activeTab);
   const streamRagRef = useRef<RagData | null>(null);
-  const dbReadyRef = useRef<Promise<void>>(Promise.resolve());
+  // Cached args from the last `runChatRequest` call. Used to re-fire the
+  // network request when the user taps Retry on the offline modal — without
+  // re-adding the optimistic user message to local state.
+  const lastSendArgsRef = useRef<SendArgs | null>(null);
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
   const pendingFollowUpRef = useRef<string | null>(null);
@@ -544,39 +559,16 @@ export function ChatShell({
     [conversationId, conversationExists, loadConversation],
   );
 
-  // ── Send message ────────────────────────────────────────────────────
-  const handleSendMessage = useCallback(
-    async (content: string) => {
-      const hasExistingUserMessage = messages.some((m) => m.role === "user");
-      if (isAnonymous && hasExistingUserMessage) {
-        setShowLoginModal(true);
-        return;
-      }
+  // ── Run a chat request (fetch + SSE + persistence) ──────────────────
+  // Pulled out of `handleSendMessage` so the offline-modal Retry button can
+  // re-fire the network call without re-adding an optimistic user message.
+  // All DB writes are deferred until the `final` event arrives — if the
+  // stream never reaches `final`, nothing is persisted (no ghost rows).
+  const runChatRequest = useCallback(
+    async (args: SendArgs) => {
+      const { userMessage, requestBody, content, isNew, currentUser, currentConvId } = args;
+      lastSendArgsRef.current = args;
 
-      const historyWindow =
-        messages.length > 0
-          ? messages.map((m) => ({ role: m.role, content: m.content }))
-          : undefined;
-
-      const requestBody: Record<string, unknown> = {
-        conversation_id: conversationId,
-        query: content,
-        user_language: "en",
-      };
-      if (conversationSummary) {
-        requestBody.conversation_summary = conversationSummary;
-      }
-      if (historyWindow) {
-        requestBody.history_window = historyWindow;
-      }
-
-      const userMessage: Message = {
-        id: generateId(),
-        role: "user",
-        content,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
       setStreamingStatus("connecting");
       setStreamBuffer("");
       setRagData(null);
@@ -589,44 +581,10 @@ export function ChatShell({
       const controller = new AbortController();
       abortRef.current = controller;
 
-      // ── Persist user message (logged-in only, fire-and-forget) ──────
-      const currentConvId = conversationId;
-      const currentUser = user;
-      const isNew = !conversationExists;
-
-      if (currentUser) {
-        dbReadyRef.current = (async () => {
-          try {
-            if (isNew) {
-              await createConversation(
-                currentConvId,
-                currentUser.id,
-                generateTitle(content),
-              );
-              setConversationExists(true);
-              window.history.replaceState(
-                null,
-                "",
-                `/chat/${currentConvId}`,
-              );
-            }
-            await saveMessage(
-              userMessage.id,
-              currentConvId,
-              currentUser.id,
-              "user",
-              content,
-            );
-          } catch (err) {
-            console.error("Failed to persist user message:", err);
-          }
-        })();
-      }
-
-      // ── Stream response ─────────────────────────────────────────────
       let buffer = "";
       let firstDelta = true;
       let receivedDone = false;
+      let receivedTerminal = false; // saw `final` (any mode) or explicit `error` event
 
       try {
         const response = await fetch("/api/chat", {
@@ -696,6 +654,7 @@ export function ChatShell({
               }
 
               case "final": {
+                receivedTerminal = true;
                 const finalAnswer = stripParagraphLetterSuffixes(
                   stripAnswerPrefix(event.answer),
                 );
@@ -721,7 +680,11 @@ export function ChatShell({
                   setConversationSummary(event.conversationSummary);
                 }
 
-                // ── Persist assistant response (logged-in only) ───────
+                // ── Persist the whole turn atomically (logged-in only) ───
+                // We deliberately defer ALL writes (conversation row, user
+                // message, assistant message, rag, summary) until the
+                // assistant has actually replied — so a request that errors
+                // out mid-stream leaves no ghost rows in the DB.
                 if (currentUser) {
                   const currentRag = streamRagRef.current;
                   const summary = event.conversationSummary;
@@ -730,7 +693,28 @@ export function ChatShell({
 
                   (async () => {
                     try {
-                      await dbReadyRef.current;
+                      if (isNew) {
+                        await createConversation(
+                          currentConvId,
+                          currentUser.id,
+                          generateTitle(content),
+                        );
+                        setConversationExists(true);
+                        window.history.replaceState(
+                          null,
+                          "",
+                          `/chat/${currentConvId}`,
+                        );
+                      }
+                      // User message must land before the assistant message
+                      // for chronological consistency in the messages query.
+                      await saveMessage(
+                        userMessage.id,
+                        currentConvId,
+                        currentUser.id,
+                        "user",
+                        content,
+                      );
                       await Promise.all([
                         saveMessage(
                           assistantMessage.id,
@@ -758,7 +742,7 @@ export function ChatShell({
                       loadConversations();
                     } catch (err) {
                       console.error(
-                        "Failed to persist assistant response:",
+                        "Failed to persist conversation turn:",
                         err,
                       );
                     }
@@ -773,6 +757,7 @@ export function ChatShell({
                 break;
 
               case "error":
+                receivedTerminal = true;
                 setError(event.answer || "An error occurred");
                 setStreamBuffer("");
                 setStreamingStatus("error");
@@ -783,18 +768,85 @@ export function ChatShell({
         );
 
         if (!controller.signal.aborted && !receivedDone) {
-          setStreamingStatus((prev) =>
-            prev === "complete" || prev === "streaming" ? "idle" : prev,
-          );
+          if (receivedTerminal) {
+            // Got `final` or `error` but the upstream forgot to send `done`.
+            // Settle `complete` → `idle`; leave any explicit `error` alone.
+            setStreamingStatus((prev) => (prev === "complete" ? "idle" : prev));
+          } else {
+            // Stream EOF'd in a non-terminal state (connecting / rag_received /
+            // streaming) — the upstream API was interrupted mid-request (Cloud
+            // Run instance unavailable, network blip, provider failure). Surface
+            // a friendly error so the user isn't stuck on "Finalizing response…".
+            setError(
+              "The connection was interrupted before we could finish your response. Please try again.",
+            );
+            setStreamBuffer("");
+            setStreamingStatus("error");
+          }
         }
       } catch (err) {
         if (controller.signal.aborted) return;
+        if (isOfflineError(err)) {
+          // Park the args so Retry can re-fire without re-adding the
+          // optimistic user message. The user message stays visible in
+          // local state; nothing has been persisted yet.
+          setStreamBuffer("");
+          setStreamingStatus("idle");
+          setOfflineModalOpen(true);
+          return;
+        }
         const msg =
           err instanceof Error ? err.message : "Something went wrong";
         setError(msg);
         setStreamBuffer("");
         setStreamingStatus("error");
       }
+    },
+    [isMobileViewport, loadConversations],
+  );
+
+  // ── Send message ────────────────────────────────────────────────────
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      const hasExistingUserMessage = messages.some((m) => m.role === "user");
+      if (isAnonymous && hasExistingUserMessage) {
+        setShowLoginModal(true);
+        return;
+      }
+
+      const historyWindow =
+        messages.length > 0
+          ? messages.map((m) => ({ role: m.role, content: m.content }))
+          : undefined;
+
+      const requestBody: Record<string, unknown> = {
+        conversation_id: conversationId,
+        query: content,
+        user_language: "en",
+      };
+      if (conversationSummary) {
+        requestBody.conversation_summary = conversationSummary;
+      }
+      if (historyWindow) {
+        requestBody.history_window = historyWindow;
+      }
+
+      const userMessage: Message = {
+        id: generateId(),
+        role: "user",
+        content,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      await runChatRequest({
+        userMessage,
+        requestBody,
+        content,
+        isNew: !conversationExists,
+        currentUser: user,
+        currentConvId: conversationId,
+      });
     },
     [
       isAnonymous,
@@ -803,10 +855,21 @@ export function ChatShell({
       conversationId,
       conversationSummary,
       conversationExists,
-      isMobileViewport,
-      loadConversations,
+      runChatRequest,
     ],
   );
+
+  // ── Offline-modal handlers ──────────────────────────────────────────
+  const handleOfflineRetry = useCallback(() => {
+    const args = lastSendArgsRef.current;
+    setOfflineModalOpen(false);
+    if (!args) return;
+    void runChatRequest(args);
+  }, [runChatRequest]);
+
+  const handleOfflineDismiss = useCallback(() => {
+    setOfflineModalOpen(false);
+  }, []);
 
   // ── New conversation ────────────────────────────────────────────────
   const handleNewConversation = useCallback(() => {
@@ -824,7 +887,8 @@ export function ChatShell({
     setConversationExists(false);
     setConversationLoading(false);
     streamRagRef.current = null;
-    dbReadyRef.current = Promise.resolve();
+    lastSendArgsRef.current = null;
+    setOfflineModalOpen(false);
     window.history.replaceState(null, "", "/chat");
   }, []);
 
@@ -1094,6 +1158,14 @@ export function ChatShell({
       {/* ── Login modal ── */}
       {showLoginModal && (
         <LoginModal onClose={() => setShowLoginModal(false)} />
+      )}
+
+      {/* ── Offline modal ── */}
+      {offlineModalOpen && (
+        <OfflineModal
+          onRetry={handleOfflineRetry}
+          onDismiss={handleOfflineDismiss}
+        />
       )}
     </div>
   );

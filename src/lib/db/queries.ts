@@ -37,14 +37,34 @@ export async function fetchConversations(
   userId: string,
 ): Promise<ConversationRow[]> {
   const supabase = createClient();
+  // Only return conversations that have at least one assistant reply.
+  // The `chat_messages!inner(...)` embed performs a SQL inner join, so
+  // conversations without any matching assistant message are excluded.
+  // The inner join can return the same conversation multiple times (one
+  // per matching child row); we dedupe in JS while preserving order.
   const { data, error } = await supabase
     .from("conversations")
-    .select(CONVERSATION_COLUMNS)
+    .select(`${CONVERSATION_COLUMNS}, chat_messages!inner(id)`)
     .eq("user_id", userId)
+    .eq("chat_messages.role", "assistant")
     .order("updated_at", { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  if (!data) return [];
+
+  const seen = new Set<string>();
+  const unique: ConversationRow[] = [];
+  for (const row of data) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    // Strip the embedded chat_messages array — callers only expect ConversationRow.
+    const { chat_messages: _embedded, ...rest } = row as ConversationRow & {
+      chat_messages?: unknown;
+    };
+    void _embedded;
+    unique.push(rest);
+  }
+  return unique;
 }
 
 export async function fetchConversation(
