@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { checkFixedWindowRateLimit } from "@/lib/security/rateLimit";
 import { INTERNAL_AUTH_HEADER } from "@/lib/security/requestHeaders";
+import {
+  maybeSendModelFailureAlert,
+  type ModelFailureKind,
+} from "@/lib/alerts/sendFailureAlert";
 
 interface ChatHistoryMessage {
   role: "user" | "assistant";
@@ -250,6 +255,35 @@ export async function POST(request: NextRequest) {
     let sawTerminal = false;
     let tail = "";
 
+    // Capture the execution context up front so we can schedule the
+    // (rate-limited, weekly) failure-alert email via ctx.waitUntil from
+    // inside the stream's pull callback — Workers tear down isolates
+    // once the response closes, and waitUntil keeps the async work alive.
+    const cf = await getCloudflareContext({ async: true });
+
+    const scheduleFailureAlert = (kind: ModelFailureKind) => {
+      try {
+        cf.ctx.waitUntil(
+          maybeSendModelFailureAlert({
+            kind,
+            conversationId: body.conversation_id,
+            query: body.query,
+          }),
+        );
+      } catch (err) {
+        // ctx.waitUntil isn't available in some local dev runtimes —
+        // fall back to fire-and-forget so the alert at least tries.
+        console.error("scheduleFailureAlert: waitUntil failed", err);
+        maybeSendModelFailureAlert({
+          kind,
+          conversationId: body.conversation_id,
+          query: body.query,
+        }).catch((alertErr) =>
+          console.error("scheduleFailureAlert: alert failed", alertErr),
+        );
+      }
+    };
+
     const stream = new ReadableStream({
       async pull(controller) {
         try {
@@ -265,6 +299,7 @@ export async function POST(request: NextRequest) {
               } catch {
                 // Downstream already closed — nothing to do.
               }
+              scheduleFailureAlert("upstream_eof_no_terminal");
             }
             controller.close();
             return;
@@ -293,6 +328,7 @@ export async function POST(request: NextRequest) {
             } catch {
               // Downstream already closed.
             }
+            scheduleFailureAlert("upstream_read_error");
           }
           try {
             controller.close();

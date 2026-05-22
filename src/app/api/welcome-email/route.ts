@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { sendWelcomeEmail } from "@/lib/email/sendWelcomeEmail";
+import { sendEmail } from "@/lib/email/sendEmail";
 import {
   FALLBACK_WELCOME_EMAIL_TEMPLATE,
   type WelcomeEmailTemplate,
@@ -93,7 +93,7 @@ export async function POST() {
   }
 
   const template = await getWelcomeTemplate(supabase, profile?.language ?? "en");
-  const sendResult = await sendWelcomeEmail({
+  const sendResult = await sendEmail({
     to: user.email,
     subject: template.subject,
     bodyMarkdown: template.bodyMarkdown,

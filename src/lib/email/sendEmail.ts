@@ -1,14 +1,14 @@
 const POSTMARK_EMAIL_ENDPOINT = "https://api.postmarkapp.com/email";
 const DEFAULT_FROM_EMAIL = "info@branhamsermons.ai";
 
-interface SendWelcomeEmailInput {
+interface SendEmailInput {
   to: string;
   subject: string;
   bodyMarkdown: string;
   from?: string;
 }
 
-export interface SendWelcomeEmailResult {
+export interface SendEmailResult {
   ok: boolean;
   messageId?: string;
   error?: string;
@@ -37,12 +37,17 @@ function markdownToEmailHtml(markdown: string): string {
     .join("");
 }
 
-export async function sendWelcomeEmail({
+/**
+ * Send a transactional email via Postmark. The body is treated as light
+ * markdown (paragraphs split on blank lines, line breaks preserved) and
+ * an escaped HTML body is generated alongside the plain-text version.
+ */
+export async function sendEmail({
   to,
   subject,
   bodyMarkdown,
   from = process.env.POSTMARK_FROM_EMAIL || DEFAULT_FROM_EMAIL,
-}: SendWelcomeEmailInput): Promise<SendWelcomeEmailResult> {
+}: SendEmailInput): Promise<SendEmailResult> {
   const token = process.env.POSTMARK_SERVER_TOKEN;
 
   if (!token) {
@@ -88,3 +93,7 @@ export async function sendWelcomeEmail({
     messageId: payload.MessageID,
   };
 }
+
+// Back-compat alias for callers that imported the old welcome-email helper.
+export const sendWelcomeEmail = sendEmail;
+export type SendWelcomeEmailResult = SendEmailResult;
