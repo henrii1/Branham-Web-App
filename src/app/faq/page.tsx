@@ -11,6 +11,16 @@ export const metadata: Metadata = {
   title: { absolute: "Popular Questions About Bro Branham | Branham Sermons Assistant" },
   description:
     "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham — answered from the original sermon texts.",
+  keywords: [
+    "Branham Sermons Assistant",
+    "Branham Sermons AI",
+    "Branham Sermons",
+    "Branham messages",
+    "William Branham Messages",
+    "William Branham Doctrines",
+    "William Branham Beliefs",
+    "Branham",
+  ],
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/faq` },
   openGraph: {

@@ -32,6 +32,22 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+// Keyword list order matters — most specific (already-ranking) phrases first
+// so the existing rankings on "Branham Sermons Assistant" / "Branham Sermons AI"
+// are reinforced before secondary terms get any signal. Google ignores the
+// meta tag itself, but Bing / Yandex / DuckDuckGo / Kagi still use it.
+const SITE_KEYWORDS = [
+  "Branham Sermons Assistant",
+  "Branham Sermons AI",
+  "Branham Sermons search",
+  "Branham Sermons",
+  "Branham messages",
+  "William Branham Messages",
+  "William Branham Doctrines",
+  "William Branham Beliefs",
+  "Branham",
+];
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://branhamsermons.ai"),
   title: {
@@ -40,6 +56,7 @@ export const metadata: Metadata = {
   },
   description:
     "Ask questions about the sermons of William Marrion Branham. Answers grounded in the original sermon texts.",
+  keywords: SITE_KEYWORDS,
   robots: {
     index: false,
     follow: false,
@@ -51,8 +68,16 @@ const websiteJsonLd = {
   "@type": "WebSite",
   "@id": "https://branhamsermons.ai/#website",
   name: "Branham Sermons Assistant",
-  alternateName: "Branham Sermons AI",
+  alternateName: [
+    "Branham Sermons AI",
+    "Branham Sermons search",
+    "Branham Sermons",
+    "Branham Messages",
+  ],
   url: "https://branhamsermons.ai",
+  // Schema.org `keywords` is recognised by structured-data parsers and
+  // helps with entity-cluster recall for the secondary terms.
+  keywords: SITE_KEYWORDS.join(", "),
 };
 
 const organizationJsonLd = {
@@ -60,7 +85,10 @@ const organizationJsonLd = {
   "@type": "Organization",
   "@id": "https://branhamsermons.ai/#organization",
   name: "Branham Sermons Assistant",
-  alternateName: "Branham Sermons AI",
+  alternateName: [
+    "Branham Sermons AI",
+    "Branham Sermons search",
+  ],
   url: "https://branhamsermons.ai",
   logo: {
     "@type": "ImageObject",
@@ -69,6 +97,19 @@ const organizationJsonLd = {
     height: 1024,
   },
   image: "https://branhamsermons.ai/logo.png",
+  // Topics this organisation is authoritative on. Helps Google's
+  // knowledge-graph place us in the right entity cluster.
+  knowsAbout: [
+    "William Marrion Branham",
+    "Branham Sermons",
+    "Branham Messages",
+    "William Branham Doctrines",
+    "William Branham Beliefs",
+    "Serpent Seed doctrine",
+    "Seven Church Ages",
+    "Godhead",
+    "Baptism in Jesus' Name",
+  ],
   contactPoint: {
     "@type": "ContactPoint",
     email: "info@branhamsermons.ai",

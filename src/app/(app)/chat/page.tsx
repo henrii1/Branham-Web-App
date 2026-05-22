@@ -12,6 +12,17 @@ export const metadata: Metadata = {
   },
   description:
     "Ask questions about the sermons of Bro. Branham. Find answers grounded in the original sermon texts, explore doctrines, quotes, Scripture references, and teachings.",
+  keywords: [
+    "Branham Sermons Assistant",
+    "Branham Sermons AI",
+    "Branham Sermons search",
+    "Branham Sermons",
+    "Branham messages",
+    "William Branham Messages",
+    "William Branham Doctrines",
+    "William Branham Beliefs",
+    "Branham",
+  ],
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/chat` },
   openGraph: {
@@ -48,9 +59,11 @@ export default async function ChatPage({
       <div className="sr-only" aria-hidden="true">
         <h1>Ask Questions About the Sermons of Bro. Branham</h1>
         <p>
-          Branham Sermons AI answers questions about the sermons and teachings
-          of William Marrion Branham, grounded in the original sermon texts.
-          Explore doctrines, Scripture references, sermon quotes, and more.
+          Branham Sermons AI is an AI-powered search and assistant for the
+          messages, doctrines, and beliefs of William Marrion Branham — every
+          answer is grounded in the original sermon texts. Explore Branham
+          messages, William Branham doctrines, William Branham beliefs,
+          Scripture references, sermon quotes, and more.
         </p>
         <nav aria-label="Popular questions">
           <Link href="/faq">Browse all popular questions</Link>
