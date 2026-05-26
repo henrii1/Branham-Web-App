@@ -35,6 +35,7 @@ interface SeoShellProps {
   answerMarkdown: string;
   ragContext: string;
   conversationSummary: string | null;
+  nextPage: { slug: string; question: string } | null;
 }
 
 const DEFAULT_PANEL_RATIO = 0.4;
@@ -54,6 +55,7 @@ export function SeoShell({
   answerMarkdown,
   ragContext,
   conversationSummary,
+  nextPage,
 }: SeoShellProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -98,6 +100,17 @@ export function SeoShell({
 
   const processedRag = postprocessRag(ragContext);
   const ragHtml = renderMarkdown(processedRag);
+
+  // Defer rendering the Passages content to client-only so Googlebot's
+  // raw-HTML pass doesn't see the verbatim sermon chunks — those chunks are
+  // also published verbatim on table.branham.org and other Branham archives,
+  // and that duplicate-content footprint blocks indexing of /q pages.
+  // After hydration, this flips to true and the panel fills in exactly as
+  // before — so the post-hydration view users see is unchanged.
+  const [passagesMounted, setPassagesMounted] = useState(false);
+  useEffect(() => {
+    setPassagesMounted(true);
+  }, []);
 
   const loadSidebarConversations = useCallback(async () => {
     if (!user) return;
@@ -554,10 +567,15 @@ export function SeoShell({
                 </Link>
               </div>
               <div className="flex-1 overflow-y-auto">
-                <div
-                  className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
-                  dangerouslySetInnerHTML={{ __html: ragHtml }}
-                />
+                {passagesMounted ? (
+                  <div
+                    className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
+                    data-nosnippet
+                    dangerouslySetInnerHTML={{ __html: ragHtml }}
+                  />
+                ) : (
+                  <div className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]" />
+                )}
               </div>
             </div>
           </div>
@@ -579,6 +597,7 @@ export function SeoShell({
                 {question}
               </h1>
               <TypewriterRenderer markdown={answerMarkdown} />
+              <NextQuestionLink nextPage={nextPage} />
             </div>
           </div>
         </div>
@@ -609,20 +628,30 @@ export function SeoShell({
               <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
                 <div className="h-full overflow-y-auto bg-[var(--surface-chat)]">
                   <div className="px-4 py-5">
-                    <h1 className="font-display mb-4 text-2xl text-foreground">
+                    {/* Rendered as h2 visually identical to an h1: the desktop
+                        branch already carries the page's single semantic h1.
+                        Both branches sit in the DOM simultaneously (the other
+                        is CSS-hidden), so demoting this avoids two h1s. */}
+                    <h2 className="font-display mb-4 text-2xl text-foreground">
                       {question}
-                    </h1>
+                    </h2>
                     <TypewriterRenderer markdown={answerMarkdown} />
+                    <NextQuestionLink nextPage={nextPage} />
                   </div>
                 </div>
               </div>
               {/* Sources panel — same outer/inner scroll split */}
               <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
                 <div className="h-full overflow-y-auto bg-[var(--surface-sources)]">
-                  <div
-                    className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
-                    dangerouslySetInnerHTML={{ __html: ragHtml }}
-                  />
+                  {passagesMounted ? (
+                    <div
+                      className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
+                      data-nosnippet
+                      dangerouslySetInnerHTML={{ __html: ragHtml }}
+                    />
+                  ) : (
+                    <div className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]" />
+                  )}
                 </div>
               </div>
             </div>
@@ -792,5 +821,32 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
         </button>
       </div>
     </form>
+  );
+}
+
+// ── Inline next-question link ───────────────────────────────────────
+// Internal cross-link to the next /q page (chronological by created_at).
+// Rendered at the bottom of the answer column on both desktop and mobile
+// layouts so Googlebot sees a peer-to-peer link out of each leaf page.
+
+interface NextQuestionLinkProps {
+  nextPage: { slug: string; question: string } | null;
+}
+
+function NextQuestionLink({ nextPage }: NextQuestionLinkProps) {
+  if (!nextPage) return null;
+  return (
+    <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <Link
+        href={`/q/${nextPage.slug}`}
+        className="group inline-flex items-baseline gap-1.5 text-xs text-zinc-500 transition-colors hover:text-foreground dark:text-zinc-400"
+      >
+        <span className="font-medium uppercase tracking-wide">Next</span>
+        <span className="text-zinc-700 group-hover:text-foreground dark:text-zinc-300">
+          {nextPage.question}
+        </span>
+        <span aria-hidden="true">→</span>
+      </Link>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { fetchSeoPage } from "@/lib/db/seo-queries";
+import { fetchAdjacentSeoPages, fetchSeoPage } from "@/lib/db/seo-queries";
 import { SeoShell } from "@/components/seo/SeoShell";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
@@ -71,7 +71,10 @@ export async function generateMetadata({
 
 export default async function SeoQuestionPage({ params }: PageProps) {
   const { slug } = await params;
-  const page = await fetchSeoPage(slug);
+  const [page, adjacent] = await Promise.all([
+    fetchSeoPage(slug),
+    fetchAdjacentSeoPages(slug),
+  ]);
 
   if (!page) {
     notFound();
@@ -79,6 +82,8 @@ export default async function SeoQuestionPage({ params }: PageProps) {
 
   const answerPlainExcerpt = getFirst300Words(page.answer_markdown);
   const canonicalUrl = `${SITE_URL}/q/${slug}`;
+  const prevUrl = adjacent.prev ? `${SITE_URL}/q/${adjacent.prev.slug}` : null;
+  const nextUrl = adjacent.next ? `${SITE_URL}/q/${adjacent.next.slug}` : null;
 
   const appOrg = {
     "@type": "Organization",
@@ -146,6 +151,11 @@ export default async function SeoQuestionPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {/* rel=prev/next help non-Google engines build the site graph and give
+          Googlebot extra discovery links for adjacent /q pages — a known
+          remedy for "crawled — currently not indexed" leaf pages. */}
+      {prevUrl && <link rel="prev" href={prevUrl} />}
+      {nextUrl && <link rel="next" href={nextUrl} />}
       {/* Full answer rendered server-side for search crawlers.
           Visually hidden; identical to what users see after the typewriter animation. */}
       <div
@@ -159,6 +169,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
         answerMarkdown={page.answer_markdown}
         ragContext={page.rag_context}
         conversationSummary={page.conversation_summary}
+        nextPage={adjacent.next}
       />
     </>
   );

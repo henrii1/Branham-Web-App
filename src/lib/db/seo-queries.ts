@@ -75,3 +75,37 @@ export async function fetchAllPublishedSeoPages(): Promise<SeoCacheRow[]> {
   if (error) throw error;
   return data ?? [];
 }
+
+export interface AdjacentSeoPage {
+  slug: string;
+  question: string;
+}
+
+/**
+ * Returns the previous and next published SEO page relative to `slug`,
+ * ordered by created_at ascending. Used to wire up internal cross-links
+ * (rel="prev" / rel="next" in head + visible "Next →" footer) so each
+ * /q page is no longer a dead-end leaf with no peer links — a known
+ * cause of "crawled — currently not indexed" in Search Console.
+ */
+export async function fetchAdjacentSeoPages(slug: string): Promise<{
+  prev: AdjacentSeoPage | null;
+  next: AdjacentSeoPage | null;
+}> {
+  const supabase = getPublicClient();
+  const { data, error } = await supabase
+    .from("seo_cache")
+    .select("slug, question")
+    .eq("published", true)
+    .eq("language", "en")
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  const pages = (data ?? []) as AdjacentSeoPage[];
+  const idx = pages.findIndex((p) => p.slug === slug);
+  if (idx === -1) return { prev: null, next: null };
+  return {
+    prev: idx > 0 ? pages[idx - 1] : null,
+    next: idx < pages.length - 1 ? pages[idx + 1] : null,
+  };
+}

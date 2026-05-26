@@ -163,6 +163,11 @@ export default async function RootLayout({
       data-theme={initialTheme}
     >
       <head>
+        {/* llms.txt discovery hint (https://llmstxt.org). Set here as a raw
+            <link> so it's emitted on every route — Next.js's Metadata.alternates
+            is replaced per-page, so a layout-level alternates field gets
+            wiped on any page that sets its own canonical. */}
+        <link rel="alternate" type="text/plain" href="/llms.txt" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
