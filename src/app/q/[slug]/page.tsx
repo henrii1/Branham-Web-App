@@ -26,11 +26,6 @@ function stripMarkdownToPlain(md: string): string {
     .trim();
 }
 
-function getFirst300Words(md: string): string {
-  const plain = stripMarkdownToPlain(md);
-  const words = plain.split(/\s+/);
-  return words.slice(0, 300).join(" ");
-}
 
 export async function generateMetadata({
   params,
@@ -80,10 +75,10 @@ export default async function SeoQuestionPage({ params }: PageProps) {
     notFound();
   }
 
-  const answerPlainExcerpt = getFirst300Words(page.answer_markdown);
   const canonicalUrl = `${SITE_URL}/q/${slug}`;
   const prevUrl = adjacent.prev ? `${SITE_URL}/q/${adjacent.prev.slug}` : null;
   const nextUrl = adjacent.next ? `${SITE_URL}/q/${adjacent.next.slug}` : null;
+  const answerPlain = stripMarkdownToPlain(page.answer_markdown);
 
   const appOrg = {
     "@type": "Organization",
@@ -91,23 +86,32 @@ export default async function SeoQuestionPage({ params }: PageProps) {
     url: SITE_URL,
   };
 
-  const qaPageJsonLd = {
+  // Article — NOT QAPage. QAPage is reserved by Google for pages with
+  // user-submitted answers (forums/community Q&A); using it for a single
+  // site-authored answer violates the QAPage usage policy and fails Rich
+  // Results validation. Article is the correct type for an authored answer
+  // and carries the freshness signal (dateModified) Google wants.
+  const articleJsonLd = {
     "@context": "https://schema.org",
-    "@type": "QAPage",
-    mainEntity: {
-      "@type": "Question",
-      name: page.question,
-      text: page.question,
-      answerCount: 1,
-      datePublished: page.created_at,
-      author: appOrg,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: answerPlainExcerpt,
-        url: canonicalUrl,
-        datePublished: page.updated_at,
-        upvoteCount: 0,
-        author: appOrg,
+    "@type": "Article",
+    headline: page.question,
+    description: page.meta_description || answerPlain.slice(0, 155),
+    articleBody: answerPlain,
+    inLanguage: page.language || "en",
+    datePublished: page.created_at,
+    dateModified: page.updated_at,
+    mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
+    image: OG_IMAGE,
+    author: appOrg,
+    publisher: {
+      "@type": "Organization",
+      name: "Branham Sermons AI",
+      url: SITE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/logo.png`,
+        width: 1024,
+        height: 1024,
       },
     },
   };
@@ -145,7 +149,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
       {/* Each structured data type in its own script tag — required by Google */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(qaPageJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
       />
       <script
         type="application/ld+json"

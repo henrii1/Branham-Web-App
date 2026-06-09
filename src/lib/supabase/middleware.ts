@@ -9,6 +9,28 @@ function sanitizeRedirectPath(path: string | null): string {
   return path;
 }
 
+/**
+ * Canonical host redirect: www.branhamsermons.ai → branhamsermons.ai.
+ * Both hosts otherwise return 200, which splits ranking signals and reads
+ * as duplicate content. A 308 (permanent, method-preserving) consolidates
+ * everything onto the apex domain. Localhost and the apex itself are
+ * untouched.
+ */
+function buildApexRedirect(request: NextRequest): NextResponse | null {
+  const host = (
+    request.headers.get("host") ??
+    request.nextUrl.host ??
+    ""
+  ).toLowerCase();
+
+  if (!host.startsWith("www.")) return null;
+
+  const url = request.nextUrl.clone();
+  url.protocol = "https:";
+  url.host = host.slice(4); // strip "www."
+  return NextResponse.redirect(url, 308);
+}
+
 function shouldForceHttps(request: NextRequest): boolean {
   if (process.env.NODE_ENV !== "production") {
     return false;
@@ -23,6 +45,9 @@ function shouldForceHttps(request: NextRequest): boolean {
 }
 
 export async function updateSession(request: NextRequest) {
+  const apexRedirect = buildApexRedirect(request);
+  if (apexRedirect) return apexRedirect;
+
   if (shouldForceHttps(request)) {
     const httpsUrl = request.nextUrl.clone();
     httpsUrl.protocol = "https:";
