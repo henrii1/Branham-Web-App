@@ -6,6 +6,11 @@ interface SwipeAffordanceProps {
   /** "right" → user should swipe right (showing on chat tab, sources ready).
    *  "left"  → user should swipe left (showing on sources tab, chat ready). */
   direction: "left" | "right";
+  /** Tapping the chevron switches to the tab it points toward — a more
+   *  discoverable alternative to swiping for first-time users. */
+  onTap: () => void;
+  /** Accessible label describing the destination (e.g. "View passages"). */
+  label: string;
 }
 
 /**
@@ -28,8 +33,12 @@ interface SwipeAffordanceProps {
  *
  * The parent is expected to mount/unmount this component as content
  * readiness changes — the active animation is keyed to a fresh mount.
+ *
+ * The chevron is also a tap target: tapping switches to the tab it points
+ * toward (equivalent to swiping), which new users find more intuitive than
+ * discovering the swipe gesture on their own.
  */
-export function SwipeAffordance({ direction }: SwipeAffordanceProps) {
+export function SwipeAffordance({ direction, onTap, label }: SwipeAffordanceProps) {
   // Only ever flips once per mount (false → true after the active animation
   // finishes). The parent unmounts us when the affordance no longer applies,
   // so a fresh mount means a fresh active phase.
@@ -49,9 +58,11 @@ export function SwipeAffordance({ direction }: SwipeAffordanceProps) {
       : "swipe-affordance-active-left";
 
   return (
-    <div
-      aria-hidden="true"
-      className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${edgeClass} ${animationClass} swipe-affordance lg:hidden`}
+    <button
+      type="button"
+      onClick={onTap}
+      aria-label={label}
+      className={`absolute top-1/2 -translate-y-1/2 ${edgeClass} ${animationClass} swipe-affordance lg:hidden`}
     >
       {/* Double chevron — outline-only, currentColor + mix-blend-mode handled in CSS.
           The trailing chevron is offset and slightly fainter, creating a
@@ -65,6 +76,7 @@ export function SwipeAffordance({ direction }: SwipeAffordanceProps) {
         strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
+        aria-hidden="true"
       >
         {direction === "right" ? (
           <>
@@ -78,6 +90,6 @@ export function SwipeAffordance({ direction }: SwipeAffordanceProps) {
           </>
         )}
       </svg>
-    </div>
+    </button>
   );
 }

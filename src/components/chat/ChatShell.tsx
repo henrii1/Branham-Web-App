@@ -1154,10 +1154,18 @@ export function ChatShell({
                 Conditionally rendered so the active animation runs fresh
                 each time the affordance becomes applicable. */}
             {activeTab === "chat" && sourcesReady && (
-              <SwipeAffordance direction="right" />
+              <SwipeAffordance
+                direction="right"
+                label="View passages"
+                onTap={() => handleTabChange("sources")}
+              />
             )}
             {activeTab === "sources" && chatReady && (
-              <SwipeAffordance direction="left" />
+              <SwipeAffordance
+                direction="left"
+                label="Back to answer"
+                onTap={() => handleTabChange("chat")}
+              />
             )}
           </div>
         </div>
