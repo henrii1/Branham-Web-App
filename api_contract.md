@@ -242,6 +242,12 @@ citation pill in an assistant message (e.g. `[THE SEVENTH SEAL — 63-0324E: ¶3
 the FE calls this endpoint and shows a small Strong's-Concordance-style popover with the
 referenced sermon paragraphs **plus one paragraph above and one below** for context.
 
+A single pill may reference **several disjoint ranges within the same sermon**, e.g.
+`[THE GODHEAD EXPLAINED — 61-0425B: ¶57–¶61, ¶85–¶89, ¶108–¶117]`. The FE parses the pill
+into its list of ranges and sends them all in one request; the endpoint returns **one
+group per range**, each with its own ±1 context. Gaps between ranges are NOT filled in,
+so the popover shows several short sections instead of one giant span.
+
 It is a plain JSON request/response (NOT SSE). No LLM is involved — it is a fast
 read-only lookup against the sermon paragraph store.
 
@@ -255,6 +261,22 @@ read-only lookup against the sermon paragraph store.
   never expose the bearer key to the client bundle.
 
 ## Request Body
+
+**Multi-range (preferred — use for every pill, even single-range):**
+
+```json
+{
+  "date_id": "61-0425B",
+  "title": "THE GODHEAD EXPLAINED",
+  "ranges": [
+    { "paragraph_start": 57,  "paragraph_end": 61  },
+    { "paragraph_start": 85,  "paragraph_end": 89  },
+    { "paragraph_start": 108, "paragraph_end": 117 }
+  ]
+}
+```
+
+**Single-range (legacy / back-compat — top-level fields, no `ranges`):**
 
 ```json
 {
@@ -270,56 +292,83 @@ read-only lookup against the sermon paragraph store.
 | Field             | Type            | Required | Notes |
 |-------------------|-----------------|----------|-------|
 | `date_id`         | string          | yes      | The sermon identifier from the pill (e.g. `63-0324E`). Accepts an exact id, a day-prefix (`63-1201` → resolves M/E), or falls back to `title` if it does not resolve. |
-| `paragraph_start` | integer\|string | yes      | First cited paragraph. Suffix styles like `"386a"` are accepted and normalized to `386`. |
-| `paragraph_end`   | integer\|string | no       | Last cited paragraph. **Omit for a single-paragraph reference** — it defaults to `paragraph_start`. |
+| `ranges`          | array           | one of\* | One object per cited range: `{ paragraph_start, paragraph_end? }`. **Preferred** — parse every range out of the pill and send them all. |
+| `paragraph_start` | integer\|string | one of\* | Single-range legacy form. Suffix styles like `"386a"` are normalized to `386`. |
+| `paragraph_end`   | integer\|string | no       | Single-range legacy form. Omit for a single-paragraph reference (defaults to `paragraph_start`). |
 | `title`           | string          | no       | Sermon title from the pill; used ONLY as a resolution fallback when `date_id` does not resolve. Never trusted over a valid `date_id`. |
 
-- **Multi-range pills** (e.g. `¶157–¶163, ¶164–¶171`): send the overall span —
-  `paragraph_start: 157`, `paragraph_end: 171`. The endpoint returns that whole span ±1.
+\* Provide **either** `ranges` **or** `paragraph_start` (with optional `paragraph_end`).
+If both are present, `ranges` wins. Inside a `ranges` entry, omit `paragraph_end` for a
+single-paragraph range.
+
+- **How to fill `ranges` from a pill:** split the bracket's paragraph list on commas.
+  `¶57–¶61, ¶85–¶89` → `[{57,61},{85,89}]`. A bare `¶240` → `{paragraph_start: 240}`.
+  Strip `¶` and any letter suffix from the numbers.
 - **Bible references** (`Evidence: John 3:16`) are NOT sermon pills and have no
   `date_id`; do not make them clickable / do not call this endpoint for them.
 
 ## Response Body (200)
 
+The response is always `groups[]` — one entry per requested range, in request order.
+A single-range request returns a `groups` array of length 1.
+
 ```json
 {
   "ok": true,
-  "date_id": "63-0324E",
-  "title": "THE SEVENTH SEAL",
-  "requested": { "paragraph_start": 386, "paragraph_end": 388 },
-  "returned":  { "paragraph_start": 385, "paragraph_end": 389 },
-  "paragraphs": [
-    { "paragraph_no": 385, "sub_id": "",  "text": "...", "is_context": true  },
-    { "paragraph_no": 386, "sub_id": "",  "text": "...", "is_context": false },
-    { "paragraph_no": 387, "sub_id": "",  "text": "...", "is_context": false },
-    { "paragraph_no": 388, "sub_id": "",  "text": "...", "is_context": false },
-    { "paragraph_no": 389, "sub_id": "",  "text": "...", "is_context": true  }
+  "date_id": "61-0425B",
+  "title": "THE GODHEAD EXPLAINED",
+  "groups": [
+    {
+      "requested": { "paragraph_start": 57, "paragraph_end": 61 },
+      "returned":  { "paragraph_start": 56, "paragraph_end": 62 },
+      "paragraphs": [
+        { "paragraph_no": 56, "sub_id": "", "text": "...", "is_context": true  },
+        { "paragraph_no": 57, "sub_id": "", "text": "...", "is_context": false },
+        { "paragraph_no": 58, "sub_id": "", "text": "...", "is_context": false },
+        { "paragraph_no": 59, "sub_id": "", "text": "...", "is_context": false },
+        { "paragraph_no": 60, "sub_id": "", "text": "...", "is_context": false },
+        { "paragraph_no": 61, "sub_id": "", "text": "...", "is_context": false },
+        { "paragraph_no": 62, "sub_id": "", "text": "...", "is_context": true  }
+      ]
+    },
+    { "requested": { "paragraph_start": 85, "paragraph_end": 89 }, "returned": { "...": "..." }, "paragraphs": ["..."] },
+    { "requested": { "paragraph_start": 108, "paragraph_end": 117 }, "returned": { "...": "..." }, "paragraphs": ["..."] }
   ]
 }
 ```
 
-- `requested` — the cited range echoed back (after normalization).
-- `returned` — the actual span returned, i.e. `requested` expanded by ±1 and **clamped
-  to sermon bounds** (so the first paragraph of a sermon has no paragraph above it).
-- `paragraphs` — ordered by `paragraph_no` ascending. A paragraph may be split into
+- `groups` — one per requested range, in the same order the FE sent them. Render each as
+  its own titled section in the popover (e.g. "¶57–¶61"). Do NOT merge across groups.
+- `group.requested` — the cited range echoed back (after normalization).
+- `group.returned` — the actual span returned: `requested` expanded by ±1 and **clamped
+  to sermon bounds** (so ¶1 has no paragraph above it).
+- `group.paragraphs` — ordered by `paragraph_no` ascending. A paragraph may be split into
   sub-parts (`sub_id` like `a`/`b`); when present, render them in array order as one
   paragraph. Most paragraphs have `sub_id: ""`.
-- `is_context: true` marks the ±1 padding paragraphs (one above, one below). The cited
-  paragraphs have `is_context: false`. **Use this flag to visually de-emphasize the
-  context paragraphs** (dimmed / smaller) so the user's eye lands on the actual citation.
+- `is_context: true` marks the ±1 padding paragraphs (one above, one below the cited
+  range). The cited paragraphs have `is_context: false`. **Use this flag to visually
+  de-emphasize the context paragraphs** (dimmed / smaller) so the user's eye lands on the
+  actual citation.
 
 ## Error Responses
 
 | Status | Body | When |
 |--------|------|------|
 | 401    | `{ "detail": "Invalid bearer token." }` | Missing/wrong bearer. |
-| 422    | `{ "detail": [...] }` | Malformed body (missing `date_id` or `paragraph_start`). FastAPI validation shape. |
+| 422    | `{ "detail": [...] }` | Malformed body — missing `date_id`, or neither `ranges` nor `paragraph_start` provided. FastAPI validation shape. |
 | 404    | `{ "ok": false, "error": "sermon_not_found", "date_id": "..." }` | `date_id` (and `title` fallback) could not be resolved to a sermon. |
-| 200 + empty | `{ "ok": true, ..., "paragraphs": [] }` | Sermon resolved but the requested paragraph range yielded no rows (out-of-range). FE should show a "passage not available" empty state, not an error banner. |
+| 200 + empty group | a `group` whose `paragraphs: []` | Sermon resolved but that range yielded no rows (out-of-range). Show a per-section "passage not available" state, not a global error. |
 
 ## Curl
 
 ```bash
+# multi-range
+curl -sS -X POST https://api.branhamsermons.ai/api/reference \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer b6766b2e-9a26-4342-9bef-5da4ad67e51c" \
+  -d '{"date_id":"61-0425B","title":"THE GODHEAD EXPLAINED","ranges":[{"paragraph_start":57,"paragraph_end":61},{"paragraph_start":85,"paragraph_end":89}]}'
+
+# single-range (legacy)
 curl -sS -X POST https://api.branhamsermons.ai/api/reference \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer b6766b2e-9a26-4342-9bef-5da4ad67e51c" \
@@ -343,27 +392,29 @@ Pills are produced in `src/lib/markdown/citations.ts` by `applyCitations()` →
 ```
 
 Parse the pill's inner text at pill-creation time and embed structured `data-*`
-attributes plus an affordance class. Suggested output:
+attributes plus an affordance class. Store the **full list of ranges** as JSON so a
+multi-range pill round-trips losslessly to the endpoint's `ranges`:
 
 ```html
 <span
   class="citation-pill citation-pill--clickable"
   role="button"
   tabindex="0"
-  data-date-id="63-0324E"
-  data-title="THE SEVENTH SEAL"
-  data-para-start="386"
-  data-para-end="388"
->[THE SEVENTH SEAL — 63-0324E: ¶386–¶388]</span>
+  data-date-id="61-0425B"
+  data-title="THE GODHEAD EXPLAINED"
+  data-ranges='[{"paragraph_start":57,"paragraph_end":61},{"paragraph_start":85,"paragraph_end":89},{"paragraph_start":108,"paragraph_end":117}]'
+>[THE GODHEAD EXPLAINED — 61-0425B: ¶57–¶61, ¶85–¶89, ¶108–¶117]</span>
 ```
 
 Parsing notes (the pill text is the only source — there is no hidden ID):
-- The bracket text is `TITLE — DATE_ID: ¶START–¶END` (em/en/hyphen dash variants).
+- The bracket text is `TITLE — DATE_ID: <ranges>` (em/en/hyphen dash variants).
   `DATE_ID` matches `\d{2}-\d{4}[A-Z]?\d?`. Reuse/extend the existing `CITATION_RE`.
-- For a multi-range pill (`¶157–¶163, ¶164–¶171`), set `data-para-start` to the first
-  number (`157`) and `data-para-end` to the last number (`171`).
-- Strip `¶` and any letter suffix from the numbers before putting them in `data-*`
-  (`¶386a` → `386`).
+- `<ranges>` is a comma-separated list. Split on commas; each item is `¶X–¶Y` or a bare
+  `¶X`. Build `[{paragraph_start, paragraph_end?}, ...]` — for a bare `¶X` omit
+  `paragraph_end`. Send this array verbatim as the request's `ranges`.
+- Strip `¶` and any letter suffix from the numbers (`¶386a` → `386`).
+- At click time, send `{ date_id, title, ranges }` (parsed from `data-ranges`) to the
+  proxy. Do NOT collapse the ranges into a single span — that would refill the gaps.
 - Only sermon pills get `--clickable`. Bible-ref text never becomes a clickable pill.
 
 ### 2. Affordance (clickable styling)
@@ -380,16 +431,18 @@ cannot attach React `onClick` to individual pills. Use **event delegation**: one
 on the message container (or a shared `ChatShell` handler) that:
 
 1. Finds the nearest `.citation-pill--clickable` ancestor of the event target.
-2. Reads `data-date-id`, `data-title`, `data-para-start`, `data-para-end`.
-3. Opens the popover anchored to that pill element and fires the fetch.
+2. Reads `data-date-id`, `data-title`, and parses `data-ranges` (JSON).
+3. Opens the popover anchored to that pill element and fires the fetch with
+   `{ date_id, title, ranges }`.
 4. Also trigger on `Enter`/`Space` keydown for `role="button"` pills (a11y).
 
 ### 4. Fetch via a proxy route
 
 Add `src/app/api/reference/route.ts` mirroring `src/app/api/chat/route.ts`:
 - Reads `MODEL_API_BASE_URL` + `CHAT_API_BEARER_KEY` from env (server-side).
-- Validates a small body (`date_id` string ≤ 32 chars; `paragraph_start`/`_end`
-  positive ints; optional `title` ≤ 200 chars).
+- Validates a small body: `date_id` string ≤ 32 chars; optional `title` ≤ 200 chars;
+  `ranges` an array (cap length, e.g. ≤ 20) of `{ paragraph_start, paragraph_end? }`
+  with positive ints; OR the legacy `paragraph_start`/`paragraph_end`.
 - `POST`s to `${MODEL_API_BASE_URL}/api/reference` with the `Authorization` header.
 - Applies the same anon IP rate-limit pattern as the chat proxy (clicks are cheap, but
   keep parity). Returns the upstream JSON unchanged.
@@ -399,18 +452,21 @@ Add `src/app/api/reference/route.ts` mirroring `src/app/api/chat/route.ts`:
 A focused, dismissible overlay — NOT a full-screen modal. Big enough to read comfortably
 on phone and laptop, anchored near the clicked pill.
 
-**Header:** sermon title + `date_id` and the cited range (e.g. "THE SEVENTH SEAL ·
-63-0324E · ¶386–¶388"), with a close (`X`) button in the top-right.
+**Header:** sermon title + `date_id` (e.g. "THE GODHEAD EXPLAINED · 61-0425B"), with a
+close (`X`) button in the top-right.
 
-**Body:** the `paragraphs` array, each prefixed with its `¶<paragraph_no>`. Render
-`is_context: true` paragraphs **dimmed/de-emphasized** (e.g. lower opacity or muted color,
-slightly smaller) and `is_context: false` paragraphs at full emphasis. Scroll inside the
-popover body if content overflows the max height.
+**Body:** iterate `groups`. Render each group as its own section with a small range
+caption (e.g. "¶57–¶61") followed by that group's `paragraphs`, each prefixed with its
+`¶<paragraph_no>`. Within a group, render `is_context: true` paragraphs
+**dimmed/de-emphasized** (lower opacity / muted / slightly smaller) and `is_context:
+false` paragraphs at full emphasis. Separate groups with a divider so the disjoint
+passages read as distinct. Scroll inside the popover body if content overflows max height.
 
 **States:**
 - *Loading:* skeleton or spinner while the fetch is in flight (open the popover
   immediately on click; don't wait for the response to appear).
-- *Empty* (`paragraphs: []`): "This passage isn't available." message.
+- *Empty:* if a group's `paragraphs: []`, show a per-section "This passage isn't
+  available." note. If `groups` is empty entirely, show it popover-wide.
 - *Error* (non-200 / network): "Couldn't load this reference. Try again." with a retry.
 
 **Dismissal (all three):**
@@ -430,14 +486,16 @@ while open; restore focus on close; the `X` button has an `aria-label`.
 
 ### 6. Caching (optional, recommended)
 
-Cache responses by `${date_id}:${start}-${end}` for the session so re-clicking the same
-pill is instant and avoids a redundant round-trip.
+Cache responses by a key built from `date_id` + the serialized `ranges` for the session
+so re-clicking the same pill is instant and avoids a redundant round-trip.
 
 ### FE Validation Checklist (reference tooltip)
 
 - Only sermon pills are clickable; Bible refs are not.
+- Multi-range pills send the full `ranges` array (parsed from `data-ranges`); ranges are
+  never collapsed into a single span.
 - Proxy injects the bearer; key never reaches the client bundle.
 - Popover opens immediately with a loading state, then fills.
-- Context (±1) paragraphs are visually de-emphasized via `is_context`.
+- Each `group` renders as its own section; `is_context` (±1) paragraphs are de-emphasized.
 - Dismiss works via `X`, outside-click, and `Esc`; focus returns to the pill.
-- Empty (`paragraphs: []`) and error states are handled distinctly.
+- Empty (per-group `paragraphs: []`) and error states are handled distinctly.
