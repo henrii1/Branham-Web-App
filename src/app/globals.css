@@ -128,6 +128,45 @@ html {
   border-color: #9ca3af;
 }
 
+/* ── Clickable reference pill — soft tinted "link-chip" affordance ───
+ * Sermon citations that resolve to a reference become tappable: a subtle
+ * brand-blue tint + matching border + link-tinted text signal interactivity
+ * without shouting, even when several pills sit inline. Opens the reference
+ * tooltip (ReferencePopover) on click / Enter / Space.
+ */
+.citation-pill--clickable {
+  cursor: pointer;
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(37, 99, 235, 0.35);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.citation-pill--clickable:hover {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.55);
+}
+
+.dark .citation-pill--clickable {
+  color: #a9b8ff;
+  background: rgba(124, 150, 255, 0.13);
+  border-color: rgba(124, 150, 255, 0.38);
+}
+
+.dark .citation-pill--clickable:hover {
+  background: rgba(124, 150, 255, 0.22);
+  border-color: rgba(124, 150, 255, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .citation-pill--clickable {
+    transition: none;
+  }
+}
+
 /* ── Evidence label (§8.4) — metadata chip before citation groups ─── */
 .evidence-label {
   display: inline-block;
@@ -154,6 +193,280 @@ html {
 
 .citation-separator {
   display: inline;
+}
+
+/* ── Sermon-reference tooltip (ReferencePopover) ─────────────────────
+ * Strong's-Concordance-style dialog: a centered card over a dimmed backdrop
+ * on every breakpoint. Big enough to read, small enough that the surrounding
+ * backdrop is an obvious tap-to-close target. Dismiss: X, backdrop, or Esc.
+ */
+.reference-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  animation: reference-fade-in 0.15s ease-out;
+}
+
+.reference-popover {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: 72vh;
+  background: var(--surface-base);
+  color: var(--foreground);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  animation: reference-pop-in 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 640px) {
+  .reference-popover {
+    max-width: 92vw;
+    max-height: 80vh;
+  }
+}
+
+.reference-popover__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.reference-popover__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reference-popover__title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.reference-popover__dateid {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+.reference-popover__close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.reference-popover__close:hover {
+  background: var(--surface-muted);
+  color: var(--foreground);
+}
+
+.reference-popover__body {
+  flex: 1;
+  /* min-height:0 lets this flex child shrink below its content height so its
+   * own overflow-y:auto scrolls — without it the body overflows the popover's
+   * max-height and the tail gets clipped (unreachable) by overflow:hidden. */
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.25rem 1rem 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* One block per cited sermon. The per-sermon header only shows when a single
+ * pill bundles more than one sermon (otherwise the dialog header carries it). */
+.reference-sermon + .reference-sermon {
+  margin-top: 0.5rem;
+  border-top: 2px solid var(--border-subtle);
+  padding-top: 0.5rem;
+}
+
+.reference-sermon__header {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0.65rem 0 0.15rem;
+}
+
+.reference-sermon__title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.reference-sermon__dateid {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+.reference-group {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.reference-group:last-child {
+  border-bottom: none;
+}
+
+.reference-group__caption {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #1d4ed8;
+}
+
+.dark .reference-group__caption {
+  color: #a9b8ff;
+}
+
+.reference-paragraph {
+  margin: 0 0 0.6rem;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.reference-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.reference-paragraph__no {
+  margin-right: 0.4rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  user-select: none;
+}
+
+/* ±1 context paragraphs (is_context) are de-emphasized so the eye lands on
+ * the actually-cited text. */
+.reference-paragraph--context {
+  opacity: 0.5;
+  font-size: 0.84rem;
+}
+
+.reference-group__empty {
+  margin: 0;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--muted-foreground);
+}
+
+.reference-popover__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+}
+
+.reference-popover__retry {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--foreground);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.reference-popover__retry:hover {
+  background: var(--surface-muted);
+}
+
+/* Loading skeleton */
+.reference-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 0;
+}
+
+.reference-skeleton > span {
+  display: block;
+  height: 0.85rem;
+  width: 100%;
+  border-radius: 4px;
+  background: var(--surface-muted);
+  animation: reference-pulse 1.4s ease-in-out infinite;
+}
+
+.reference-skeleton__caption {
+  height: 0.7rem !important;
+  width: 4rem !important;
+}
+
+.reference-skeleton__line--short {
+  width: 60% !important;
+}
+
+@keyframes reference-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reference-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes reference-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-overlay,
+  .reference-popover {
+    animation: none;
+  }
+  .reference-skeleton > span {
+    animation: none;
+  }
 }
 
 /* Tab button swell animation — applied when content is ready on an inactive tab */

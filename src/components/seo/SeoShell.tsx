@@ -22,6 +22,7 @@ import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { TypewriterRenderer } from "./TypewriterRenderer";
 import { LoginModal } from "@/components/chat/LoginModal";
 import { OfflineModal } from "@/components/chat/OfflineModal";
+import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { DragDivider } from "@/components/chat/DragDivider";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { AnonymousBanner } from "@/components/chat/AnonymousBanner";
@@ -682,6 +683,9 @@ export function SeoShell({
           onDismiss={handleOfflineDismiss}
         />
       )}
+
+      {/* ── Sermon-reference tooltip (clickable citation pills) ── */}
+      <ReferencePopover />
     </div>
   );
 }

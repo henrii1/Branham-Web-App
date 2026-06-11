@@ -40,6 +40,7 @@ import { AnonymousBanner } from "./AnonymousBanner";
 import { LoginModal } from "./LoginModal";
 import { OfflineModal } from "./OfflineModal";
 import { SwipeAffordance } from "./SwipeAffordance";
+import { ReferencePopover } from "./ReferencePopover";
 import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
 
@@ -1207,6 +1208,9 @@ export function ChatShell({
           onDismiss={handleOfflineDismiss}
         />
       )}
+
+      {/* ── Sermon-reference tooltip (clickable citation pills) ── */}
+      <ReferencePopover />
     </div>
   );
 }
