@@ -195,6 +195,10 @@ html {
   display: inline;
 }
 
+.evidence-trailing {
+  display: inline;
+}
+
 /* ── Sermon-reference tooltip (ReferencePopover) ─────────────────────
  * Strong's-Concordance-style dialog: a centered card over a dimmed backdrop
  * on every breakpoint. Big enough to read, small enough that the surrounding
@@ -634,7 +638,8 @@ html {
     margin-bottom: 0.35rem;
   }
 
-  .chat-markdown .citation-separator {
+  .chat-markdown .citation-separator,
+  .chat-markdown .evidence-trailing {
     display: none;
   }
 }

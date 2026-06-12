@@ -31,10 +31,18 @@ const SERMON_SEGMENT_RE =
 // The pill opening tag is matched loosely (`citation-pill[^"]*"[^>]*`) so the
 // extra class + data-* attributes added to clickable pills don't break these.
 const EVIDENCE_PREFIX_RE = /Evidence:/g;
+// Captures an evidence group: the label + every adjacent citation pill (whether
+// separated by a space, a wrapped `;`/`,` separator span, or nothing) in group 1,
+// and any trailing punctuation (`.`/`;`/`,`) that terminates the group in group 2.
+// Runs AFTER the separator step so the inter-pill separators are already wrapped.
 const EVIDENCE_ROW_RE =
-  /(<span class="evidence-label">Evidence<\/span>(?:\s|&nbsp;)*(?:<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>\s*(?:[;,.]\s*)?)+)/g;
+  /(<span class="evidence-label">Evidence<\/span>(?:\s|&nbsp;)*<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>(?:(?:<span class="citation-separator">[;,]<\/span>)?\s*<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>)*)(\s*[.;,])?/g;
+// A `;` OR `,` separator between two adjacent citation pills. Both sides must be
+// pills (the right side via lookahead so consecutive separators still match), so
+// ordinary sentence punctuation elsewhere is never wrapped. The separator
+// character is captured ($2) and preserved for desktop; mobile hides the span.
 const CITATION_SEPARATOR_RE =
-  /(<\/span>);\s*(<span class="citation-pill[^"]*"[^>]*>)/g;
+  /(<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>)\s*([;,])\s*(?=<span class="citation-pill[^"]*"[^>]*>)/g;
 
 /**
  * Strips letter suffixes from paragraph refs (¶10c → ¶10, ¶11a → ¶11).
@@ -183,17 +191,21 @@ export function applyCitations(html: string): string {
   // Step 2: Replace "Evidence:" text with styled label
   result = result.replace(EVIDENCE_PREFIX_RE, makeEvidenceLabel());
 
-  // Step 3: Wrap semicolon separators between adjacent citation pills so
-  // mobile can hide the punctuation without changing desktop formatting.
+  // Step 3: Wrap `;`/`,` separators between adjacent citation pills so mobile
+  // can hide the punctuation while desktop keeps the original character.
   result = result.replace(
     CITATION_SEPARATOR_RE,
-    '$1<span class="citation-separator">;</span> $2',
+    '$1<span class="citation-separator">$2</span> ',
   );
 
-  // Step 4: Wrap evidence groups so mobile can move them onto their own line
-  result = result.replace(
-    EVIDENCE_ROW_RE,
-    '<span class="evidence-row">$1</span>',
+  // Step 4: Wrap evidence groups so mobile can move them onto their own line,
+  // and wrap any trailing punctuation (the full stop after the citations) so
+  // mobile can drop it — on a stacked layout a lone trailing "." reads as an
+  // orphaned line. Desktop keeps both the separators and the trailing stop.
+  result = result.replace(EVIDENCE_ROW_RE, (_match, body, trailing) =>
+    trailing
+      ? `<span class="evidence-row">${body}<span class="evidence-trailing">${trailing}</span></span>`
+      : `<span class="evidence-row">${body}</span>`,
   );
 
   return result;
