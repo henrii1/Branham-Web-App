@@ -49,6 +49,7 @@ export async function fetchSeoPage(
   return data;
 }
 
+// EN-only by design — used on the landing page which is always English.
 export async function fetchTopPublishedSeoPages(
   limit = 8,
 ): Promise<Pick<SeoCacheRow, "slug" | "question">[]> {
