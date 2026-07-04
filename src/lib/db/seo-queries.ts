@@ -34,12 +34,14 @@ function getPublicClient() {
 
 export async function fetchSeoPage(
   slug: string,
+  language = "en",
 ): Promise<SeoCacheRow | null> {
   const supabase = getPublicClient();
   const { data, error } = await supabase
     .from("seo_cache")
     .select(SEO_COLUMNS)
     .eq("slug", slug)
+    .eq("language", language)
     .eq("published", true)
     .maybeSingle();
 
@@ -63,13 +65,13 @@ export async function fetchTopPublishedSeoPages(
   return data ?? [];
 }
 
-export async function fetchAllPublishedSeoPages(): Promise<SeoCacheRow[]> {
+export async function fetchAllPublishedSeoPages(language = "en"): Promise<SeoCacheRow[]> {
   const supabase = getPublicClient();
   const { data, error } = await supabase
     .from("seo_cache")
     .select(SEO_COLUMNS)
     .eq("published", true)
-    .eq("language", "en")
+    .eq("language", language)
     .order("created_at", { ascending: true });
 
   if (error) throw error;
@@ -88,7 +90,7 @@ export interface AdjacentSeoPage {
  * /q page is no longer a dead-end leaf with no peer links — a known
  * cause of "crawled — currently not indexed" in Search Console.
  */
-export async function fetchAdjacentSeoPages(slug: string): Promise<{
+export async function fetchAdjacentSeoPages(slug: string, language = "en"): Promise<{
   prev: AdjacentSeoPage | null;
   next: AdjacentSeoPage | null;
 }> {
@@ -97,7 +99,7 @@ export async function fetchAdjacentSeoPages(slug: string): Promise<{
     .from("seo_cache")
     .select("slug, question")
     .eq("published", true)
-    .eq("language", "en")
+    .eq("language", language)
     .order("created_at", { ascending: true });
 
   if (error) throw error;
