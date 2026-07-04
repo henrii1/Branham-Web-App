@@ -20,6 +20,7 @@ import type { ConversationRow } from "@/lib/db/queries";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { TypewriterRenderer } from "./TypewriterRenderer";
+import { LangSwitcher } from "./LangSwitcher";
 import { LoginModal } from "@/components/chat/LoginModal";
 import { OfflineModal } from "@/components/chat/OfflineModal";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
@@ -37,6 +38,8 @@ interface SeoShellProps {
   ragContext: string;
   conversationSummary: string | null;
   nextPage: { slug: string; question: string } | null;
+  language: string;
+  langHrefs: { en: string; es: string; fr: string };
 }
 
 const DEFAULT_PANEL_RATIO = 0.4;
@@ -57,6 +60,8 @@ export function SeoShell({
   ragContext,
   conversationSummary,
   nextPage,
+  language,
+  langHrefs,
 }: SeoShellProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -496,12 +501,7 @@ export function SeoShell({
 
             <BrandLogo href="/" size={30} nameClassName="text-sm" />
 
-            <Link
-              href="/faq"
-              className="hidden text-xs font-medium text-zinc-500 transition-colors hover:text-foreground sm:inline"
-            >
-              Popular Questions
-            </Link>
+            <LangSwitcher current={language as "en" | "es" | "fr"} hrefs={langHrefs} />
           </div>
 
           <nav
@@ -594,10 +594,17 @@ export function SeoShell({
             style={{ flex: `${1 - panelRatio} 0 0` }}
           >
             <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-y-auto px-5 py-6 xl:max-w-[56rem]">
-              <h1 className="font-display mb-4 text-2xl text-foreground lg:text-3xl">
-                {question}
-              </h1>
-              <TypewriterRenderer markdown={answerMarkdown} />
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <h1 className="font-display text-2xl text-foreground lg:text-3xl">
+                  {question}
+                </h1>
+                <div className="shrink-0 pt-1">
+                  <LangSwitcher current={language as "en" | "es" | "fr"} hrefs={langHrefs} />
+                </div>
+              </div>
+              <div data-message-lang={language}>
+                <TypewriterRenderer markdown={answerMarkdown} />
+              </div>
               <NextQuestionLink nextPage={nextPage} />
             </div>
           </div>
@@ -636,7 +643,9 @@ export function SeoShell({
                     <h2 className="font-display mb-4 text-2xl text-foreground">
                       {question}
                     </h2>
-                    <TypewriterRenderer markdown={answerMarkdown} />
+                    <div data-message-lang={language}>
+                      <TypewriterRenderer markdown={answerMarkdown} />
+                    </div>
                     <NextQuestionLink nextPage={nextPage} />
                   </div>
                 </div>
