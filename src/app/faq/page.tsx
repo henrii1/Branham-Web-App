@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { fetchAllPublishedSeoPages } from "@/lib/db/seo-queries";
 import { FaqAccordion } from "@/components/seo/FaqAccordion";
+import { createClient } from "@/lib/supabase/server";
+import { LangSwitcher } from "@/components/seo/LangSwitcher";
 
 const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
@@ -63,6 +66,19 @@ function getExcerpt(md: string, sentenceCount = 3): string {
 }
 
 export default async function FaqPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("language")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const lang = profile?.language;
+    if (lang === "es") redirect("/es/faq");
+    if (lang === "fr") redirect("/fr/faq");
+  }
+
   const pages = await fetchAllPublishedSeoPages();
 
   const faqItems = pages.map((p) => ({
@@ -94,12 +110,18 @@ export default async function FaqPage() {
         <header className="shrink-0 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 xl:max-w-[56rem]">
             <BrandLogo href="/" priority />
-            <Link
-              href="/chat"
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Ask a question
-            </Link>
+            <div className="flex items-center gap-2">
+              <LangSwitcher
+                current="en"
+                hrefs={{ en: "/faq", es: "/es/faq", fr: "/fr/faq" }}
+              />
+              <Link
+                href="/chat"
+                className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                Ask a question
+              </Link>
+            </div>
           </div>
         </header>
 
