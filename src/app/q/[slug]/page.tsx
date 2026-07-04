@@ -1,9 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { fetchAdjacentSeoPages, fetchSeoPage } from "@/lib/db/seo-queries";
 import { SeoShell } from "@/components/seo/SeoShell";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
+import { createClient } from "@/lib/supabase/server";
 
 const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
@@ -66,6 +67,21 @@ export async function generateMetadata({
 
 export default async function SeoQuestionPage({ params }: PageProps) {
   const { slug } = await params;
+
+  // Auto-redirect logged-in users to their profile language version.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("language")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const lang = profile?.language;
+    if (lang === "es") redirect(`/es/q/${slug}`);
+    if (lang === "fr") redirect(`/fr/q/${slug}`);
+  }
+
   const [page, adjacent] = await Promise.all([
     fetchSeoPage(slug),
     fetchAdjacentSeoPages(slug),
@@ -174,6 +190,12 @@ export default async function SeoQuestionPage({ params }: PageProps) {
         ragContext={page.rag_context}
         conversationSummary={page.conversation_summary}
         nextPage={adjacent.next}
+        language={page.language ?? "en"}
+        langHrefs={{
+          en: `/q/${slug}`,
+          es: `/es/q/${slug}`,
+          fr: `/fr/q/${slug}`,
+        }}
       />
     </>
   );
