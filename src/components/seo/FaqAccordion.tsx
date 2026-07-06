@@ -11,9 +11,10 @@ interface FaqItem {
 
 interface FaqAccordionProps {
   items: FaqItem[];
+  slugPrefix?: string;
 }
 
-export function FaqAccordion({ items }: FaqAccordionProps) {
+export function FaqAccordion({ items, slugPrefix = "/q" }: FaqAccordionProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggle = useCallback(
@@ -62,7 +63,7 @@ export function FaqAccordion({ items }: FaqAccordionProps) {
                 {item.excerpt}
               </p>
               <Link
-                href={`/q/${item.slug}`}
+                href={`${slugPrefix}/${item.slug}`}
                 className="mt-2 inline-block text-sm font-medium text-blue-600 transition-colors hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Read full answer →
