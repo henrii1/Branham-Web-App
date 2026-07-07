@@ -12,18 +12,22 @@ const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 const SUPPORTED_LANGS = ["es", "fr"] as const;
 type SupportedLang = (typeof SUPPORTED_LANGS)[number];
 
-const LANG_META: Record<SupportedLang, { title: string; description: string; label: string }> = {
+const LANG_META: Record<SupportedLang, { title: string; description: string; label: string; subtitle: string }> = {
   es: {
     title: "Preguntas frecuentes sobre el Hno. Branham | Branham Sermons Assistant",
     description:
       "Preguntas comunes sobre las doctrinas, sermones, biografía y creencias de William Marrion Branham, respondidas desde los textos originales de los sermones.",
     label: "Preguntas frecuentes",
+    subtitle:
+      "Preguntas comunes sobre los sermones y enseñanzas de William Marrion Branham, respondidas desde los textos originales de los sermones.",
   },
   fr: {
     title: "Questions fréquentes sur Frère Branham | Branham Sermons Assistant",
     description:
       "Questions courantes sur les doctrines, sermons, biographie et croyances de William Marrion Branham, répondues à partir des textes originaux des sermons.",
     label: "Questions fréquentes",
+    subtitle:
+      "Questions courantes sur les sermons et enseignements de William Marrion Branham, répondues à partir des textes originaux des sermons.",
   },
 };
 
@@ -138,8 +142,7 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
               {LANG_META[l].label}
             </h1>
             <p className="mb-8 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-              Common questions about the sermons and teachings of William Marrion
-              Branham, answered from the original sermon texts.
+              {LANG_META[l].subtitle}
             </p>
 
             <nav className="sr-only" aria-label="All questions">

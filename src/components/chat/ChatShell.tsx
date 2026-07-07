@@ -15,6 +15,7 @@ import {
   fetchConversation,
   fetchMessages,
   fetchLatestRag,
+  fetchUserLanguage,
   createConversation,
   saveMessage,
   upsertRag,
@@ -37,6 +38,15 @@ import { ChatPanel } from "./ChatPanel";
 import { Composer } from "./Composer";
 import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
+import dynamic from "next/dynamic";
+const LangAnnounceBanner = dynamic(
+  () => import("./LangAnnounceBanner").then((m) => ({ default: m.LangAnnounceBanner })),
+  { ssr: false },
+);
+const LangFeatureModal = dynamic(
+  () => import("./LangFeatureModal").then((m) => ({ default: m.LangFeatureModal })),
+  { ssr: false },
+);
 import { LoginModal } from "./LoginModal";
 import { OfflineModal } from "./OfflineModal";
 import { SwipeAffordance } from "./SwipeAffordance";
@@ -166,6 +176,7 @@ export function ChatShell({
   // network request when the user taps Retry on the offline modal — without
   // re-adding the optimistic user message to local state.
   const lastSendArgsRef = useRef<SendArgs | null>(null);
+  const userLanguageRef = useRef<string | null>(null);
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
   const pendingFollowUpRef = useRef<string | null>(null);
@@ -487,6 +498,12 @@ export function ChatShell({
     initialLoadDone.current = true;
 
     loadConversations();
+    fetchUserLanguage(user.id)
+      .then((lang) => {
+        // Don't overwrite if seo_followup already set a language for this conversation.
+        if (!userLanguageRef.current) userLanguageRef.current = lang;
+      })
+      .catch(console.error);
 
     const pendingSlug = localStorage.getItem("pending_seo_slug");
     if (pendingSlug && !initialConversationId) {
@@ -538,6 +555,11 @@ export function ChatShell({
           const parsed = JSON.parse(raw);
           if (parsed.conversationId === initialConversationId && parsed.query) {
             pendingFollowUpRef.current = parsed.query;
+            // Always use the SEO page's language for this conversation —
+            // the user explicitly opened an ES/FR page and followed up there.
+            if (parsed.language && ["en", "es", "fr"].includes(parsed.language)) {
+              userLanguageRef.current = parsed.language;
+            }
           }
         } catch { /* malformed JSON — ignore */ }
       }
@@ -679,6 +701,7 @@ export function ChatShell({
                   role: "assistant",
                   content: finalAnswer,
                   createdAt: new Date().toISOString(),
+                  language: event.language,
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
                 setStreamBuffer("");
@@ -841,8 +864,11 @@ export function ChatShell({
       const requestBody: Record<string, unknown> = {
         conversation_id: conversationId,
         query: content,
-        user_language: "en",
       };
+      const lang = userLanguageRef.current;
+      if (!isAnonymous && lang && ["en", "es", "fr"].includes(lang)) {
+        requestBody.user_language = lang;
+      }
       if (conversationSummary) {
         requestBody.conversation_summary =
           conversationSummary.length > HISTORY_MAX_MESSAGE_CHARS
@@ -1068,6 +1094,9 @@ export function ChatShell({
           sourcesReady={sourcesReady}
         />
 
+        {/* ── Language announcement banner (all users, once per browser) ── */}
+        <LangAnnounceBanner />
+
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
           <div className="hidden lg:block">
@@ -1208,6 +1237,9 @@ export function ChatShell({
           onDismiss={handleOfflineDismiss}
         />
       )}
+
+      {/* ── Language feature modal (logged-in users, once per browser) ── */}
+      {!isAnonymous && <LangFeatureModal />}
 
       {/* ── Sermon-reference tooltip (clickable citation pills) ── */}
       <ReferencePopover />

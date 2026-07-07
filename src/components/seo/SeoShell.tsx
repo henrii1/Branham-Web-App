@@ -372,7 +372,7 @@ export function SeoShell({
 
         localStorage.setItem(
           "seo_followup",
-          JSON.stringify({ conversationId: convId, query: content }),
+          JSON.stringify({ conversationId: convId, query: content, language }),
         );
         pendingFollowUpRef.current = null;
         router.push(`/chat/${convId}`);
@@ -384,7 +384,7 @@ export function SeoShell({
         }
       }
     },
-    [isAnonymous, user, seeding, question, answerMarkdown, ragContext, conversationSummary, router],
+    [isAnonymous, user, seeding, question, answerMarkdown, ragContext, conversationSummary, language, router],
   );
 
   const handleOfflineRetry = useCallback(() => {
@@ -561,7 +561,7 @@ export function SeoShell({
                   Passages
                 </h2>
                 <Link
-                  href="/faq"
+                  href={language === "en" ? "/faq" : `/${language}/faq`}
                   className="text-xs font-medium text-zinc-500 transition-colors hover:text-foreground"
                 >
                   Popular Questions
@@ -605,7 +605,7 @@ export function SeoShell({
               <div data-message-lang={language}>
                 <TypewriterRenderer markdown={answerMarkdown} />
               </div>
-              <NextQuestionLink nextPage={nextPage} />
+              <NextQuestionLink nextPage={nextPage} language={language} />
             </div>
           </div>
         </div>
@@ -646,7 +646,7 @@ export function SeoShell({
                     <div data-message-lang={language}>
                       <TypewriterRenderer markdown={answerMarkdown} />
                     </div>
-                    <NextQuestionLink nextPage={nextPage} />
+                    <NextQuestionLink nextPage={nextPage} language={language} />
                   </div>
                 </div>
               </div>
@@ -844,14 +844,16 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
 
 interface NextQuestionLinkProps {
   nextPage: { slug: string; question: string } | null;
+  language: string;
 }
 
-function NextQuestionLink({ nextPage }: NextQuestionLinkProps) {
+function NextQuestionLink({ nextPage, language }: NextQuestionLinkProps) {
   if (!nextPage) return null;
+  const href = language === "en" ? `/q/${nextPage.slug}` : `/${language}/q/${nextPage.slug}`;
   return (
     <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
       <Link
-        href={`/q/${nextPage.slug}`}
+        href={href}
         className="group inline-flex items-baseline gap-1.5 text-xs text-zinc-500 transition-colors hover:text-foreground dark:text-zinc-400"
       >
         <span className="font-medium uppercase tracking-wide">Next</span>
