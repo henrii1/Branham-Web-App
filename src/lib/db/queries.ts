@@ -214,6 +214,32 @@ export async function fetchSeoPageClient(
   return data;
 }
 
+export async function fetchUserLanguage(
+  userId: string,
+): Promise<string | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("language")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.language ?? null;
+}
+
+export async function updateUserLanguage(
+  userId: string,
+  language: string,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ language })
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 export async function updateConversationAfterTurn(
   conversationId: string,
   summary: string | null,

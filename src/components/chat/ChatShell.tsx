@@ -16,6 +16,7 @@ import {
   fetchMessages,
   fetchLatestRag,
   fetchUserLanguage,
+  updateUserLanguage,
   createConversation,
   saveMessage,
   upsertRag,
@@ -177,6 +178,7 @@ export function ChatShell({
   // re-adding the optimistic user message to local state.
   const lastSendArgsRef = useRef<SendArgs | null>(null);
   const userLanguageRef = useRef<string | null>(null);
+  const [chatLanguage, setChatLanguage] = useState<string>("en");
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
   const pendingFollowUpRef = useRef<string | null>(null);
@@ -501,7 +503,10 @@ export function ChatShell({
     fetchUserLanguage(user.id)
       .then((lang) => {
         // Don't overwrite if seo_followup already set a language for this conversation.
-        if (!userLanguageRef.current) userLanguageRef.current = lang;
+        if (!userLanguageRef.current) {
+          userLanguageRef.current = lang;
+          if (lang) setChatLanguage(lang);
+        }
       })
       .catch(console.error);
 
@@ -559,6 +564,7 @@ export function ChatShell({
             // the user explicitly opened an ES/FR page and followed up there.
             if (parsed.language && ["en", "es", "fr"].includes(parsed.language)) {
               userLanguageRef.current = parsed.language;
+              setChatLanguage(parsed.language);
             }
           }
         } catch { /* malformed JSON — ignore */ }
@@ -972,6 +978,22 @@ export function ChatShell({
     [conversationId, handleNewConversation],
   );
 
+  // ── Chat language change ────────────────────────────────────────────
+  const handleChatLanguageChange = useCallback(
+    async (lang: string) => {
+      userLanguageRef.current = lang;
+      setChatLanguage(lang);
+      if (user) {
+        try {
+          await updateUserLanguage(user.id, lang);
+        } catch (err) {
+          console.error("Failed to update language:", err);
+        }
+      }
+    },
+    [user],
+  );
+
   // ── Auth loading skeleton ───────────────────────────────────────────
   if (authLoading) {
     return (
@@ -1217,6 +1239,19 @@ export function ChatShell({
           </div>
         )}
 
+        {/* ── Chat language indicator (logged-in users only) ── */}
+        {!isAnonymous && (
+          <div className="flex items-center justify-center gap-2 bg-[var(--surface-base)] px-4 pb-1 pt-1.5">
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+              Responding in
+            </span>
+            <ChatLanguagePill
+              language={chatLanguage}
+              onChange={handleChatLanguageChange}
+            />
+          </div>
+        )}
+
         {/* ── Composer (always visible) ── */}
         <Composer
           onSend={handleSendMessage}
@@ -1243,6 +1278,110 @@ export function ChatShell({
 
       {/* ── Sermon-reference tooltip (clickable citation pills) ── */}
       <ReferencePopover />
+    </div>
+  );
+}
+
+// ── Chat language pill ───────────────────────────────────────────────
+
+const CHAT_LANG_OPTIONS = [
+  { code: "en", label: "English", flag: "🇺🇸" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+] as const;
+
+function ChatLanguagePill({
+  language,
+  onChange,
+}: {
+  language: string;
+  onChange: (lang: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const current =
+    CHAT_LANG_OPTIONS.find((o) => o.code === language) ?? CHAT_LANG_OPTIONS[0];
+  const isNonDefault = language !== "en";
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutsideClick(e: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onOutsideClick);
+    return () => document.removeEventListener("mousedown", onOutsideClick);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+          isNonDefault
+            ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
+            : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+        }`}
+      >
+        <span>{current.flag}</span>
+        <span>{current.label}</span>
+        <svg
+          className="h-2.5 w-2.5 opacity-50"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2.5}
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-800">
+          {CHAT_LANG_OPTIONS.map((opt) => (
+            <button
+              key={opt.code}
+              type="button"
+              onClick={() => {
+                onChange(opt.code);
+                setOpen(false);
+              }}
+              className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-xs transition-colors ${
+                opt.code === language
+                  ? "bg-zinc-100 font-medium text-foreground dark:bg-zinc-700"
+                  : "text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-700/50"
+              }`}
+            >
+              <span className="text-sm leading-none">{opt.flag}</span>
+              <span className="whitespace-nowrap">{opt.label}</span>
+              {opt.code === language && (
+                <svg
+                  className="ml-1 h-3.5 w-3.5 shrink-0 text-zinc-900 dark:text-zinc-100"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.5 12.75l6 6 9-13.5"
+                  />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
