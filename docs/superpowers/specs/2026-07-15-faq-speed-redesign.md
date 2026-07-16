@@ -108,6 +108,40 @@ Same changes, using `fetchFaqListItems(l)` and `<FaqGrid slugPrefix={/${l}/q} />
 
 ---
 
+---
+
+## Answer Prefix Stripping for ES/FR
+
+### Problem
+
+The API emits `"Respuesta:"` (Spanish) and `"Réponse:"` (French) at the start of responses, matching the English `"Answer:"` pattern that already exists. The current regex in `answerDedup.ts` only matches English. As a result, the prefix appears literally in both the chat message bubbles and the SEO Q/[slug] answer pages for ES/FR.
+
+Additionally, `TypewriterRenderer` (used on SEO Q pages) never calls `stripAnswerPrefix` at all — even for English. English Q pages appear clean only because the data in `seo_cache` was captured before the API started prepending the label.
+
+### Fix
+
+**`src/lib/utils/answerDedup.ts`** — extend the regex to match all three languages:
+
+```ts
+// Before
+const ANSWER_PREFIX = /^(?:#{1,6}\s*)?(?:\*{1,2})?Answer:?(?:\*{1,2})?:?\s*/i;
+
+// After
+const ANSWER_PREFIX =
+  /^(?:#{1,6}\s*)?(?:\*{1,2})?(?:Answer|Respuesta|R[eé]ponse):?(?:\*{1,2})?:?\s*/i;
+```
+
+**`src/components/seo/TypewriterRenderer.tsx`** — apply `stripAnswerPrefix` to the markdown before splitting into chunks, mirroring what `MessageBubble` already does:
+
+```ts
+import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
+// in the component, strip before processing:
+const cleaned = stripAnswerPrefix(markdown);
+// use `cleaned` everywhere `markdown` was used
+```
+
+---
+
 ## Files Changed
 
 | File | Change |
@@ -116,6 +150,8 @@ Same changes, using `fetchFaqListItems(l)` and `<FaqGrid slugPrefix={/${l}/q} />
 | `src/components/seo/FaqGrid.tsx` | New component |
 | `src/app/faq/page.tsx` | Swap query + component, simplify JSON-LD |
 | `src/app/[lang]/faq/page.tsx` | Swap query + component, simplify JSON-LD |
+| `src/lib/utils/answerDedup.ts` | Extend regex to ES/FR prefixes |
+| `src/components/seo/TypewriterRenderer.tsx` | Apply `stripAnswerPrefix` before rendering |
 
 `FaqAccordion.tsx` — no change.
 
