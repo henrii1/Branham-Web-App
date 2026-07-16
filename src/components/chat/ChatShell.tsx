@@ -1178,7 +1178,7 @@ export function ChatShell({
         {/* ── Mobile: sliding tab panels ── */}
         {/* Both panels sit side-by-side in a 200%-wide inner div.           translateX(0%)  → Chat visible                                    translateX(-50%) → Sources visible (−50% of 200% = −100vw)       During a drag, dragX shifts the position live so panels glide.    touch-action:pan-y lets the browser handle vertical scroll inside     each panel without interfering with our horizontal swipe detection. */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
-          {isAnonymous && <AnonymousBanner />}
+          {isAnonymous && <AnonymousBanner strings={strings} faqHref={faqHref} />}
 
           <div className="relative flex-1 overflow-hidden">
             {/* transform/transition are managed imperatively via mobileSliderRef */}

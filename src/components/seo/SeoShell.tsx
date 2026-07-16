@@ -30,6 +30,7 @@ import { AnonymousBanner } from "@/components/chat/AnonymousBanner";
 import { SidebarRail } from "@/components/chat/SidebarRail";
 import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
 import { isOfflineError } from "@/lib/utils/networkError";
+import { getChatStrings } from "@/lib/i18n/chatStrings";
 
 interface SeoShellProps {
   slug: string;
@@ -399,6 +400,9 @@ export function SeoShell({
     pendingFollowUpRef.current = null;
   }, []);
 
+  const strings = getChatStrings(language);
+  const faqHref = language === "en" ? "/faq" : `/${language}/faq`;
+
   return (
     <div className="flex h-dvh bg-background">
       {/* ── Desktop sidebar ── */}
@@ -424,6 +428,8 @@ export function SeoShell({
             onRenameConversation={handleRenameConversation}
             onDeleteConversation={handleDeleteConversation}
             onCollapse={() => setSidebarCollapsed(true)}
+            strings={strings}
+            faqHref={faqHref}
           />
         )}
       </aside>
@@ -468,6 +474,8 @@ export function SeoShell({
               onRenameConversation={handleRenameConversation}
               onDeleteConversation={handleDeleteConversation}
               onClose={closeMobileDrawer}
+              strings={strings}
+              faqHref={faqHref}
             />
           </div>
         </div>
@@ -541,7 +549,7 @@ export function SeoShell({
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
           <div className="hidden lg:block">
-            <AnonymousBanner />
+            <AnonymousBanner strings={strings} faqHref={faqHref} />
           </div>
         )}
 
@@ -612,7 +620,7 @@ export function SeoShell({
 
         {/* ── Mobile: sliding tab panels ── */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
-          {isAnonymous && <AnonymousBanner />}
+          {isAnonymous && <AnonymousBanner strings={strings} faqHref={faqHref} />}
 
           <div className="relative flex-1 overflow-hidden">
             <div
