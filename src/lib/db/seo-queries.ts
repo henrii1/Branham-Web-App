@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 
 export interface SeoCacheRow {
   slug: string;
@@ -78,6 +79,26 @@ export async function fetchAllPublishedSeoPages(language = "en"): Promise<SeoCac
   if (error) throw error;
   return data ?? [];
 }
+
+export const fetchFaqListItems = (language = "en") =>
+  unstable_cache(
+    async () => {
+      const supabase = getPublicClient();
+      const { data, error } = await supabase
+        .from("seo_cache")
+        .select("slug, question, meta_description")
+        .eq("published", true)
+        .eq("language", language)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Pick<
+        SeoCacheRow,
+        "slug" | "question" | "meta_description"
+      >[];
+    },
+    ["faq-list", language],
+    { revalidate: 3600 },
+  )();
 
 export interface AdjacentSeoPage {
   slug: string;

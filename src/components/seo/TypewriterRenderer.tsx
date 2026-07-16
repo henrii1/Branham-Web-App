@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { applyCitations } from "@/lib/markdown/citations";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
+import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 
 interface TypewriterRendererProps {
   markdown: string;
@@ -28,7 +29,7 @@ export function TypewriterRenderer({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    chunks.current = splitIntoChunks(markdown);
+    chunks.current = splitIntoChunks(stripAnswerPrefix(markdown));
 
     if (skipAnimation) {
       setVisibleCount(chunks.current.length);

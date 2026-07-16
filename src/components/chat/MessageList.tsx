@@ -11,9 +11,16 @@ interface MessageListProps {
   messages: Message[];
   streamingStatus: StreamingStatus;
   streamBuffer: string;
+  finalizingText?: string;
 }
 
-function StreamingIndicator({ status }: { status: StreamingStatus }) {
+function StreamingIndicator({
+  status,
+  finalizingText = "Finalizing response…",
+}: {
+  status: StreamingStatus;
+  finalizingText?: string;
+}) {
   if (status === "connecting") {
     return (
       <div className="flex items-center gap-1.5 py-2">
@@ -37,7 +44,7 @@ function StreamingIndicator({ status }: { status: StreamingStatus }) {
     return (
       <div className="py-2">
         <p className="animate-pulse text-sm text-zinc-400 dark:text-zinc-500">
-          Finalizing response…
+          {finalizingText}
         </p>
       </div>
     );
@@ -72,6 +79,7 @@ export function MessageList({
   messages,
   streamingStatus,
   streamBuffer,
+  finalizingText,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -94,7 +102,7 @@ export function MessageList({
         <StreamingText content={streamBuffer} />
       )}
 
-      <StreamingIndicator status={streamingStatus} />
+      <StreamingIndicator status={streamingStatus} finalizingText={finalizingText} />
       <div ref={bottomRef} aria-hidden="true" />
     </div>
   );

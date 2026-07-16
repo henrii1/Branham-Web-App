@@ -8,11 +8,19 @@ interface ComposerProps {
   onSend: (content: string) => void;
   disabled: boolean;
   streamingStatus: StreamingStatus;
+  placeholder?: string;
+  waitingPlaceholder?: string;
 }
 
 const MAX_TEXTAREA_HEIGHT = 200;
 
-export function Composer({ onSend, disabled, streamingStatus }: ComposerProps) {
+export function Composer({
+  onSend,
+  disabled,
+  streamingStatus,
+  placeholder = "Ask a question…",
+  waitingPlaceholder = "Waiting for response…",
+}: ComposerProps) {
   const [value, setValue] = useState("");
   // Live transcript shown while the mic is active (not yet committed).
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -96,9 +104,7 @@ export function Composer({ onSend, disabled, streamingStatus }: ComposerProps) {
             resizeTextarea();
           }}
           onKeyDown={handleKeyDown}
-          placeholder={
-            isStreaming ? "Waiting for response…" : "Ask a question…"
-          }
+          placeholder={isStreaming ? waitingPlaceholder : placeholder}
           disabled={isDisabled}
           rows={1}
           className={`flex-1 resize-none rounded-2xl border bg-[var(--surface-soft)] px-4 py-3 text-base lg:text-sm text-foreground placeholder:text-zinc-400 transition-colors focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:focus:bg-zinc-800 ${

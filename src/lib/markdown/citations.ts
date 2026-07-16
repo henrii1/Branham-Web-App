@@ -30,13 +30,13 @@ const SERMON_SEGMENT_RE =
 // Matches: "Evidence:" at the start of a line or after whitespace.
 // The pill opening tag is matched loosely (`citation-pill[^"]*"[^>]*`) so the
 // extra class + data-* attributes added to clickable pills don't break these.
-const EVIDENCE_PREFIX_RE = /Evidence:/g;
+const EVIDENCE_PREFIX_RE = /(Evidence|Evidencia|Preuve):/g;
 // Captures an evidence group: the label + every adjacent citation pill (whether
 // separated by a space, a wrapped `;`/`,` separator span, or nothing) in group 1,
 // and any trailing punctuation (`.`/`;`/`,`) that terminates the group in group 2.
 // Runs AFTER the separator step so the inter-pill separators are already wrapped.
 const EVIDENCE_ROW_RE =
-  /(<span class="evidence-label">Evidence<\/span>(?:\s|&nbsp;)*<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>(?:(?:<span class="citation-separator">[;,]<\/span>)?\s*<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>)*)(\s*[.;,])?/g;
+  /(<span class="evidence-label">(?:Evidence|Evidencia|Preuve)<\/span>(?:\s|&nbsp;)*<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>(?:(?:<span class="citation-separator">[;,]<\/span>)?\s*<span class="citation-pill[^"]*"[^>]*>\[[\s\S]*?<\/span>)*)(\s*[.;,])?/g;
 // A `;` OR `,` separator between two adjacent citation pills. Both sides must be
 // pills (the right side via lookahead so consecutive separators still match), so
 // ordinary sentence punctuation elsewhere is never wrapped. The separator
@@ -173,8 +173,8 @@ function makePill(innerText: string): string {
 /**
  * Replaces "Evidence:" with a styled label chip.
  */
-function makeEvidenceLabel(): string {
-  return `<span class="evidence-label">Evidence</span>`;
+function makeEvidenceLabel(word: string): string {
+  return `<span class="evidence-label">${word}</span>`;
 }
 
 /**
@@ -189,7 +189,7 @@ export function applyCitations(html: string): string {
   let result = html.replace(CITATION_RE, (_match, inner) => makePill(inner));
 
   // Step 2: Replace "Evidence:" text with styled label
-  result = result.replace(EVIDENCE_PREFIX_RE, makeEvidenceLabel());
+  result = result.replace(EVIDENCE_PREFIX_RE, (_match, word: string) => makeEvidenceLabel(word));
 
   // Step 3: Wrap `;`/`,` separators between adjacent citation pills so mobile
   // can hide the punctuation while desktop keeps the original character.

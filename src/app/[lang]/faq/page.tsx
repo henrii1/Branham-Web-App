@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { fetchAllPublishedSeoPages } from "@/lib/db/seo-queries";
-import { FaqAccordion } from "@/components/seo/FaqAccordion";
+import { fetchFaqListItems } from "@/lib/db/seo-queries";
+import { FaqGrid } from "@/components/seo/FaqGrid";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
 
 const SITE_URL = "https://branhamsermons.ai";
@@ -12,7 +12,10 @@ const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 const SUPPORTED_LANGS = ["es", "fr"] as const;
 type SupportedLang = (typeof SUPPORTED_LANGS)[number];
 
-const LANG_META: Record<SupportedLang, { title: string; description: string; label: string; subtitle: string }> = {
+const LANG_META: Record<
+  SupportedLang,
+  { title: string; description: string; label: string; subtitle: string }
+> = {
   es: {
     title: "Preguntas frecuentes sobre el Hno. Branham | Branham Sermons Assistant",
     description:
@@ -68,37 +71,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-function stripMarkdownToPlain(md: string): string {
-  return md
-    .replace(/#{1,6}\s+/g, "")
-    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^>\s+/gm, "")
-    .replace(/^---$/gm, "")
-    .replace(/\n{2,}/g, " ")
-    .replace(/\n/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
-function getExcerpt(md: string, sentenceCount = 3): string {
-  const plain = stripMarkdownToPlain(md);
-  const sentences = plain.match(/[^.!?]+[.!?]+/g);
-  if (!sentences) return plain.slice(0, 200);
-  return sentences.slice(0, sentenceCount).join(" ").trim();
-}
-
 export default async function LocalizedFaqPage({ params }: PageProps) {
   const { lang } = await params;
   if (!SUPPORTED_LANGS.includes(lang as SupportedLang)) notFound();
   const l = lang as SupportedLang;
 
-  const pages = await fetchAllPublishedSeoPages(l);
+  const pages = await fetchFaqListItems(l);
   const faqItems = pages.map((p) => ({
     slug: p.slug,
     question: p.question,
-    excerpt: getExcerpt(p.answer_markdown),
+    metaDescription: p.meta_description,
   }));
 
   const jsonLd = {
@@ -108,7 +90,10 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
     mainEntity: faqItems.map((item) => ({
       "@type": "Question",
       name: item.question,
-      acceptedAnswer: { "@type": "Answer", text: item.excerpt },
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.metaDescription ?? item.question,
+      },
     })),
   };
 
@@ -153,7 +138,7 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
               ))}
             </nav>
 
-            <FaqAccordion items={faqItems} slugPrefix={`/${l}/q`} />
+            <FaqGrid items={faqItems} slugPrefix={`/${l}/q`} />
 
             <div className="mt-10 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-5 py-4 shadow-sm dark:border-zinc-700">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">

@@ -54,6 +54,7 @@ import { SwipeAffordance } from "./SwipeAffordance";
 import { ReferencePopover } from "./ReferencePopover";
 import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
+import { getChatStrings } from "@/lib/i18n/chatStrings";
 
 const DEFAULT_PANEL_RATIO = 0.4;
 const MAX_TITLE_LENGTH = 50;
@@ -1025,6 +1026,9 @@ export function ChatShell({
   }
 
   // ── Render ──────────────────────────────────────────────────────────
+  const strings = getChatStrings(chatLanguage);
+  const faqHref = chatLanguage === "en" ? "/faq" : `/${chatLanguage}/faq`;
+
   return (
     <div className="flex h-dvh bg-background">
       <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
@@ -1114,6 +1118,8 @@ export function ChatShell({
           hasRag={!!ragData}
           chatReady={chatReady}
           sourcesReady={sourcesReady}
+          strings={strings}
+          faqHref={faqHref}
         />
 
         {/* ── Language announcement banner (all users, once per browser) ── */}
@@ -1136,7 +1142,13 @@ export function ChatShell({
             className="min-h-0 overflow-hidden border-b border-zinc-200 dark:border-zinc-800"
             style={{ flex: `${panelRatio} 0 0` }}
           >
-            <SourcesPanel ragData={ragData} streamingStatus={streamingStatus} />
+            <SourcesPanel
+              ragData={ragData}
+              streamingStatus={streamingStatus}
+              passagesTitle={strings.passagesTitle}
+              passagesDescription={strings.passagesDescription}
+              passagesSectionHeader={strings.passagesSectionHeader}
+            />
           </div>
 
           <DragDivider
@@ -1157,6 +1169,8 @@ export function ChatShell({
               streamBuffer={streamBuffer}
               error={error}
               isLoading={conversationLoading}
+              welcomeDescription={strings.welcomeDescription}
+              finalizingText={strings.finalizingResponse}
             />
           </div>
         </div>
@@ -1190,6 +1204,8 @@ export function ChatShell({
                   streamBuffer={streamBuffer}
                   error={error}
                   isLoading={conversationLoading}
+                  welcomeDescription={strings.welcomeDescription}
+                  finalizingText={strings.finalizingResponse}
                 />
               </div>
               {/* Sources — 50% of 200% inner = 100% of viewport */}
@@ -1197,6 +1213,9 @@ export function ChatShell({
                 <SourcesPanel
                   ragData={ragData}
                   streamingStatus={streamingStatus}
+                  passagesTitle={strings.passagesTitle}
+                  passagesDescription={strings.passagesDescription}
+                  passagesSectionHeader={strings.passagesSectionHeader}
                 />
               </div>
             </div>
@@ -1208,14 +1227,14 @@ export function ChatShell({
             {activeTab === "chat" && sourcesReady && (
               <SwipeAffordance
                 direction="right"
-                label="View passages"
+                label={strings.viewPassages}
                 onTap={() => handleTabChange("sources")}
               />
             )}
             {activeTab === "sources" && chatReady && (
               <SwipeAffordance
                 direction="left"
-                label="Back to answer"
+                label={strings.backToAnswer}
                 onTap={() => handleTabChange("chat")}
               />
             )}
@@ -1226,15 +1245,15 @@ export function ChatShell({
         {messages.length > 0 && (
           <div className="bg-[var(--surface-base)] px-4 pb-1.5 pt-1 text-center">
             <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
-              Switching topics?{" "}
+              {strings.switchingTopics}{" "}
               <button
                 type="button"
                 onClick={handleNewConversation}
                 className="underline transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
               >
-                Start a new chat
+                {strings.startNewChat}
               </button>{" "}
-              for more relevant passages.
+              {strings.forMorePassages}
             </p>
           </div>
         )}
@@ -1243,7 +1262,7 @@ export function ChatShell({
         {!isAnonymous && (
           <div className="flex items-center justify-center gap-2 bg-[var(--surface-base)] px-4 pb-1 pt-1.5">
             <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-              Responding in
+              {strings.respondingIn}
             </span>
             <ChatLanguagePill
               language={chatLanguage}
@@ -1257,6 +1276,8 @@ export function ChatShell({
           onSend={handleSendMessage}
           disabled={false}
           streamingStatus={streamingStatus}
+          placeholder={strings.askPlaceholder}
+          waitingPlaceholder={strings.waitingPlaceholder}
         />
       </div>
 
@@ -1396,6 +1417,8 @@ interface MobileHeaderProps {
   hasRag: boolean;
   chatReady: boolean;
   sourcesReady: boolean;
+  strings: ReturnType<typeof getChatStrings>;
+  faqHref: string;
 }
 
 function MobileHeader({
@@ -1406,6 +1429,8 @@ function MobileHeader({
   hasRag,
   chatReady,
   sourcesReady,
+  strings,
+  faqHref,
 }: MobileHeaderProps) {
   // Show notification for the tab that has new content but is not currently active.
   const sourcesNotif = activeTab !== "sources" && sourcesReady;
@@ -1440,10 +1465,10 @@ function MobileHeader({
 
         <div className="flex items-center gap-2">
           <Link
-            href="/faq"
+            href={faqHref}
             className="hidden text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-700 sm:inline dark:hover:text-zinc-200"
           >
-            Popular Questions
+            {strings.popularQuestions}
           </Link>
           <button
             type="button"
@@ -1502,7 +1527,7 @@ function MobileHeader({
               d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
             />
           </svg>
-          <span>Chat</span>
+          <span>{strings.chatTab}</span>
           {/* "New" badge when chat result just arrived */}
           {chatNotif && (
             <span className="mobile-ready-badge inline-flex items-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white shadow-sm dark:bg-blue-500">
@@ -1545,7 +1570,7 @@ function MobileHeader({
               <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-green-500" />
             )}
           </span>
-          <span>Passages</span>
+          <span>{strings.passagesTab}</span>
           {/* "NEW" badge when sources just arrived */}
           {sourcesNotif && (
             <span className="mobile-ready-badge inline-flex items-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white shadow-sm dark:bg-blue-500">

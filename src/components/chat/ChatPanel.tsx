@@ -11,9 +11,11 @@ interface ChatPanelProps {
   streamBuffer: string;
   error: string | null;
   isLoading?: boolean;
+  welcomeDescription: string;
+  finalizingText: string;
 }
 
-function WelcomeState() {
+function WelcomeState({ description }: { description: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center px-4">
       <div className="max-w-lg rounded-[28px] border border-zinc-200 bg-[var(--surface-base)] px-8 py-10 text-center shadow-sm dark:border-zinc-700">
@@ -29,8 +31,7 @@ function WelcomeState() {
           Branham Sermons Assistant
         </h2>
         <p className="text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Ask questions about the sermons of William Marrion Branham. Your
-          answers are grounded in the original sermon texts.
+          {description}
         </p>
       </div>
     </div>
@@ -64,6 +65,8 @@ export function ChatPanel({
   streamBuffer,
   error,
   isLoading,
+  welcomeDescription,
+  finalizingText,
 }: ChatPanelProps) {
   const isEmpty =
     messages.length === 0 && streamingStatus === "idle" && !isLoading;
@@ -80,12 +83,13 @@ export function ChatPanel({
         {isLoading ? (
           <LoadingState />
         ) : isEmpty ? (
-          <WelcomeState />
+          <WelcomeState description={welcomeDescription} />
         ) : (
           <MessageList
             messages={messages}
             streamingStatus={streamingStatus}
             streamBuffer={streamBuffer}
+            finalizingText={finalizingText}
           />
         )}
       </div>

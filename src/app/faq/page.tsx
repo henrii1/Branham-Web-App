@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { fetchAllPublishedSeoPages } from "@/lib/db/seo-queries";
-import { FaqAccordion } from "@/components/seo/FaqAccordion";
+import { fetchFaqListItems } from "@/lib/db/seo-queries";
+import { FaqGrid } from "@/components/seo/FaqGrid";
 import { createClient } from "@/lib/supabase/server";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
 
@@ -44,30 +44,11 @@ export const metadata: Metadata = {
   },
 };
 
-function stripMarkdownToPlain(md: string): string {
-  return md
-    .replace(/#{1,6}\s+/g, "")
-    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^>\s+/gm, "")
-    .replace(/^---$/gm, "")
-    .replace(/\n{2,}/g, " ")
-    .replace(/\n/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
-function getExcerpt(md: string, sentenceCount = 3): string {
-  const plain = stripMarkdownToPlain(md);
-  const sentences = plain.match(/[^.!?]+[.!?]+/g);
-  if (!sentences) return plain.slice(0, 200);
-  return sentences.slice(0, sentenceCount).join(" ").trim();
-}
-
 export default async function FaqPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -79,12 +60,12 @@ export default async function FaqPage() {
     if (lang === "fr") redirect("/fr/faq");
   }
 
-  const pages = await fetchAllPublishedSeoPages();
+  const pages = await fetchFaqListItems("en");
 
   const faqItems = pages.map((p) => ({
     slug: p.slug,
     question: p.question,
-    excerpt: getExcerpt(p.answer_markdown),
+    metaDescription: p.meta_description,
   }));
 
   const jsonLd = {
@@ -95,7 +76,7 @@ export default async function FaqPage() {
       name: item.question,
       acceptedAnswer: {
         "@type": "Answer",
-        text: item.excerpt,
+        text: item.metaDescription ?? item.question,
       },
     })),
   };
@@ -135,9 +116,6 @@ export default async function FaqPage() {
               Branham, answered from the original sermon texts.
             </p>
 
-            {/* Hidden links for search crawlers to discover /q/ pages.
-                Visually hidden via sr-only; identical content users navigate
-                to via the accordion. */}
             <nav className="sr-only" aria-label="All questions">
               {faqItems.map((item) => (
                 <Link key={item.slug} href={`/q/${item.slug}`}>
@@ -146,7 +124,7 @@ export default async function FaqPage() {
               ))}
             </nav>
 
-            <FaqAccordion items={faqItems} />
+            <FaqGrid items={faqItems} />
 
             <div className="mt-10 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-5 py-4 shadow-sm dark:border-zinc-700">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
