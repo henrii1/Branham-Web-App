@@ -51,7 +51,7 @@ This means the first request after a deploy warms the cache; all subsequent requ
 
 ### JSON-LD
 
-Both FAQ pages currently generate a `FAQPage` schema with excerpts derived from `answer_markdown`. With the new lean query, the answer text for the schema uses `meta_description` instead (already a short human-readable summary). If `meta_description` is null for a row, that item is omitted from the JSON-LD `mainEntity` array rather than included with empty text.
+Both FAQ pages currently generate a `FAQPage` schema with excerpts derived from `answer_markdown`. With the new lean query, the answer text for the schema uses `meta_description` instead (already a short human-readable summary). If `meta_description` is null for a row, **fall back to the question text itself** — this guarantees every item appears in the schema regardless of `meta_description` coverage.
 
 ---
 
@@ -110,6 +110,154 @@ Same changes, using `fetchFaqListItems(l)` and `<FaqGrid slugPrefix={/${l}/q} />
 
 ---
 
+---
+
+## Chat UI Localization
+
+### Problem
+
+Static UI text in the chat page (welcome card, passages panel, tab labels, composer placeholder, etc.) is always in English, even when the user's language is set to Spanish or French. This is inconsistent with the AI responding in their language.
+
+### Approach
+
+`chatLanguage` state already lives in `ChatShell` and reflects the user's active language. We use it to drive a client-side string lookup — no new DB calls, no server-side changes, no SEO impact (the chat page is not indexed).
+
+### New file: `src/lib/i18n/chatStrings.ts`
+
+A plain TypeScript object with EN/ES/FR translations for all user-visible static strings in the chat UI. Exported as `getChatStrings(lang: string)` returning the correct locale's strings (falls back to `en` for unsupported languages).
+
+**Strings to translate:**
+
+| Key | EN |
+|---|---|
+| `welcomeDescription` | Ask questions about the sermons… |
+| `passagesTitle` | Passages |
+| `passagesDescription` | Sermon passages retrieved for your question will appear here… |
+| `passagesSectionHeader` | Sermon Passages |
+| `switchingTopics` | Switching topics? |
+| `startNewChat` | Start a new chat |
+| `forMorePassages` | for more relevant passages. |
+| `viewPassages` | View passages |
+| `backToAnswer` | Back to answer |
+| `respondingIn` | Responding in |
+| `popularQuestions` | Popular Questions |
+| `chatTab` | Chat |
+| `passagesTab` | Passages |
+| `finalizingResponse` | Finalizing response… |
+| `askPlaceholder` | Ask a question… |
+| `waitingPlaceholder` | Waiting for response… |
+
+"Branham Sermons Assistant" is a brand name — it stays in English across all locales.
+
+### Passing strings to components
+
+`ChatShell` calls `getChatStrings(chatLanguage)` and passes the result (or individual string props) down to:
+- `ChatPanel` — `welcomeDescription`
+- `SourcesPanel` — `passagesTitle`, `passagesDescription`, `passagesSectionHeader`
+- `Composer` — `askPlaceholder`, `waitingPlaceholder`
+- `MessageList` — `finalizingResponse`
+- `MobileHeader` (inline in ChatShell) — `chatTab`, `passagesTab`, `popularQuestions`, `viewPassages`, `backToAnswer`
+- The "Switching topics?" nudge and the `ChatLanguagePill` label — inline in `ChatShell`
+
+### Timing
+
+The strings switch at the same moment the language pill updates — after `fetchUserLanguage` resolves on auth. The initial render briefly shows English strings before flipping to the user's language. This matches the existing pill behavior and is acceptable given the chat page is dynamic.
+
+### SEO
+
+No impact. `/chat` is not indexed. The FAQ and Q/[slug] pages are unaffected.
+
+---
+
+---
+
+## Chat UI Localization
+
+### Problem
+
+Static UI text in the chat page (welcome card, passages panel, tab labels, composer placeholder, etc.) is always in English, even when the user's language is set to Spanish or French.
+
+### Approach
+
+`chatLanguage` state already lives in `ChatShell` and reflects the user's active language. Client-side string lookup off that state — no new DB calls, no SSR changes, no SEO impact (chat page is not indexed), zero latency cost.
+
+### New file: `src/lib/i18n/chatStrings.ts`
+
+Plain TS object with EN/ES/FR translations for all user-visible static strings. Exported as `getChatStrings(lang: string)` — falls back to `en` for unsupported languages.
+
+**Strings to translate (brand name "Branham Sermons Assistant" stays in English):**
+
+| Key | EN | ES | FR |
+|---|---|---|---|
+| `welcomeDescription` | Ask questions about the sermons… | Haga preguntas sobre los sermones… | Posez des questions sur les sermons… |
+| `passagesTitle` | Passages | Pasajes | Passages |
+| `passagesDescription` | Sermon passages retrieved… | Los pasajes de sermones recuperados… | Les passages de sermons récupérés… |
+| `passagesSectionHeader` | Sermon Passages | Pasajes de Sermones | Passages de Sermons |
+| `switchingTopics` | Switching topics? | ¿Cambiando de tema? | Vous changez de sujet ? |
+| `startNewChat` | Start a new chat | Inicie un nuevo chat | Commencer un nouveau chat |
+| `forMorePassages` | for more relevant passages. | para pasajes más relevantes. | pour des passages plus pertinents. |
+| `viewPassages` | View passages | Ver pasajes | Voir les passages |
+| `backToAnswer` | Back to answer | Volver a la respuesta | Retour à la réponse |
+| `respondingIn` | Responding in | Respondiendo en | Répondre en |
+| `popularQuestions` | Popular Questions | Preguntas populares | Questions populaires |
+| `chatTab` | Chat | Chat | Chat |
+| `passagesTab` | Passages | Pasajes | Passages |
+| `finalizingResponse` | Finalizing response… | Finalizando respuesta… | Finalisation de la réponse… |
+| `askPlaceholder` | Ask a question… | Haga una pregunta… | Posez une question… |
+| `waitingPlaceholder` | Waiting for response… | Esperando respuesta… | En attente de réponse… |
+
+### Wiring
+
+`ChatShell` calls `getChatStrings(chatLanguage)` and passes result down to: `ChatPanel`, `SourcesPanel`, `Composer`, `MessageList`, and the inline `MobileHeader`. Strings switch at the same moment the language pill updates (after `fetchUserLanguage` resolves). Initial render shows English briefly — same behavior as the pill, acceptable.
+
+---
+
+## Evidence Label Localization
+
+### Problem
+
+`applyCitations()` in `citations.ts` styles the word `"Evidence:"` as a highlighted label chip. The API emits `"Evidencia:"` (Spanish) and `"Preuve:"` (French) in ES/FR responses — these appear as unstyled plain text.
+
+### Fix (three targeted edits in `src/lib/markdown/citations.ts`)
+
+**1. `EVIDENCE_PREFIX_RE`** — capture all three words:
+```ts
+// Before
+const EVIDENCE_PREFIX_RE = /Evidence:/g;
+// After
+const EVIDENCE_PREFIX_RE = /(Evidence|Evidencia|Preuve):/g;
+```
+
+**2. `makeEvidenceLabel`** — accept the matched word:
+```ts
+// Before
+function makeEvidenceLabel(): string {
+  return `<span class="evidence-label">Evidence</span>`;
+}
+// After
+function makeEvidenceLabel(word: string): string {
+  return `<span class="evidence-label">${word}</span>`;
+}
+```
+
+**3. `EVIDENCE_ROW_RE`** — update the HTML pattern that matches already-replaced label spans:
+```ts
+// Before (excerpt)
+/<span class="evidence-label">Evidence<\/span>/
+// After
+/<span class="evidence-label">(?:Evidence|Evidencia|Preuve)<\/span>/
+```
+
+**4. `applyCitations` step 2** — pass captured word to label function:
+```ts
+// Before
+result = result.replace(EVIDENCE_PREFIX_RE, makeEvidenceLabel());
+// After
+result = result.replace(EVIDENCE_PREFIX_RE, (_match, word) => makeEvidenceLabel(word));
+```
+
+---
+
 ## Answer Prefix Stripping for ES/FR
 
 ### Problem
@@ -152,6 +300,13 @@ const cleaned = stripAnswerPrefix(markdown);
 | `src/app/[lang]/faq/page.tsx` | Swap query + component, simplify JSON-LD |
 | `src/lib/utils/answerDedup.ts` | Extend regex to ES/FR prefixes |
 | `src/components/seo/TypewriterRenderer.tsx` | Apply `stripAnswerPrefix` before rendering |
+| `src/lib/i18n/chatStrings.ts` | New — EN/ES/FR chat UI string translations |
+| `src/components/chat/ChatPanel.tsx` | Accept + use localized strings |
+| `src/components/chat/SourcesPanel.tsx` | Accept + use localized strings |
+| `src/components/chat/Composer.tsx` | Accept + use localized placeholder strings |
+| `src/components/chat/MessageList.tsx` | Accept + use localized "Finalizing" string |
+| `src/components/chat/ChatShell.tsx` | Wire `getChatStrings(chatLanguage)` to children |
+| `src/lib/markdown/citations.ts` | Extend Evidence regex + label fn for ES/FR |
 
 `FaqAccordion.tsx` — no change.
 
