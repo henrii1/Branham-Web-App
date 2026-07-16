@@ -1052,6 +1052,8 @@ export function ChatShell({
             onRenameConversation={handleRenameConversation}
             onDeleteConversation={handleDeleteConversation}
             onCollapse={() => setSidebarCollapsed(true)}
+            strings={strings}
+            faqHref={faqHref}
           />
         )}
       </aside>
@@ -1098,6 +1100,8 @@ export function ChatShell({
               onRenameConversation={handleRenameConversation}
               onDeleteConversation={handleDeleteConversation}
               onClose={closeMobileDrawer}
+              strings={strings}
+              faqHref={faqHref}
             />
           </div>
         </div>
@@ -1124,7 +1128,7 @@ export function ChatShell({
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
           <div className="hidden lg:block">
-            <AnonymousBanner />
+            <AnonymousBanner strings={strings} faqHref={faqHref} />
           </div>
         )}
 

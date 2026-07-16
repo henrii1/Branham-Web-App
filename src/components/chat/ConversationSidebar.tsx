@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import type { Conversation } from "@/lib/chat/types";
+import type { ChatStrings } from "@/lib/i18n/chatStrings";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 
 interface ConversationSidebarProps {
@@ -18,6 +19,8 @@ interface ConversationSidebarProps {
   onDeleteConversation: (id: string) => void;
   onClose?: () => void;
   onCollapse?: () => void;
+  strings: ChatStrings;
+  faqHref: string;
 }
 
 interface ConversationGroup {
@@ -27,6 +30,7 @@ interface ConversationGroup {
 
 function groupConversations(
   conversations: Conversation[],
+  labels: { today: string; yesterday: string; prev7: string; prev30: string; older: string },
 ): ConversationGroup[] {
   const now = new Date();
   const todayStart = new Date(
@@ -39,11 +43,11 @@ function groupConversations(
   const monthAgoStart = new Date(todayStart.getTime() - 30 * 86_400_000);
 
   const groups: ConversationGroup[] = [
-    { label: "Today", items: [] },
-    { label: "Yesterday", items: [] },
-    { label: "Previous 7 days", items: [] },
-    { label: "Previous 30 days", items: [] },
-    { label: "Older", items: [] },
+    { label: labels.today, items: [] },
+    { label: labels.yesterday, items: [] },
+    { label: labels.prev7, items: [] },
+    { label: labels.prev30, items: [] },
+    { label: labels.older, items: [] },
   ];
 
   for (const conv of conversations) {
@@ -67,6 +71,7 @@ interface ConversationItemProps {
   onRename: (newTitle: string) => void;
   onDelete: () => void;
   onClose?: () => void;
+  strings: ChatStrings;
 }
 
 function ConversationItem({
@@ -76,6 +81,7 @@ function ConversationItem({
   onRename,
   onDelete,
   onClose,
+  strings,
 }: ConversationItemProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -162,11 +168,11 @@ function ConversationItem({
             ? "bg-zinc-200 font-medium text-foreground dark:bg-zinc-800"
             : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/50"
         }`}
-        title={conv.title ?? "New conversation"}
+        title={conv.title ?? strings.untitledConversation}
         aria-current={isActive ? "page" : undefined}
       >
         <span className="min-w-0 flex-1 truncate pr-6">
-          {conv.title || "New conversation"}
+          {conv.title || strings.untitledConversation}
         </span>
       </button>
 
@@ -200,14 +206,14 @@ function ConversationItem({
             {confirmingDelete ? (
               <>
                 <p className="px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  Delete this chat?
+                  {strings.conversationDeleteConfirm}
                 </p>
                 <button
                   type="button"
                   onClick={confirmDelete}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                 >
-                  Confirm
+                  {strings.conversationConfirm}
                 </button>
                 <button
                   type="button"
@@ -217,7 +223,7 @@ function ConversationItem({
                   }}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-zinc-600 transition-colors hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
-                  Cancel
+                  {strings.conversationCancel}
                 </button>
               </>
             ) : (
@@ -240,7 +246,7 @@ function ConversationItem({
                       d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z"
                     />
                   </svg>
-                  Rename
+                  {strings.conversationRename}
                 </button>
                 <button
                   type="button"
@@ -260,7 +266,7 @@ function ConversationItem({
                       d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
                     />
                   </svg>
-                  Delete
+                  {strings.conversationDelete}
                 </button>
               </>
             )}
@@ -284,9 +290,17 @@ export function ConversationSidebar({
   onDeleteConversation,
   onClose,
   onCollapse,
+  strings,
+  faqHref,
 }: ConversationSidebarProps) {
   const [signingOut, setSigningOut] = useState(false);
-  const groups = groupConversations(conversations);
+  const groups = groupConversations(conversations, {
+    today: strings.groupToday,
+    yesterday: strings.groupYesterday,
+    prev7: strings.groupPrev7,
+    prev30: strings.groupPrev30,
+    older: strings.groupOlder,
+  });
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
@@ -369,7 +383,7 @@ export function ConversationSidebar({
               d="M12 4.5v15m7.5-7.5h-15"
             />
           </svg>
-          New chat
+          {strings.newChat}
         </button>
       </div>
 
@@ -390,12 +404,12 @@ export function ConversationSidebar({
           <div className="px-2 py-8">
             <div className="rounded-2xl border border-dashed border-zinc-300 bg-[var(--surface-base)] px-4 py-6 text-center dark:border-zinc-700">
               <p className="text-sm font-medium text-foreground">
-                {user ? "No conversations yet" : "History stays empty as a guest"}
+                {user ? strings.noConversationsYet : strings.historyEmptyGuest}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-zinc-400 dark:text-zinc-500">
                 {user
-                  ? "Your recent chats will show up here once you ask a question."
-                  : "Sign up to save your Branham Sermons Assistant conversations and return to them later."}
+                  ? strings.noConversationsDesc
+                  : strings.guestHistoryDesc}
               </p>
             </div>
           </div>
@@ -418,6 +432,7 @@ export function ConversationSidebar({
                       }
                       onDelete={() => onDeleteConversation(conv.id)}
                       onClose={onClose}
+                      strings={strings}
                     />
                   ))}
                 </ul>
@@ -429,10 +444,10 @@ export function ConversationSidebar({
 
       <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
         <Link
-          href="/faq"
+          href={faqHref}
           className="mb-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         >
-          Popular Questions
+          {strings.popularQuestions}
         </Link>
         <a
           href="mailto:info@branhamsermons.ai"
@@ -459,7 +474,7 @@ export function ConversationSidebar({
               disabled={signingOut}
               className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-xs text-zinc-400 transition-colors hover:text-zinc-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:text-zinc-300"
             >
-              {signingOut ? "Signing out…" : "Sign out"}
+              {signingOut ? strings.signingOut : strings.signOut}
             </button>
           </>
         ) : (
@@ -468,13 +483,13 @@ export function ConversationSidebar({
               href="/signup"
               className="rounded-lg px-2 py-2 text-center text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-800"
             >
-              Sign up
+              {strings.signUp}
             </Link>
             <Link
               href="/login"
               className="rounded-lg px-2 py-1.5 text-center text-xs text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             >
-              Log in
+              {strings.logIn}
             </Link>
           </div>
         )}

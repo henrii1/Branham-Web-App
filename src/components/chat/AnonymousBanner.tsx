@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import type { ChatStrings } from "@/lib/i18n/chatStrings";
 
-export function AnonymousBanner() {
+interface AnonymousBannerProps {
+  strings: ChatStrings;
+  faqHref: string;
+}
+
+export function AnonymousBanner({ strings, faqHref }: AnonymousBannerProps) {
   return (
     <div className="px-4 py-3">
       <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700">
@@ -24,26 +30,26 @@ export function AnonymousBanner() {
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">
-              You&apos;re chatting as a guest.
+              {strings.guestHeading}
             </p>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Sign up for faster responses and saved conversations.
+              {strings.guestSubtext}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <Link
-            href="/faq"
+            href={faqHref}
             className="rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-3 py-2 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
-            Popular Questions
+            {strings.popularQuestions}
           </Link>
           <Link
             href="/signup"
             className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            Sign up
+            {strings.signUp}
           </Link>
         </div>
       </div>

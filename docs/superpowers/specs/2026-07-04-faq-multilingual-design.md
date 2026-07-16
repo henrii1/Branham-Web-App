@@ -181,11 +181,100 @@ Same pattern on `/faq` / `/es/faq` / `/fr/faq`.
 
 ## 9. What Does Not Change
 
-- Chat system, SSE pipeline, `ChatShell`, `MessageBubble`, reference popovers — untouched.
 - `profiles` table — untouched (already stores `language`).
-- `LangAnnounceBanner`, `LangFeatureModal`, `LanguageOnlyModal` — untouched.
 - `conversations`, `chat_messages`, `conversation_rag` — untouched.
 - The `fetchTopPublishedSeoPages` function (used on the landing page) — EN only, unchanged.
+
+---
+
+## 11. Adding a New Language — Checklist
+
+When adding a language beyond EN/ES/FR, every item below must be addressed. Skipping any one of them will leave that surface in English regardless of the user's chosen language.
+
+### A. Chat UI strings — `src/lib/i18n/chatStrings.ts`
+
+This is the single source of truth for all chat-surface copy. Add a new top-level key matching the language code (e.g. `"pt"`). The object must contain every key already present on the `en` block — TypeScript will flag any missing ones. Keys that need language-specific content:
+
+| Key | Notes |
+|---|---|
+| `announceHeading` / `announceSubtext` / `announceShareText` | Must mention all supported languages, not just the new one. Also update existing language blocks to include the new language name. |
+| `sermonCountNote` | Inline note shown under the language pill. Use `""` to hide it (EN pattern). For a partial corpus, show the count: *"X de ~1,200 sermones indexados en …"* |
+| All `group*` keys | Sidebar history group labels ("Today", "Yesterday", etc.) — translate each. |
+| `untitledConversation` | Fallback title shown in the sidebar when a conversation has no title yet. |
+| `guestHeading` / `guestSubtext` | Anonymous banner copy. |
+| `signUp` / `logIn` / `signOut` / `signingOut` | Auth action labels in the sidebar and banner. |
+
+### B. Language pill — `ChatShell.tsx`
+
+Add the new language to `CHAT_LANG_OPTIONS` (around line 1308):
+
+```ts
+{ code: "pt", label: "Português", flag: "🇧🇷" },
+```
+
+Also update the user-language whitelist in `handleSendMessage` (two places):
+
+```ts
+if (!isAnonymous && lang && ["en", "es", "fr", "pt"].includes(lang)) {
+```
+
+And the `seo_followup` language guard (same file):
+
+```ts
+if (parsed.language && ["en", "es", "fr", "pt"].includes(parsed.language)) {
+```
+
+### C. Answer-prefix stripping — `src/lib/utils/answerDedup.ts`
+
+`stripAnswerPrefix` runs on every streamed delta and on the final answer. If the API emits *"Resposta:"* (PT) or an equivalent prefix, the regex must cover it or users will see the raw prefix in the chat bubble:
+
+```ts
+const ANSWER_PREFIX = /^(?:#{1,6}\s*)?(?:\*{1,2})?(?:Answer|Respuesta|R[eé]ponse|Resposta):?(?:\*{1,2})?:?\s*/i;
+```
+
+### D. Evidence label — `src/lib/markdown/citations.ts`
+
+`EVIDENCE_PREFIX_RE` must include the new language's equivalent of "Evidence:". Update the capturing-group regex:
+
+```ts
+const EVIDENCE_PREFIX_RE = /(Evidence|Evidencia|Preuve|Evidência):/g;
+```
+
+Also update `EVIDENCE_ROW_RE` which matches the word to split citation rows:
+
+```ts
+/(?:Evidence|Evidencia|Preuve|Evidência)/
+```
+
+### E. SEO pages
+
+1. **Route validation** in `src/app/(app)/[lang]/faq/page.tsx` and `[lang]/q/[slug]/page.tsx`:
+   ```ts
+   const SUPPORTED_LANGS = ["es", "fr", "pt"] as const;
+   ```
+
+2. **`generateStaticParams`** in both files — add `{ lang: "pt" }`.
+
+3. **Auto-redirect** in `src/app/(app)/faq/page.tsx` and `q/[slug]/page.tsx`:
+   ```ts
+   if (lang === "pt") redirect("/pt/faq");
+   ```
+
+4. **`LangSwitcher` hrefs** — pass `pt` href to the component wherever it is rendered.
+
+5. **Sitemap** (`src/app/sitemap.ts`) — add `pt` to the langs loop.
+
+6. **Population script** (`scripts/populate-faq-translations.ts`) — add `"pt"` to `TARGET_LANGS`.
+
+### F. Metadata & discoverability
+
+- **`/chat` page metadata** (`src/app/(app)/chat/page.tsx`) — add PT keywords and update the sr-only body paragraph.
+- **`/llms.txt`** (`src/app/llms.txt/route.ts`) — add a bullet under "Supported Languages" with the corpus count and URL prefix.
+- **`LangAnnounceBanner`** — the share text already pulls from `chatStrings` dynamically; only the `announceHeading` / `announceSubtext` keys per language need updating.
+
+### G. Corpus prerequisite
+
+The language only becomes useful once the Model API is serving answers in it. Confirm with the backend that `user_language: "pt"` is accepted and returns answers in the target language before flipping it on in the frontend. The population script must also succeed for the SEO pages to have content.
 
 ---
 
