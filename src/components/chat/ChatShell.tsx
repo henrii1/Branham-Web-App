@@ -44,10 +44,6 @@ const LangAnnounceBanner = dynamic(
   () => import("./LangAnnounceBanner").then((m) => ({ default: m.LangAnnounceBanner })),
   { ssr: false },
 );
-const LangFeatureModal = dynamic(
-  () => import("./LangFeatureModal").then((m) => ({ default: m.LangFeatureModal })),
-  { ssr: false },
-);
 import { LoginModal } from "./LoginModal";
 import { OfflineModal } from "./OfflineModal";
 import { SwipeAffordance } from "./SwipeAffordance";
@@ -1123,7 +1119,7 @@ export function ChatShell({
         />
 
         {/* ── Language announcement banner (all users, once per browser) ── */}
-        <LangAnnounceBanner />
+        <LangAnnounceBanner language={chatLanguage} />
 
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
@@ -1258,9 +1254,9 @@ export function ChatShell({
           </div>
         )}
 
-        {/* ── Chat language indicator (logged-in users only) ── */}
-        {!isAnonymous && (
-          <div className="flex items-center justify-center gap-2 bg-[var(--surface-base)] px-4 pb-1 pt-1.5">
+        {/* ── Chat language indicator (all users) ── */}
+        <div className="bg-[var(--surface-base)] px-4 pb-1 pt-1.5">
+          <div className="flex items-center justify-center gap-2">
             <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
               {strings.respondingIn}
             </span>
@@ -1269,7 +1265,12 @@ export function ChatShell({
               onChange={handleChatLanguageChange}
             />
           </div>
-        )}
+          {strings.sermonCountNote ? (
+            <p className="mt-0.5 text-center text-[10px] text-zinc-400 dark:text-zinc-500">
+              {strings.sermonCountNote}
+            </p>
+          ) : null}
+        </div>
 
         {/* ── Composer (always visible) ── */}
         <Composer
@@ -1294,8 +1295,6 @@ export function ChatShell({
         />
       )}
 
-      {/* ── Language feature modal (logged-in users, once per browser) ── */}
-      {!isAnonymous && <LangFeatureModal />}
 
       {/* ── Sermon-reference tooltip (clickable citation pills) ── */}
       <ReferencePopover />

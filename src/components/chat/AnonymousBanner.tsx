@@ -27,8 +27,7 @@ export function AnonymousBanner() {
               You&apos;re chatting as a guest.
             </p>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Sign up to save your conversations and pick up right where you
-              left off.
+              Sign up for faster responses and saved conversations.
             </p>
           </div>
         </div>

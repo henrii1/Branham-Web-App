@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     absolute: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
   },
   description:
-    "Ask questions about the sermons of Bro. Branham. Find answers grounded in the original sermon texts, explore doctrines, quotes, Scripture references, and teachings.",
+    "Ask questions about the sermons of Bro. Branham in English, Spanish, or French. Answers grounded in the original sermon texts — doctrines, quotes, Scripture references, and teachings.",
   keywords: [
     "Branham Sermons Assistant",
     "Branham Sermons AI",
@@ -22,13 +22,17 @@ export const metadata: Metadata = {
     "William Branham Doctrines",
     "William Branham Beliefs",
     "Branham",
+    "Branham en español",
+    "Branham en français",
+    "sermones de Branham",
+    "sermons de Branham",
   ],
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/chat` },
   openGraph: {
     title: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
     description:
-      "Ask questions about the sermons of Bro. Branham. Find answers grounded in the original sermon texts, explore doctrines, quotes, and teachings.",
+      "Ask questions about the sermons of Bro. Branham in English, Spanish, or French. Answers grounded in the original sermon texts.",
     url: `${SITE_URL}/chat`,
     type: "website",
     images: [{ url: OG_IMAGE }],
@@ -38,7 +42,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
     description:
-      "Ask questions about the sermons of Bro. Branham. Find answers grounded in the original sermon texts, explore doctrines, quotes, and teachings.",
+      "Ask questions about the sermons of Bro. Branham in English, Spanish, or French. Answers grounded in the original sermon texts.",
     images: [OG_IMAGE],
   },
 };
@@ -61,9 +65,11 @@ export default async function ChatPage({
         <p>
           Branham Sermons AI is an AI-powered search and assistant for the
           messages, doctrines, and beliefs of William Marrion Branham — every
-          answer is grounded in the original sermon texts. Explore Branham
-          messages, William Branham doctrines, William Branham beliefs,
-          Scripture references, sermon quotes, and more.
+          answer is grounded in the original sermon texts. Available in English,
+          Spanish (Español), and French (Français). Explore Branham messages,
+          William Branham doctrines, William Branham beliefs, Scripture
+          references, sermon quotes, sermones de Branham, sermons de Branham,
+          and more.
         </p>
         <nav aria-label="Popular questions">
           <Link href="/faq">Browse all popular questions</Link>

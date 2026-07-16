@@ -1,5 +1,6 @@
 const CHAT_STRINGS = {
   en: {
+    // Chat UI
     welcomeDescription:
       "Ask questions about the sermons of William Marrion Branham. Your answers are grounded in the original sermon texts.",
     passagesTitle: "Passages",
@@ -18,8 +19,28 @@ const CHAT_STRINGS = {
     finalizingResponse: "Finalizing response…",
     askPlaceholder: "Ask a question…",
     waitingPlaceholder: "Waiting for response…",
+    // Language announcement banner
+    announceHeading: "Spanish & French are now available 🇪🇸 🇫🇷",
+    announceSubtext:
+      "Know someone who'd find this useful? Share it — English, Spanish, and French are all supported.",
+    announceShare: "Share",
+    announceCopyLink: "Copy link",
+    announceCopied: "Copied!",
+    announceShareText:
+      "Explore William Branham's sermons with AI — available in English, Spanish, and French.",
+    // Language feature modal
+    featureHeading: "Spanish & French are now available",
+    featureBody:
+      "You can now ask questions and receive full answers in Spanish or French. Set your preferred language in your profile.",
+    featureSpanishStat: "385 sermons available in Spanish",
+    featureFrenchStat: "359 sermons available in French",
+    featureSetLanguage: "Set my language",
+    featureLater: "Later",
+    // Sermon count note (shown beneath language pill for non-English; empty for EN)
+    sermonCountNote: "",
   },
   es: {
+    // Chat UI
     welcomeDescription:
       "Haga preguntas sobre los sermones de William Marrion Branham. Sus respuestas se basan en los textos originales de los sermones.",
     passagesTitle: "Pasajes",
@@ -38,8 +59,28 @@ const CHAT_STRINGS = {
     finalizingResponse: "Finalizando respuesta…",
     askPlaceholder: "Haga una pregunta…",
     waitingPlaceholder: "Esperando respuesta…",
+    // Language announcement banner
+    announceHeading: "Inglés, Español y Francés disponibles 🇺🇸 🇪🇸 🇫🇷",
+    announceSubtext:
+      "¿Conoce a alguien que se beneficiaría? Compártalo — disponible en inglés, español y francés.",
+    announceShare: "Compartir",
+    announceCopyLink: "Copiar enlace",
+    announceCopied: "¡Copiado!",
+    announceShareText:
+      "Explora los sermones de William Marrion Branham con IA — disponible en inglés, español y francés.",
+    // Language feature modal
+    featureHeading: "Inglés, Español y Francés ahora disponibles",
+    featureBody:
+      "Ahora puede hacer preguntas y recibir respuestas completas en español o francés. Configure su idioma preferido en su perfil.",
+    featureSpanishStat: "385 sermones disponibles en español",
+    featureFrenchStat: "359 sermones disponibles en francés",
+    featureSetLanguage: "Establecer mi idioma",
+    featureLater: "Más tarde",
+    sermonCountNote:
+      "385 de ~1,200 sermones indexados en español. Puede continuar con estas respuestas en mente.",
   },
   fr: {
+    // Chat UI
     welcomeDescription:
       "Posez des questions sur les sermons de William Marrion Branham. Vos réponses sont fondées sur les textes originaux des sermons.",
     passagesTitle: "Passages",
@@ -58,6 +99,25 @@ const CHAT_STRINGS = {
     finalizingResponse: "Finalisation de la réponse…",
     askPlaceholder: "Posez une question…",
     waitingPlaceholder: "En attente de réponse…",
+    // Language announcement banner
+    announceHeading: "Anglais, Espagnol et Français disponibles 🇺🇸 🇪🇸 🇫🇷",
+    announceSubtext:
+      "Vous connaissez quelqu'un qui en bénéficierait ? Partagez — disponible en anglais, espagnol et français.",
+    announceShare: "Partager",
+    announceCopyLink: "Copier le lien",
+    announceCopied: "Copié !",
+    announceShareText:
+      "Explorez les sermons de William Marrion Branham avec l'IA — disponible en anglais, espagnol et français.",
+    // Language feature modal
+    featureHeading: "Anglais, Espagnol et Français maintenant disponibles",
+    featureBody:
+      "Vous pouvez maintenant poser des questions et recevoir des réponses complètes en espagnol ou en français. Définissez votre langue préférée dans votre profil.",
+    featureSpanishStat: "385 sermons disponibles en espagnol",
+    featureFrenchStat: "359 sermons disponibles en français",
+    featureSetLanguage: "Définir ma langue",
+    featureLater: "Plus tard",
+    sermonCountNote:
+      "359 des ~1 200 sermons indexés en français. Vous pouvez maintenant continuer avec ces réponses à l'esprit.",
   },
 } as const;
 
