@@ -15,7 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { hash } = await params;
   const share = await fetchShareByHash(hash);
-  if (!share) return { title: "Not Found" };
+  if (!share || share.language !== "en") return { title: "Not Found" };
   const title = share.title_snapshot ?? "Shared conversation";
   return {
     title: `${title} — Branham Sermons Assistant`,

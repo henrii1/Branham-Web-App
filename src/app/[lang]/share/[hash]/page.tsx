@@ -18,7 +18,7 @@ export async function generateMetadata({
   const { lang, hash } = await params;
   if (!SUPPORTED_LANGS.includes(lang as SupportedLang)) return { title: "Not Found" };
   const share = await fetchShareByHash(hash);
-  if (!share) return { title: "Not Found" };
+  if (!share || share.language !== lang) return { title: "Not Found" };
   const title = share.title_snapshot ?? "Shared conversation";
   return {
     title: `${title} — Branham Sermons Assistant`,

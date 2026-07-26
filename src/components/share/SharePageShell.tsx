@@ -25,7 +25,6 @@ export function SharePageShell({
   title,
   messages,
   isOwner,
-  language: _language,
   strings,
 }: SharePageShellProps) {
   const { user } = useAuth();
