@@ -26,6 +26,20 @@ export interface RagRow {
   updated_at: string;
 }
 
+export interface NewShareInput {
+  id: string;
+  shareHash: string;
+  conversationId: string;
+  ownerId: string;
+  language: string;
+  cutoffCreatedAt: string;
+  titleSnapshot: string | null;
+  ragContextSnapshot: string | null;
+  retrievalQuerySnapshot: string | null;
+  retrievalMetadataSnapshot: unknown;
+  conversationSummarySnapshot: string | null;
+}
+
 const CONVERSATION_COLUMNS =
   "id, user_id, title, conversation_summary, created_at, updated_at" as const;
 const MESSAGE_COLUMNS =
@@ -256,6 +270,25 @@ export async function updateConversationAfterTurn(
         : { updated_at: new Date().toISOString() },
     )
     .eq("id", conversationId);
+
+  if (error) throw error;
+}
+
+export async function createShare(input: NewShareInput): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("conversation_shares").insert({
+    id: input.id,
+    share_hash: input.shareHash,
+    conversation_id: input.conversationId,
+    owner_id: input.ownerId,
+    language: input.language,
+    cutoff_created_at: input.cutoffCreatedAt,
+    title_snapshot: input.titleSnapshot,
+    rag_context_snapshot: input.ragContextSnapshot,
+    retrieval_query_snapshot: input.retrievalQuerySnapshot,
+    retrieval_metadata_snapshot: input.retrievalMetadataSnapshot,
+    conversation_summary_snapshot: input.conversationSummarySnapshot,
+  });
 
   if (error) throw error;
 }
