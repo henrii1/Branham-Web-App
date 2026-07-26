@@ -9,6 +9,7 @@ import { processSSEStream } from "@/lib/sse/parser";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 import { stripParagraphLetterSuffixes } from "@/lib/markdown/citations";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
+import { forkConversationFromShare } from "@/lib/chat/forkFromShare";
 import { isOfflineError } from "@/lib/utils/networkError";
 import {
   fetchConversations,
@@ -510,8 +511,23 @@ export function ChatShell({
       })
       .catch(console.error);
 
+    const pendingShareHash = localStorage.getItem("pending_share_hash");
     const pendingSlug = localStorage.getItem("pending_seo_slug");
-    if (pendingSlug && !initialConversationId) {
+
+    if (pendingShareHash && !initialConversationId) {
+      localStorage.removeItem("pending_share_hash");
+      (async () => {
+        try {
+          const newConvId = await forkConversationFromShare(pendingShareHash, user.id);
+          if (newConvId) {
+            window.history.replaceState(null, "", `/chat/${newConvId}`);
+            await loadConversation(newConvId);
+          }
+        } catch (err) {
+          console.error("Failed to fork shared conversation:", err);
+        }
+      })();
+    } else if (pendingSlug && !initialConversationId) {
       localStorage.removeItem("pending_seo_slug");
       (async () => {
         try {

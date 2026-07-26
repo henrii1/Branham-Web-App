@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth/AuthGate";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { LoginModal } from "@/components/chat/LoginModal";
+import { forkConversationFromShare } from "@/lib/chat/forkFromShare";
 import type { Message } from "@/lib/chat/types";
 import type { ChatStrings } from "@/lib/i18n/chatStrings";
 
@@ -30,8 +31,9 @@ export function SharePageShell({
   const { user } = useAuth();
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [forking, setForking] = useState(false);
 
-  function handleContinue() {
+  async function handleContinue() {
     if (isOwner) {
       router.push(`/chat/${conversationId}`);
       return;
@@ -39,8 +41,15 @@ export function SharePageShell({
     if (!user) {
       localStorage.setItem("pending_share_hash", shareHash);
       setShowLoginModal(true);
+      return;
     }
-    // Logged-in, non-owner fork is wired in a later task.
+    setForking(true);
+    try {
+      const newConversationId = await forkConversationFromShare(shareHash, user.id);
+      if (newConversationId) router.push(`/chat/${newConversationId}`);
+    } finally {
+      setForking(false);
+    }
   }
 
   return (
@@ -60,7 +69,10 @@ export function SharePageShell({
         <button
           type="button"
           onClick={handleContinue}
-          className="rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          disabled={forking}
+          className={`rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 ${
+            forking ? "cursor-not-allowed opacity-50" : ""
+          }`}
         >
           {isOwner ? strings.shareContinueButton : strings.shareLoginToContinue}
         </button>
