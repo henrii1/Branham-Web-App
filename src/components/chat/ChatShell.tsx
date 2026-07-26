@@ -1038,7 +1038,9 @@ export function ChatShell({
         const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
         const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
         const excerptMarkdown = lastAssistantMsg
-          ? truncateAfterFirstCitation(lastAssistantMsg.content)
+          ? truncateAfterFirstCitation(
+              stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
+            )
           : "";
         const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
 

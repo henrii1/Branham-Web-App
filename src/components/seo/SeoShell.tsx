@@ -22,8 +22,13 @@ import {
 import type { Conversation } from "@/lib/chat/types";
 import type { ConversationRow } from "@/lib/db/queries";
 import { renderMarkdown } from "@/lib/markdown/render";
-import { applyCitations, truncateAfterFirstCitation } from "@/lib/markdown/citations";
+import {
+  applyCitations,
+  stripParagraphLetterSuffixes,
+  truncateAfterFirstCitation,
+} from "@/lib/markdown/citations";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
+import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 import { TypewriterRenderer } from "./TypewriterRenderer";
 import { LangSwitcher } from "./LangSwitcher";
 import { LoginModal } from "@/components/chat/LoginModal";
@@ -229,7 +234,9 @@ export function SeoShell({
         const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
         const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
         const excerptMarkdown = lastAssistantMsg
-          ? truncateAfterFirstCitation(lastAssistantMsg.content)
+          ? truncateAfterFirstCitation(
+              stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
+            )
           : "";
         const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
 
