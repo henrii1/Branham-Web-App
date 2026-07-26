@@ -22,6 +22,7 @@ import {
 import type { Conversation } from "@/lib/chat/types";
 import type { ConversationRow } from "@/lib/db/queries";
 import { renderMarkdown } from "@/lib/markdown/render";
+import { applyCitations, truncateAfterFirstCitation } from "@/lib/markdown/citations";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { TypewriterRenderer } from "./TypewriterRenderer";
 import { LangSwitcher } from "./LangSwitcher";
@@ -75,6 +76,12 @@ export function SeoShell({
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
+  const [shareModalHash, setShareModalHash] = useState<string>("");
+  const [shareModalCard, setShareModalCard] = useState<{
+    firstQuestion: string | null;
+    latestQuestion: string;
+    answerExcerptHtml: string;
+  } | null>(null);
   const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   // Cached follow-up content so the offline-modal Retry button can re-run
   // the seed without the user having to retype.
@@ -217,6 +224,21 @@ export function SeoShell({
         });
         const path =
           language === "en" ? `/share/${shareHash}` : `/${language}/share/${shareHash}`;
+
+        const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
+        const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
+        const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
+        const excerptMarkdown = lastAssistantMsg
+          ? truncateAfterFirstCitation(lastAssistantMsg.content)
+          : "";
+        const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
+
+        setShareModalHash(shareHash);
+        setShareModalCard({
+          firstQuestion: firstUserMsg?.content ?? null,
+          latestQuestion: lastUserMsg?.content ?? "",
+          answerExcerptHtml,
+        });
         setShareModalUrl(`${window.location.origin}${path}`);
       } catch (error) {
         console.error("Failed to create share:", error);
@@ -737,11 +759,19 @@ export function SeoShell({
       )}
 
       {/* ── Share modal ── */}
-      {shareModalUrl && (
+      {shareModalUrl && shareModalCard && (
         <ShareModal
-          onClose={() => setShareModalUrl(null)}
+          onClose={() => {
+            setShareModalUrl(null);
+            setShareModalCard(null);
+            setShareModalHash("");
+          }}
           strings={strings}
           shareUrl={shareModalUrl}
+          shareHash={shareModalHash}
+          firstQuestion={shareModalCard.firstQuestion}
+          latestQuestion={shareModalCard.latestQuestion}
+          answerExcerptHtml={shareModalCard.answerExcerptHtml}
         />
       )}
 

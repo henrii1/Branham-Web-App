@@ -52,6 +52,24 @@ export function stripParagraphLetterSuffixes(text: string): string {
   return text.replace(/¶(\d+)[a-z]?/g, "¶$1");
 }
 
+// Non-global sibling of CITATION_RE — used for the single first-match lookup
+// truncateAfterFirstCitation needs (the `g` flag on CITATION_RE keeps
+// internal .lastIndex state across calls, which .exec()-based truncation
+// must avoid).
+const CITATION_RE_SINGLE =
+  /\[([^\]]+?\s[—–\-]{1,3}\s\d{2}-\d{4}[A-Z]?(?:\d)?:\s*¶\d+[a-z]?(?:[—–\-]+¶?\d+[a-z]?)?(?:[;,]\s*¶\d+[a-z]?(?:[—–\-]+¶?\d+[a-z]?)?)*)\]/;
+
+/**
+ * Slices `text` to end right after its first citation pill, for the
+ * share-card excerpt. Returns the full text unchanged if no citation is
+ * present.
+ */
+export function truncateAfterFirstCitation(text: string): string {
+  const match = CITATION_RE_SINGLE.exec(text);
+  if (!match || match.index === undefined) return text;
+  return text.slice(0, match.index + match[0].length);
+}
+
 // ── Reference parsing (for the clickable tooltip) ────────────────────
 // A pill's inner text is the only source of truth: `TITLE — DATE_ID: <ranges>`.
 // We parse it into the shape the /api/reference endpoint expects so a click

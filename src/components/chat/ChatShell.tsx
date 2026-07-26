@@ -7,7 +7,12 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { generateId, generateShareHash } from "@/lib/utils/ids";
 import { processSSEStream } from "@/lib/sse/parser";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
-import { stripParagraphLetterSuffixes } from "@/lib/markdown/citations";
+import {
+  stripParagraphLetterSuffixes,
+  truncateAfterFirstCitation,
+  applyCitations,
+} from "@/lib/markdown/citations";
+import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { forkConversationFromShare } from "@/lib/chat/forkFromShare";
 import { isOfflineError } from "@/lib/utils/networkError";
@@ -157,6 +162,12 @@ export function ChatShell({
   // ── UI state ────────────────────────────────────────────────────────
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
+  const [shareModalHash, setShareModalHash] = useState<string>("");
+  const [shareModalCard, setShareModalCard] = useState<{
+    firstQuestion: string | null;
+    latestQuestion: string;
+    answerExcerptHtml: string;
+  } | null>(null);
   const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "sources">(
     getStoredMobileTab,
@@ -1022,6 +1033,21 @@ export function ChatShell({
         });
         const path =
           chatLanguage === "en" ? `/share/${shareHash}` : `/${chatLanguage}/share/${shareHash}`;
+
+        const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
+        const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
+        const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
+        const excerptMarkdown = lastAssistantMsg
+          ? truncateAfterFirstCitation(lastAssistantMsg.content)
+          : "";
+        const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
+
+        setShareModalHash(shareHash);
+        setShareModalCard({
+          firstQuestion: firstUserMsg?.content ?? null,
+          latestQuestion: lastUserMsg?.content ?? "",
+          answerExcerptHtml,
+        });
         setShareModalUrl(`${window.location.origin}${path}`);
       } catch (err) {
         console.error("Failed to create share:", err);
@@ -1349,11 +1375,19 @@ export function ChatShell({
       )}
 
       {/* ── Share modal ── */}
-      {shareModalUrl && (
+      {shareModalUrl && shareModalCard && (
         <ShareModal
-          onClose={() => setShareModalUrl(null)}
+          onClose={() => {
+            setShareModalUrl(null);
+            setShareModalCard(null);
+            setShareModalHash("");
+          }}
           strings={strings}
           shareUrl={shareModalUrl}
+          shareHash={shareModalHash}
+          firstQuestion={shareModalCard.firstQuestion}
+          latestQuestion={shareModalCard.latestQuestion}
+          answerExcerptHtml={shareModalCard.answerExcerptHtml}
         />
       )}
 
