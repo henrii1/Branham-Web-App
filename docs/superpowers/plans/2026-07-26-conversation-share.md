@@ -13,7 +13,7 @@
 - No automated test framework exists in this repo (no Jest/Vitest/`@playwright/test` — confirmed absent from `package.json`). Per explicit user decision, every task is verified manually: the Playwright MCP browser tool for UI-facing behavior, direct SQL for DB-only changes, and `npm run lint` + `npx tsc --noEmit` for every code change. This mirrors the repo's existing manual-screenshot verification convention (see `verify-*.png` / `lang-test-*.png` files already in the working tree from prior i18n work).
 - Card generation must dynamically `import("html-to-image")` at the point of use (inside the Download click handler), never at module top-level — per this project's latency-first constraint (no added weight on initial page load) recorded in project memory.
 - Locale routing: English is unprefixed (`/share/[hash]`); `SUPPORTED_LANGS = ["es", "fr"] as const` gates `/[lang]/share/[hash]`, exactly mirroring the existing local const in `src/app/[lang]/q/[slug]/page.tsx` (this is intentionally **not** the same as the app-wide `SUPPORTED_LANGUAGES` in `src/lib/constants/languages.ts`, which includes `"en"`).
-- Migration numbering: next file is `supabase/migrations/007_conversation_shares.sql` (repo uses zero-padded 3-digit sequence numbers, not timestamps — last is `006_seo_cache_composite_pk.sql`). There is no `npm run` script for migrations; the documented convention is `npx supabase db push` (Supabase CLI, per `.cursor/rules/design_spec.md`).
+- Migration numbering: next file is `supabase/migrations/007_conversation_shares.sql` (repo uses zero-padded 3-digit sequence numbers, not timestamps — last is `006_seo_cache_composite_pk.sql`). There is no `npm run` script for migrations; the documented convention is `npx supabase db push` (Supabase CLI, per `.cursor/rules/design_spec.md`) — however, this environment's Supabase CLI is unauthenticated and the project is unlinked, and the DB password isn't recoverable locally, so **Task 1's migration is applied manually by the human via the Supabase Dashboard SQL Editor**, not by the implementer subagent. The implementer only writes and syntax-reviews the SQL file.
 - `share_hash` is generated client-side via `crypto.randomUUID().replace(/-/g, "")` (32 hex chars, 128 bits of randomness) — no new dependency (e.g. nanoid) is needed for this.
 - `MessageBubble` (`src/components/chat/MessageBubble.tsx`) is reused as-is on the read-only share page — it is pure/presentational with no click handlers of its own. Citation-pill click behavior comes from mounting `<ReferencePopover />` alongside it, exactly as `ChatShell`/`SeoShell` already do.
 - The `seoSlug` prop on `LoginModal` only affects the `?seo_slug=` query string on the signup/login links, which no downstream route currently consumes — the actual anonymous→signed-up handoff works purely through a localStorage key (`pending_seo_slug`) that `ChatShell`'s init effect reads after the user lands back on `/chat` post-auth (confirmed: `onboarding/language/page.tsx` defaults `redirectTo` to `/chat`). The share continue-flow reuses only that localStorage mechanism (`pending_share_hash`) — it does **not** need a new `LoginModal` prop.
@@ -136,12 +136,13 @@ create policy "Anyone can view shared messages"
 
 - [ ] **Step 2: Apply the migration**
 
-Run: `npx supabase db push`
-Expected: CLI reports `007_conversation_shares.sql` applied with no errors.
+The Supabase CLI in this environment is not authenticated and the project is not linked, and the DB password is not recoverable from local files — so this step is manual, done by the human operator, not the implementer subagent:
+
+Report the exact path `supabase/migrations/007_conversation_shares.sql` back to the controller and STOP after Step 1 (do not attempt `supabase db push`, `supabase link`, or any DB connection — there is no credential available in this environment for that). The controller will ask the human to paste the file's contents into the Supabase Dashboard's SQL Editor and run it, then confirm back before this task's verification step proceeds.
 
 - [ ] **Step 3: Verify table + RLS via SQL**
 
-Run in the Supabase SQL editor (or `npx supabase db execute --sql "..."`):
+Once the human confirms the migration has been applied via the SQL editor, run this same verification query **through the SQL editor** (report it as text for the human to paste and run, then paste back the result):
 
 ```sql
 select polname, cmd, permissive from pg_policies where tablename = 'conversation_shares' order by polname;
