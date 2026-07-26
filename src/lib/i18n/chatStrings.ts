@@ -58,6 +58,7 @@ const CHAT_STRINGS = {
     shareLoginToContinue: "Log in to continue this conversation",
     shareNotFoundTitle: "Share not found",
     shareNotFoundBody: "This share link is no longer available.",
+    shareForkError: "Something went wrong — please try again.",
     // Language announcement banner
     announceHeading: "Spanish & French are now available 🇪🇸 🇫🇷",
     announceSubtext:
@@ -137,6 +138,7 @@ const CHAT_STRINGS = {
     shareLoginToContinue: "Inicia sesión para continuar esta conversación",
     shareNotFoundTitle: "Enlace no encontrado",
     shareNotFoundBody: "Este enlace para compartir ya no está disponible.",
+    shareForkError: "Algo salió mal — inténtalo de nuevo.",
     // Language announcement banner
     announceHeading: "Inglés, Español y Francés disponibles 🇺🇸 🇪🇸 🇫🇷",
     announceSubtext:
@@ -216,6 +218,7 @@ const CHAT_STRINGS = {
     shareLoginToContinue: "Connectez-vous pour continuer cette conversation",
     shareNotFoundTitle: "Lien introuvable",
     shareNotFoundBody: "Ce lien de partage n'est plus disponible.",
+    shareForkError: "Une erreur s'est produite — veuillez réessayer.",
     // Language announcement banner
     announceHeading: "Anglais, Espagnol et Français disponibles 🇺🇸 🇪🇸 🇫🇷",
     announceSubtext:

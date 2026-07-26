@@ -32,6 +32,7 @@ export function SharePageShell({
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [forking, setForking] = useState(false);
+  const [forkError, setForkError] = useState(false);
 
   async function handleContinue() {
     if (isOwner) {
@@ -44,9 +45,17 @@ export function SharePageShell({
       return;
     }
     setForking(true);
+    setForkError(false);
     try {
       const newConversationId = await forkConversationFromShare(shareHash, user.id);
-      if (newConversationId) router.push(`/chat/${newConversationId}`);
+      if (newConversationId) {
+        router.push(`/chat/${newConversationId}`);
+      } else {
+        setForkError(true);
+      }
+    } catch (err) {
+      console.error("Failed to fork shared conversation:", err);
+      setForkError(true);
     } finally {
       setForking(false);
     }
@@ -65,7 +74,7 @@ export function SharePageShell({
           <MessageBubble key={message.id} message={message} />
         ))}
       </div>
-      <div className="mt-8 flex justify-center">
+      <div className="mt-8 flex flex-col items-center gap-2">
         <button
           type="button"
           onClick={handleContinue}
@@ -74,8 +83,11 @@ export function SharePageShell({
             forking ? "cursor-not-allowed opacity-50" : ""
           }`}
         >
-          {isOwner ? strings.shareContinueButton : strings.shareLoginToContinue}
+          {isOwner || user ? strings.shareContinueButton : strings.shareLoginToContinue}
         </button>
+        {forkError && (
+          <p className="text-sm text-red-600 dark:text-red-400">{strings.shareForkError}</p>
+        )}
       </div>
       <ReferencePopover />
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
