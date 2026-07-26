@@ -28,7 +28,7 @@ supabase/migrations/007_conversation_shares.sql   [new]  table + RLS
 
 src/lib/utils/ids.ts                              [modify] + generateShareHash()
 src/lib/db/queries.ts                             [modify] + createShare()
-src/lib/db/share-queries.ts                       [new]  public/server reads: fetchShareByHash, fetchSharedConversation, fetchSharedMessages
+src/lib/db/share-queries.ts                       [new]  public/server reads: fetchShareByHash (RPC), fetchSharedMessages
 src/lib/chat/forkFromShare.ts                      [new]  forkConversationFromShare() — shared by SharePageShell + ChatShell
 src/lib/share/cardBackgrounds.ts                   [new]  SHARE_CARD_BACKGROUNDS placeholder list
 src/lib/share/generateShareCard.ts                 [new]  renderCardToPng() — dynamic html-to-image import
@@ -57,7 +57,7 @@ Note: no `globals.css` changes are needed — `ShareModal`/`SharePageShell` are 
 - Create: `supabase/migrations/007_conversation_shares.sql`
 
 **Interfaces:**
-- Produces: table `public.conversation_shares(id, share_hash, conversation_id, owner_id, language, cutoff_created_at, rag_context_snapshot, retrieval_query_snapshot, retrieval_metadata_snapshot, conversation_summary_snapshot, created_at)` and two new public `select` policies on `conversations`/`chat_messages` — every later task's queries depend on these exact column names.
+- Produces: table `public.conversation_shares(id, share_hash, conversation_id, owner_id, language, cutoff_created_at, title_snapshot, rag_context_snapshot, retrieval_query_snapshot, retrieval_metadata_snapshot, conversation_summary_snapshot, created_at)`; RPC function `public.get_conversation_share(p_share_hash text) returns conversation_shares` (the only public read path onto the table); RPC function `public.message_is_shared(p_conversation_id uuid, p_created_at timestamptz) returns boolean`; and a new public `select` policy on `chat_messages` only (deliberately **not** on `conversations` — see rationale in the SQL comment). Every later task's queries depend on these exact names.
 
 - [ ] **Step 1: Write the migration**
 
@@ -65,10 +65,19 @@ Note: no `globals.css` changes are needed — `ShareModal`/`SharePageShell` are 
 -- conversation_shares: public read-only share links for conversations.
 -- Each Share click inserts a new row (new hash); rows are immutable —
 -- no update/delete policy, so the only removal path is the cascade from
--- deleting the source conversation. RAG context is pinned here (not
--- read live from conversation_rag) because conversation_rag is
--- upserted latest-only and would otherwise be overwritten by a later
--- turn on the same conversation.
+-- deleting the source conversation. RAG context, title, and summary are
+-- all pinned here (not read live from conversations/conversation_rag)
+-- for two reasons: (1) conversation_rag is upserted latest-only and
+-- would otherwise be overwritten by a later turn on the same
+-- conversation; (2) conversations.conversation_summary is rewritten on
+-- every turn, so if the public path read it live, a conversation shared
+-- at turn 3 and continued to turn 5 would leak turn 4-5 content through
+-- that column even though chat_messages stays properly cutoff-gated.
+-- Pinning title/summary here means there is NO public select policy on
+-- `conversations` at all — the live table is never reachable through
+-- the share mechanism, closing that leak at the schema level rather
+-- than relying on the application to simply not ask for the column
+-- (the anon key is public, so anyone could query it directly otherwise).
 
 create table public.conversation_shares (
   id                            uuid primary key default gen_random_uuid(),
@@ -77,6 +86,7 @@ create table public.conversation_shares (
   owner_id                      uuid not null references auth.users(id),
   language                      text not null,
   cutoff_created_at             timestamptz not null,
+  title_snapshot                text,
   rag_context_snapshot          text,
   retrieval_query_snapshot      text,
   retrieval_metadata_snapshot   jsonb,
@@ -87,14 +97,7 @@ create table public.conversation_shares (
 create index conversation_shares_conversation_id_idx
   on public.conversation_shares (conversation_id);
 
-create index conversation_shares_share_hash_idx
-  on public.conversation_shares (share_hash);
-
 alter table public.conversation_shares enable row level security;
-
-create policy "Anyone can read shares"
-  on public.conversation_shares for select
-  using (true);
 
 create policy "Owners can create shares of their own conversations"
   on public.conversation_shares for insert
@@ -108,30 +111,60 @@ create policy "Owners can create shares of their own conversations"
 -- No update/delete policy: rows are immutable; removal only happens via
 -- the ON DELETE CASCADE from the parent conversation.
 
--- Extend conversations/chat_messages so a shared conversation becomes
--- publicly readable (never writable) by anyone holding a valid share
--- hash. Postgres OR's multiple permissive `select` policies together,
--- so these compose with the existing owner-only select policies rather
--- than replacing them.
+-- No direct-table select policy at all for anon/authenticated: a plain
+-- `using (true)` policy (the original spec's design) makes the whole
+-- table world-readable via the public anon key — anyone could `select *`
+-- and harvest every user's share_hash + owner_id + snapshot content
+-- without ever being sent a specific link. Reads must go through
+-- get_conversation_share() below instead, which only returns a row when
+-- the caller already supplies the exact (unguessable, 128-bit) hash —
+-- there is no query shape that enumerates the table through that path.
+revoke select on public.conversation_shares from anon, authenticated;
 
-create policy "Anyone can view shared conversations"
-  on public.conversations for select
-  using (
-    exists (
-      select 1 from public.conversation_shares s
-      where s.conversation_id = conversations.id
-    )
+-- security definer: the only public read path onto conversation_shares.
+-- Bypasses the revoke above internally (owner-execution context) but
+-- only ever returns the single row matching an already-known hash.
+create or replace function public.get_conversation_share(p_share_hash text)
+returns public.conversation_shares
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select * from public.conversation_shares where share_hash = p_share_hash;
+$$;
+
+grant execute on function public.get_conversation_share(text) to anon, authenticated;
+
+-- security definer: lets the chat_messages policy below check "is this
+-- message visible through some share's cutoff" without granting
+-- anon/authenticated direct table access to conversation_shares (which
+-- would reopen the enumeration hole the revoke above closes).
+create or replace function public.message_is_shared(p_conversation_id uuid, p_created_at timestamptz)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists(
+    select 1 from public.conversation_shares
+    where conversation_id = p_conversation_id
+      and p_created_at <= cutoff_created_at
   );
+$$;
 
+grant execute on function public.message_is_shared(uuid, timestamptz) to anon, authenticated;
+
+-- chat_messages: publicly readable through a valid share's cutoff. This
+-- composes with (does not replace) the existing owner-only select
+-- policy — Postgres ORs multiple permissive select policies together.
+-- There is deliberately no equivalent policy added to `conversations`:
+-- the public share page never reads the live conversations row at all,
+-- only conversation_shares' pinned title_snapshot/conversation_summary_snapshot.
 create policy "Anyone can view shared messages"
   on public.chat_messages for select
-  using (
-    exists (
-      select 1 from public.conversation_shares s
-      where s.conversation_id = chat_messages.conversation_id
-        and chat_messages.created_at <= s.cutoff_created_at
-    )
-  );
+  using (public.message_is_shared(chat_messages.conversation_id, chat_messages.created_at));
 ```
 
 - [ ] **Step 2: Apply the migration**
@@ -145,11 +178,27 @@ Report the exact path `supabase/migrations/007_conversation_shares.sql` back to 
 Once the human confirms the migration has been applied via the SQL editor, run this same verification query **through the SQL editor** (report it as text for the human to paste and run, then paste back the result):
 
 ```sql
+-- conversation_shares should show only the insert policy — no select
+-- policy at all (direct select is revoked; get_conversation_share() is
+-- the only read path).
 select polname, cmd, permissive from pg_policies where tablename = 'conversation_shares' order by polname;
+
+-- conversations should show ONLY its original owner-only select policy
+-- (no new share-related policy — that's intentional, see Task 1 rationale).
+-- chat_messages should show its original owner-only policy PLUS the new
+-- "Anyone can view shared messages" policy.
 select polname from pg_policies where tablename in ('conversations','chat_messages') order by tablename, polname;
+
+-- confirm the revoke actually took effect for anon/authenticated.
+select grantee, privilege_type from information_schema.role_table_grants
+where table_name = 'conversation_shares' and privilege_type = 'SELECT';
+
+-- confirm both RPC functions exist and are executable by anon/authenticated.
+select routine_name from information_schema.routines
+where routine_name in ('get_conversation_share', 'message_is_shared');
 ```
 
-Expected: `conversation_shares` shows exactly 2 policies (`select`/`true`, `insert`/owner-check). `conversations` and `chat_messages` each show their original owner-only policies **plus** the new `"Anyone can view shared ..."` select policy.
+Expected: `conversation_shares` shows exactly 1 policy (`insert`/owner-check, no `select` policy). `conversations` shows only its pre-existing owner-only policy (unchanged — no new policy added). `chat_messages` shows its original owner-only policy **plus** the new `"Anyone can view shared messages"` policy. The grants query returns **no rows** for `anon`/`authenticated` (confirming the revoke). Both `get_conversation_share` and `message_is_shared` appear in the routines list.
 
 - [ ] **Step 4: Commit**
 
@@ -214,6 +263,7 @@ export interface NewShareInput {
   ownerId: string;
   language: string;
   cutoffCreatedAt: string;
+  titleSnapshot: string | null;
   ragContextSnapshot: string | null;
   retrievalQuerySnapshot: string | null;
   retrievalMetadataSnapshot: unknown;
@@ -229,6 +279,7 @@ export async function createShare(input: NewShareInput): Promise<void> {
     owner_id: input.ownerId,
     language: input.language,
     cutoff_created_at: input.cutoffCreatedAt,
+    title_snapshot: input.titleSnapshot,
     rag_context_snapshot: input.ragContextSnapshot,
     retrieval_query_snapshot: input.retrievalQuerySnapshot,
     retrieval_metadata_snapshot: input.retrievalMetadataSnapshot,
@@ -238,6 +289,8 @@ export async function createShare(input: NewShareInput): Promise<void> {
   if (error) throw error;
 }
 ```
+
+Note: this `insert` is unaffected by Task 1's `revoke select on conversation_shares` — that revoke only blocks reading rows back, not inserting them, and this function never chains `.select()` after `.insert()`.
 
 - [ ] **Step 2: Verify it compiles**
 
@@ -259,8 +312,8 @@ git commit -m "feat(share): add createShare query helper"
 - Create: `src/lib/db/share-queries.ts`
 
 **Interfaces:**
-- Consumes: `conversation_shares`/`conversations`/`chat_messages` public-read policies from Task 1.
-- Produces: `fetchShareByHash(shareHash): Promise<ShareRow | null>`, `fetchSharedConversation(conversationId): Promise<SharedConversationRow | null>`, `fetchSharedMessages(conversationId, cutoffCreatedAt): Promise<SharedMessageRow[]>` — consumed by the share page routes (Task 7) and `forkConversationFromShare` (Task 8).
+- Consumes: `get_conversation_share` RPC and `chat_messages` public-read policy from Task 1.
+- Produces: `fetchShareByHash(shareHash): Promise<ShareRow | null>`, `fetchSharedMessages(conversationId, cutoffCreatedAt): Promise<SharedMessageRow[]>` — consumed by the share page routes (Task 7) and `forkConversationFromShare` (Task 8). There is deliberately **no** `fetchSharedConversation` — Task 1's redesign means the public path never reads the live `conversations` table; `ShareRow.title_snapshot` (returned by `fetchShareByHash`) is what the share page and fork logic use instead.
 
 - [ ] **Step 1: Write the module**
 
@@ -274,17 +327,12 @@ export interface ShareRow {
   owner_id: string;
   language: string;
   cutoff_created_at: string;
+  title_snapshot: string | null;
   rag_context_snapshot: string | null;
   retrieval_query_snapshot: string | null;
   retrieval_metadata_snapshot: unknown;
   conversation_summary_snapshot: string | null;
   created_at: string;
-}
-
-export interface SharedConversationRow {
-  id: string;
-  title: string | null;
-  conversation_summary: string | null;
 }
 
 export interface SharedMessageRow {
@@ -293,9 +341,6 @@ export interface SharedMessageRow {
   content: string;
   created_at: string;
 }
-
-const SHARE_COLUMNS =
-  "id, share_hash, conversation_id, owner_id, language, cutoff_created_at, rag_context_snapshot, retrieval_query_snapshot, retrieval_metadata_snapshot, conversation_summary_snapshot, created_at" as const;
 
 function getPublicClient() {
   return createClient(
@@ -311,29 +356,18 @@ function getPublicClient() {
   );
 }
 
+// Goes through the get_conversation_share() RPC (Task 1), not a direct
+// `.from("conversation_shares").select()` — direct table select is
+// revoked for anon/authenticated, so this is the only valid read path.
+// The RPC returns null when no row matches (share_hash is unique, so a
+// match returns exactly one row or none, never more).
 export async function fetchShareByHash(
   shareHash: string,
 ): Promise<ShareRow | null> {
   const supabase = getPublicClient();
-  const { data, error } = await supabase
-    .from("conversation_shares")
-    .select(SHARE_COLUMNS)
-    .eq("share_hash", shareHash)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function fetchSharedConversation(
-  conversationId: string,
-): Promise<SharedConversationRow | null> {
-  const supabase = getPublicClient();
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("id, title, conversation_summary")
-    .eq("id", conversationId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_conversation_share", {
+    p_share_hash: shareHash,
+  });
 
   if (error) throw error;
   return data;
@@ -640,6 +674,7 @@ Add the handler near `handleDeleteConversation` (~line 976):
           ownerId: user.id,
           language: chatLanguage,
           cutoffCreatedAt: cutoff,
+          titleSnapshot: conv?.title ?? null,
           ragContextSnapshot: rag?.rag_context ?? null,
           retrievalQuerySnapshot: rag?.retrieval_query ?? null,
           retrievalMetadataSnapshot: rag?.retrieval_metadata ?? null,
@@ -683,7 +718,7 @@ Repeat the same import additions, `shareModalUrl` state, `handleShareConversatio
 3. Open the sidebar's three-dot menu on that conversation, click **Share**.
 4. Assert (via `browser_snapshot`) the modal shows a `shareModalTitle` heading and an input containing a URL matching `/share/[32 hex chars]`.
 5. Click **Copy link**, assert the button label changes to "Copied!".
-6. Run a SQL check: `select share_hash, conversation_id, owner_id from conversation_shares order by created_at desc limit 1;` — confirm the hash matches what was shown in the modal and `conversation_id`/`owner_id` match the tested conversation/user.
+6. Run a SQL check **via the Supabase Dashboard SQL editor** (which runs as an admin/service role, so it bypasses the `revoke select ... from anon, authenticated` from Task 1 — that revoke only blocks the app's own anon-key client, which is exactly the point): `select share_hash, conversation_id, owner_id from conversation_shares order by created_at desc limit 1;` — confirm the hash matches what was shown in the modal and `conversation_id`/`owner_id` match the tested conversation/user.
 
 - [ ] **Step 6: Commit**
 
@@ -702,7 +737,7 @@ git commit -m "feat(share): add Share action, modal, and share-row creation"
 - Create: `src/app/[lang]/share/[hash]/page.tsx`
 
 **Interfaces:**
-- Consumes: `fetchShareByHash`, `fetchSharedConversation`, `fetchSharedMessages` (Task 4); `MessageBubble`, `ReferencePopover` (existing); `strings.share*` (Task 5).
+- Consumes: `fetchShareByHash`, `fetchSharedMessages` (Task 4); `MessageBubble`, `ReferencePopover` (existing); `strings.share*` (Task 5).
 - Produces: `<SharePageShell conversationId shareHash title messages isOwner language strings />` — the `handleContinue` non-owner-logged-in branch is a stub in this task (`// TODO forked in Task 8` is **not acceptable** per plan rules, so instead: it silently does nothing and is completed in Task 8, which is documented here as a known, temporary gap — the owner and anonymous branches are fully functional after this task).
 
 - [ ] **Step 1: Write `SharePageShell.tsx`**
@@ -788,11 +823,7 @@ export function SharePageShell({
 ```tsx
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import {
-  fetchShareByHash,
-  fetchSharedConversation,
-  fetchSharedMessages,
-} from "@/lib/db/share-queries";
+import { fetchShareByHash, fetchSharedMessages } from "@/lib/db/share-queries";
 import { createClient } from "@/lib/supabase/server";
 import { SharePageShell } from "@/components/share/SharePageShell";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
@@ -808,8 +839,7 @@ export async function generateMetadata({
   const { hash } = await params;
   const share = await fetchShareByHash(hash);
   if (!share) return { title: "Not Found" };
-  const conversation = await fetchSharedConversation(share.conversation_id);
-  const title = conversation?.title ?? "Shared conversation";
+  const title = share.title_snapshot ?? "Shared conversation";
   return {
     title: `${title} — Branham Sermons Assistant`,
     alternates: { canonical: `${SITE_URL}/share/${hash}` },
@@ -825,11 +855,8 @@ export default async function SharePage({
   const share = await fetchShareByHash(hash);
   if (!share || share.language !== "en") notFound();
 
-  const [conversation, messageRows] = await Promise.all([
-    fetchSharedConversation(share.conversation_id),
-    fetchSharedMessages(share.conversation_id, share.cutoff_created_at),
-  ]);
-  if (!conversation || messageRows.length === 0) notFound();
+  const messageRows = await fetchSharedMessages(share.conversation_id, share.cutoff_created_at);
+  if (messageRows.length === 0) notFound();
 
   const supabase = await createClient();
   const {
@@ -848,7 +875,7 @@ export default async function SharePage({
     <SharePageShell
       conversationId={share.conversation_id}
       shareHash={hash}
-      title={conversation.title}
+      title={share.title_snapshot}
       messages={messages}
       isOwner={isOwner}
       language="en"
@@ -858,16 +885,14 @@ export default async function SharePage({
 }
 ```
 
+Note: no live `conversations` read happens anywhere in this route — `share.title_snapshot` (pinned at share-creation time in Task 6) is the only source of the displayed title, matching Task 1's design that the public path never touches the live `conversations` table.
+
 - [ ] **Step 3: Write `src/app/[lang]/share/[hash]/page.tsx`**
 
 ```tsx
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import {
-  fetchShareByHash,
-  fetchSharedConversation,
-  fetchSharedMessages,
-} from "@/lib/db/share-queries";
+import { fetchShareByHash, fetchSharedMessages } from "@/lib/db/share-queries";
 import { createClient } from "@/lib/supabase/server";
 import { SharePageShell } from "@/components/share/SharePageShell";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
@@ -886,8 +911,7 @@ export async function generateMetadata({
   if (!SUPPORTED_LANGS.includes(lang as SupportedLang)) return { title: "Not Found" };
   const share = await fetchShareByHash(hash);
   if (!share) return { title: "Not Found" };
-  const conversation = await fetchSharedConversation(share.conversation_id);
-  const title = conversation?.title ?? "Shared conversation";
+  const title = share.title_snapshot ?? "Shared conversation";
   return {
     title: `${title} — Branham Sermons Assistant`,
     alternates: { canonical: `${SITE_URL}/${lang}/share/${hash}` },
@@ -905,11 +929,8 @@ export default async function LocalizedSharePage({
   const share = await fetchShareByHash(hash);
   if (!share || share.language !== lang) notFound();
 
-  const [conversation, messageRows] = await Promise.all([
-    fetchSharedConversation(share.conversation_id),
-    fetchSharedMessages(share.conversation_id, share.cutoff_created_at),
-  ]);
-  if (!conversation || messageRows.length === 0) notFound();
+  const messageRows = await fetchSharedMessages(share.conversation_id, share.cutoff_created_at);
+  if (messageRows.length === 0) notFound();
 
   const supabase = await createClient();
   const {
@@ -928,7 +949,7 @@ export default async function LocalizedSharePage({
     <SharePageShell
       conversationId={share.conversation_id}
       shareHash={hash}
-      title={conversation.title}
+      title={share.title_snapshot}
       messages={messages}
       isOwner={isOwner}
       language={lang}
@@ -964,7 +985,7 @@ git commit -m "feat(share): add public read-only /share/[hash] routes"
 - Modify: `src/components/chat/ChatShell.tsx`
 
 **Interfaces:**
-- Consumes: `fetchShareByHash`, `fetchSharedConversation`, `fetchSharedMessages` (Task 4); `createConversation`, `saveMessage`, `upsertRag`, `updateConversationAfterTurn` (existing `queries.ts`); `generateId` (existing `ids.ts`).
+- Consumes: `fetchShareByHash`, `fetchSharedMessages` (Task 4); `createConversation`, `saveMessage`, `upsertRag`, `updateConversationAfterTurn` (existing `queries.ts`); `generateId` (existing `ids.ts`).
 - Produces: `forkConversationFromShare(shareHash: string, newOwnerId: string): Promise<string | null>` (returns the new `conversationId`, or `null` if the share/messages no longer exist) — used by both files this task modifies.
 
 - [ ] **Step 1: Write `forkFromShare.ts`**
@@ -977,17 +998,16 @@ import {
   upsertRag,
   updateConversationAfterTurn,
 } from "@/lib/db/queries";
-import {
-  fetchShareByHash,
-  fetchSharedConversation,
-  fetchSharedMessages,
-} from "@/lib/db/share-queries";
+import { fetchShareByHash, fetchSharedMessages } from "@/lib/db/share-queries";
 
 /**
  * Forks a shared conversation into a brand-new conversation owned by
  * `newOwnerId`. Messages are copied in original order with sequential
  * awaits (not Promise.all) so each row's created_at stays monotonic —
  * chat_messages is always read back ordered by created_at ascending.
+ * The new conversation's title comes from share.title_snapshot, not a
+ * live read of the original `conversations` row — Task 1's RLS design
+ * means there is no public select policy to read that row live at all.
  */
 export async function forkConversationFromShare(
   shareHash: string,
@@ -996,14 +1016,11 @@ export async function forkConversationFromShare(
   const share = await fetchShareByHash(shareHash);
   if (!share) return null;
 
-  const [conversation, messages] = await Promise.all([
-    fetchSharedConversation(share.conversation_id),
-    fetchSharedMessages(share.conversation_id, share.cutoff_created_at),
-  ]);
+  const messages = await fetchSharedMessages(share.conversation_id, share.cutoff_created_at);
   if (messages.length === 0) return null;
 
   const newConversationId = generateId();
-  await createConversation(newConversationId, newOwnerId, conversation?.title ?? null);
+  await createConversation(newConversationId, newOwnerId, share.title_snapshot);
 
   for (const message of messages) {
     await saveMessage(generateId(), newConversationId, newOwnerId, message.role, message.content);
@@ -1438,7 +1455,7 @@ git commit -m "feat(share): add client-side share card image generation"
 
 1. As the owner, note a `share_hash` for one of the conversations created during Task 6's testing.
 2. Delete that conversation from the sidebar (existing Delete action).
-3. SQL check: `select count(*) from conversation_shares where conversation_id = '<deleted-id>';` — expect `0` (cascade fired).
+3. SQL check via the Supabase Dashboard SQL editor (admin context, bypasses the anon/authenticated revoke): `select count(*) from conversation_shares where conversation_id = '<deleted-id>';` — expect `0` (cascade fired).
 4. Navigate to `/share/<hash>` — assert a 404 renders (the route's `notFound()` fires because `fetchShareByHash` now returns `null`).
 
 - [ ] **Step 2: Full happy-path Playwright MCP run, screenshotted at each stage**
