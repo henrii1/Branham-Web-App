@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthGate";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { generateId } from "@/lib/utils/ids";
+import { generateId, generateShareHash } from "@/lib/utils/ids";
 import { processSSEStream } from "@/lib/sse/parser";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 import { stripParagraphLetterSuffixes } from "@/lib/markdown/citations";
@@ -24,6 +24,7 @@ import {
   renameConversation,
   deleteConversation,
   fetchSeoPageClient,
+  createShare,
 } from "@/lib/db/queries";
 import type {
   Message,
@@ -45,6 +46,7 @@ const LangAnnounceBanner = dynamic(
   { ssr: false },
 );
 import { LoginModal } from "./LoginModal";
+import { ShareModal } from "./ShareModal";
 import { OfflineModal } from "./OfflineModal";
 import { SwipeAffordance } from "./SwipeAffordance";
 import { ReferencePopover } from "./ReferencePopover";
@@ -153,6 +155,7 @@ export function ChatShell({
 
   // ── UI state ────────────────────────────────────────────────────────
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
   const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "sources">(
     getStoredMobileTab,
@@ -975,6 +978,42 @@ export function ChatShell({
     [conversationId, handleNewConversation],
   );
 
+  // ── Share conversation ──────────────────────────────────────────────
+  const handleShareConversation = useCallback(
+    async (id: string) => {
+      if (!user) return;
+      try {
+        const [msgs, rag, conv] = await Promise.all([
+          fetchMessages(id),
+          fetchLatestRag(id),
+          fetchConversation(id),
+        ]);
+        if (msgs.length === 0) return;
+        const cutoff = msgs[msgs.length - 1].created_at;
+        const shareHash = generateShareHash();
+        await createShare({
+          id: generateId(),
+          shareHash,
+          conversationId: id,
+          ownerId: user.id,
+          language: chatLanguage,
+          cutoffCreatedAt: cutoff,
+          titleSnapshot: conv?.title ?? null,
+          ragContextSnapshot: rag?.rag_context ?? null,
+          retrievalQuerySnapshot: rag?.retrieval_query ?? null,
+          retrievalMetadataSnapshot: rag?.retrieval_metadata ?? null,
+          conversationSummarySnapshot: conv?.conversation_summary ?? null,
+        });
+        const path =
+          chatLanguage === "en" ? `/share/${shareHash}` : `/${chatLanguage}/share/${shareHash}`;
+        setShareModalUrl(`${window.location.origin}${path}`);
+      } catch (err) {
+        console.error("Failed to create share:", err);
+      }
+    },
+    [user, chatLanguage],
+  );
+
   // ── Chat language change ────────────────────────────────────────────
   const handleChatLanguageChange = useCallback(
     async (lang: string) => {
@@ -1051,6 +1090,7 @@ export function ChatShell({
             onSelectConversation={handleSelectConversation}
             onRenameConversation={handleRenameConversation}
             onDeleteConversation={handleDeleteConversation}
+            onShareConversation={handleShareConversation}
             onCollapse={() => setSidebarCollapsed(true)}
             strings={strings}
             faqHref={faqHref}
@@ -1099,6 +1139,7 @@ export function ChatShell({
               onSelectConversation={handleSelectConversation}
               onRenameConversation={handleRenameConversation}
               onDeleteConversation={handleDeleteConversation}
+              onShareConversation={handleShareConversation}
               onClose={closeMobileDrawer}
               strings={strings}
               faqHref={faqHref}
@@ -1289,6 +1330,15 @@ export function ChatShell({
       {/* ── Login modal ── */}
       {showLoginModal && (
         <LoginModal onClose={() => setShowLoginModal(false)} />
+      )}
+
+      {/* ── Share modal ── */}
+      {shareModalUrl && (
+        <ShareModal
+          onClose={() => setShareModalUrl(null)}
+          strings={strings}
+          shareUrl={shareModalUrl}
+        />
       )}
 
       {/* ── Offline modal ── */}

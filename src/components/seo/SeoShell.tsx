@@ -5,15 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthGate";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { generateId } from "@/lib/utils/ids";
+import { generateId, generateShareHash } from "@/lib/utils/ids";
 import {
   createConversation,
   saveMessage,
   upsertRag,
   updateConversationAfterTurn,
   fetchConversations,
+  fetchConversation,
+  fetchMessages,
+  fetchLatestRag,
   renameConversation,
   deleteConversation,
+  createShare,
 } from "@/lib/db/queries";
 import type { Conversation } from "@/lib/chat/types";
 import type { ConversationRow } from "@/lib/db/queries";
@@ -22,6 +26,7 @@ import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { TypewriterRenderer } from "./TypewriterRenderer";
 import { LangSwitcher } from "./LangSwitcher";
 import { LoginModal } from "@/components/chat/LoginModal";
+import { ShareModal } from "@/components/chat/ShareModal";
 import { OfflineModal } from "@/components/chat/OfflineModal";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { DragDivider } from "@/components/chat/DragDivider";
@@ -69,6 +74,7 @@ export function SeoShell({
   const isAnonymous = !user;
 
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
   const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   // Cached follow-up content so the offline-modal Retry button can re-run
   // the seed without the user having to retype.
@@ -182,6 +188,41 @@ export function SeoShell({
       }
     },
     [],
+  );
+
+  const handleShareConversation = useCallback(
+    async (id: string) => {
+      if (!user) return;
+      try {
+        const [msgs, rag, conv] = await Promise.all([
+          fetchMessages(id),
+          fetchLatestRag(id),
+          fetchConversation(id),
+        ]);
+        if (msgs.length === 0) return;
+        const cutoff = msgs[msgs.length - 1].created_at;
+        const shareHash = generateShareHash();
+        await createShare({
+          id: generateId(),
+          shareHash,
+          conversationId: id,
+          ownerId: user.id,
+          language,
+          cutoffCreatedAt: cutoff,
+          titleSnapshot: conv?.title ?? null,
+          ragContextSnapshot: rag?.rag_context ?? null,
+          retrievalQuerySnapshot: rag?.retrieval_query ?? null,
+          retrievalMetadataSnapshot: rag?.retrieval_metadata ?? null,
+          conversationSummarySnapshot: conv?.conversation_summary ?? null,
+        });
+        const path =
+          language === "en" ? `/share/${shareHash}` : `/${language}/share/${shareHash}`;
+        setShareModalUrl(`${window.location.origin}${path}`);
+      } catch (error) {
+        console.error("Failed to create share:", error);
+      }
+    },
+    [user, language],
   );
 
   // Keep activeTabRef in sync and persist to sessionStorage so refresh restores the tab.
@@ -427,6 +468,7 @@ export function SeoShell({
             onSelectConversation={handleSelectConversation}
             onRenameConversation={handleRenameConversation}
             onDeleteConversation={handleDeleteConversation}
+            onShareConversation={handleShareConversation}
             onCollapse={() => setSidebarCollapsed(true)}
             strings={strings}
             faqHref={faqHref}
@@ -473,6 +515,7 @@ export function SeoShell({
               onSelectConversation={handleSelectConversation}
               onRenameConversation={handleRenameConversation}
               onDeleteConversation={handleDeleteConversation}
+              onShareConversation={handleShareConversation}
               onClose={closeMobileDrawer}
               strings={strings}
               faqHref={faqHref}
@@ -690,6 +733,15 @@ export function SeoShell({
         <LoginModal
           onClose={() => setShowLoginModal(false)}
           seoSlug={slug}
+        />
+      )}
+
+      {/* ── Share modal ── */}
+      {shareModalUrl && (
+        <ShareModal
+          onClose={() => setShareModalUrl(null)}
+          strings={strings}
+          shareUrl={shareModalUrl}
         />
       )}
 

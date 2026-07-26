@@ -17,6 +17,7 @@ interface ConversationSidebarProps {
   onSelectConversation: (id: string) => void;
   onRenameConversation: (id: string, newTitle: string) => void;
   onDeleteConversation: (id: string) => void;
+  onShareConversation: (id: string) => void;
   onClose?: () => void;
   onCollapse?: () => void;
   strings: ChatStrings;
@@ -70,6 +71,7 @@ interface ConversationItemProps {
   onSelect: () => void;
   onRename: (newTitle: string) => void;
   onDelete: () => void;
+  onShare: () => void;
   onClose?: () => void;
   strings: ChatStrings;
 }
@@ -80,6 +82,7 @@ function ConversationItem({
   onSelect,
   onRename,
   onDelete,
+  onShare,
   onClose,
   strings,
 }: ConversationItemProps) {
@@ -230,6 +233,29 @@ function ConversationItem({
               <>
                 <button
                   type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onShare();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+                    />
+                  </svg>
+                  {strings.shareAction}
+                </button>
+                <button
+                  type="button"
                   onClick={startRename}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
@@ -288,6 +314,7 @@ export function ConversationSidebar({
   onSelectConversation,
   onRenameConversation,
   onDeleteConversation,
+  onShareConversation,
   onClose,
   onCollapse,
   strings,
@@ -431,6 +458,7 @@ export function ConversationSidebar({
                         onRenameConversation(conv.id, newTitle)
                       }
                       onDelete={() => onDeleteConversation(conv.id)}
+                      onShare={() => onShareConversation(conv.id)}
                       onClose={onClose}
                       strings={strings}
                     />
