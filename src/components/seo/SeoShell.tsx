@@ -87,6 +87,7 @@ export function SeoShell({
     latestQuestion: string;
     answerExcerptHtml: string;
   } | null>(null);
+  const [shareModalError, setShareModalError] = useState(false);
   const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   // Cached follow-up content so the offline-modal Retry button can re-run
   // the seed without the user having to retype.
@@ -203,59 +204,70 @@ export function SeoShell({
   );
 
   const handleShareConversation = useCallback(
-    async (id: string) => {
+    (id: string) => {
       if (!user) return;
-      try {
-        const [msgs, rag, conv] = await Promise.all([
-          fetchMessages(id),
-          fetchLatestRag(id),
-          fetchConversation(id),
-        ]);
-        if (msgs.length === 0) return;
-        const cutoff = msgs[msgs.length - 1].created_at;
-        const shareHash = generateShareHash();
-        await createShare({
-          id: generateId(),
-          shareHash,
-          conversationId: id,
-          ownerId: user.id,
-          language,
-          cutoffCreatedAt: cutoff,
-          titleSnapshot: conv?.title ?? null,
-          ragContextSnapshot: rag?.rag_context ?? null,
-          retrievalQuerySnapshot: rag?.retrieval_query ?? null,
-          retrievalMetadataSnapshot: rag?.retrieval_metadata ?? null,
-          conversationSummarySnapshot: conv?.conversation_summary ?? null,
-        });
-        const path =
-          language === "en" ? `/share/${shareHash}` : `/${language}/share/${shareHash}`;
+      // Open the modal immediately with a client-generated hash/URL — see
+      // the identical pattern (and rationale) in ChatShell.tsx.
+      const shareHash = generateShareHash();
+      const path =
+        language === "en" ? `/share/${shareHash}` : `/${language}/share/${shareHash}`;
+      setShareModalHash(shareHash);
+      setShareModalCard(null);
+      setShareModalError(false);
+      setShareModalUrl(`${window.location.origin}${path}`);
 
-        const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
-        const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
-        const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
-        const excerptMarkdown = lastAssistantMsg
-          ? truncateAfterFirstCitation(
-              stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
-            )
-          : "";
-        const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
+      (async () => {
+        try {
+          const [msgs, rag, conv] = await Promise.all([
+            fetchMessages(id),
+            fetchLatestRag(id),
+            fetchConversation(id),
+          ]);
+          if (msgs.length === 0) {
+            setShareModalError(true);
+            return;
+          }
+          const cutoff = msgs[msgs.length - 1].created_at;
+          await createShare({
+            id: generateId(),
+            shareHash,
+            conversationId: id,
+            ownerId: user.id,
+            language,
+            cutoffCreatedAt: cutoff,
+            titleSnapshot: conv?.title ?? null,
+            ragContextSnapshot: rag?.rag_context ?? null,
+            retrievalQuerySnapshot: rag?.retrieval_query ?? null,
+            retrievalMetadataSnapshot: rag?.retrieval_metadata ?? null,
+            conversationSummarySnapshot: conv?.conversation_summary ?? null,
+          });
 
-        setShareModalHash(shareHash);
-        setShareModalCard({
-          // Omit the muted "first question" line entirely for a
-          // single-turn conversation — showing the same text twice
-          // (once muted, once as the bold heading) reads as a mistake.
-          firstQuestion:
-            firstUserMsg && firstUserMsg.content !== lastUserMsg?.content
-              ? firstUserMsg.content
-              : null,
-          latestQuestion: lastUserMsg?.content ?? "",
-          answerExcerptHtml,
-        });
-        setShareModalUrl(`${window.location.origin}${path}`);
-      } catch (error) {
-        console.error("Failed to create share:", error);
-      }
+          const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
+          const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
+          const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
+          const excerptMarkdown = lastAssistantMsg
+            ? truncateAfterFirstCitation(
+                stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
+              )
+            : "";
+          const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
+
+          setShareModalCard({
+            // Omit the muted "first question" line entirely for a
+            // single-turn conversation — showing the same text twice
+            // (once muted, once as the bold heading) reads as a mistake.
+            firstQuestion:
+              firstUserMsg && firstUserMsg.content !== lastUserMsg?.content
+                ? firstUserMsg.content
+                : null,
+            latestQuestion: lastUserMsg?.content ?? "",
+            answerExcerptHtml,
+          });
+        } catch (error) {
+          console.error("Failed to create share:", error);
+          setShareModalError(true);
+        }
+      })();
     },
     [user, language],
   );
@@ -272,6 +284,7 @@ export function SeoShell({
       stripParagraphLetterSuffixes(stripAnswerPrefix(answerMarkdown)),
     );
     setShareModalHash(slug);
+    setShareModalError(false);
     setShareModalCard({
       firstQuestion: null,
       latestQuestion: question,
@@ -827,19 +840,22 @@ export function SeoShell({
       )}
 
       {/* ── Share modal ── */}
-      {shareModalUrl && shareModalCard && (
+      {shareModalUrl && (
         <ShareModal
           onClose={() => {
             setShareModalUrl(null);
             setShareModalCard(null);
             setShareModalHash("");
+            setShareModalError(false);
           }}
           strings={strings}
           shareUrl={shareModalUrl}
           shareHash={shareModalHash}
-          firstQuestion={shareModalCard.firstQuestion}
-          latestQuestion={shareModalCard.latestQuestion}
-          answerExcerptHtml={shareModalCard.answerExcerptHtml}
+          cardReady={!!shareModalCard}
+          shareError={shareModalError}
+          firstQuestion={shareModalCard?.firstQuestion ?? null}
+          latestQuestion={shareModalCard?.latestQuestion ?? ""}
+          answerExcerptHtml={shareModalCard?.answerExcerptHtml ?? ""}
         />
       )}
 

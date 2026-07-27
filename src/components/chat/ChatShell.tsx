@@ -168,6 +168,7 @@ export function ChatShell({
     latestQuestion: string;
     answerExcerptHtml: string;
   } | null>(null);
+  const [shareModalError, setShareModalError] = useState(false);
   const [offlineModalOpen, setOfflineModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "sources">(
     getStoredMobileTab,
@@ -1007,59 +1008,74 @@ export function ChatShell({
 
   // ── Share conversation ──────────────────────────────────────────────
   const handleShareConversation = useCallback(
-    async (id: string) => {
+    (id: string) => {
       if (!user) return;
-      try {
-        const [msgs, rag, conv] = await Promise.all([
-          fetchMessages(id),
-          fetchLatestRag(id),
-          fetchConversation(id),
-        ]);
-        if (msgs.length === 0) return;
-        const cutoff = msgs[msgs.length - 1].created_at;
-        const shareHash = generateShareHash();
-        await createShare({
-          id: generateId(),
-          shareHash,
-          conversationId: id,
-          ownerId: user.id,
-          language: chatLanguage,
-          cutoffCreatedAt: cutoff,
-          titleSnapshot: conv?.title ?? null,
-          ragContextSnapshot: rag?.rag_context ?? null,
-          retrievalQuerySnapshot: rag?.retrieval_query ?? null,
-          retrievalMetadataSnapshot: rag?.retrieval_metadata ?? null,
-          conversationSummarySnapshot: conv?.conversation_summary ?? null,
-        });
-        const path =
-          chatLanguage === "en" ? `/share/${shareHash}` : `/${chatLanguage}/share/${shareHash}`;
+      // Open the modal immediately with a client-generated hash/URL — the
+      // hash needs no DB round-trip to compute, so there's no reason to
+      // make the user wait on fetchMessages/fetchLatestRag/fetchConversation
+      // (+ the createShare insert) before seeing anything. Those run in the
+      // background below; shareModalCard stays null (Download disabled,
+      // "Preparing…" shown) until they finish.
+      const shareHash = generateShareHash();
+      const path =
+        chatLanguage === "en" ? `/share/${shareHash}` : `/${chatLanguage}/share/${shareHash}`;
+      setShareModalHash(shareHash);
+      setShareModalCard(null);
+      setShareModalError(false);
+      setShareModalUrl(`${window.location.origin}${path}`);
 
-        const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
-        const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
-        const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
-        const excerptMarkdown = lastAssistantMsg
-          ? truncateAfterFirstCitation(
-              stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
-            )
-          : "";
-        const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
+      (async () => {
+        try {
+          const [msgs, rag, conv] = await Promise.all([
+            fetchMessages(id),
+            fetchLatestRag(id),
+            fetchConversation(id),
+          ]);
+          if (msgs.length === 0) {
+            setShareModalError(true);
+            return;
+          }
+          const cutoff = msgs[msgs.length - 1].created_at;
+          await createShare({
+            id: generateId(),
+            shareHash,
+            conversationId: id,
+            ownerId: user.id,
+            language: chatLanguage,
+            cutoffCreatedAt: cutoff,
+            titleSnapshot: conv?.title ?? null,
+            ragContextSnapshot: rag?.rag_context ?? null,
+            retrievalQuerySnapshot: rag?.retrieval_query ?? null,
+            retrievalMetadataSnapshot: rag?.retrieval_metadata ?? null,
+            conversationSummarySnapshot: conv?.conversation_summary ?? null,
+          });
 
-        setShareModalHash(shareHash);
-        setShareModalCard({
-          // Omit the muted "first question" line entirely for a
-          // single-turn conversation — showing the same text twice
-          // (once muted, once as the bold heading) reads as a mistake.
-          firstQuestion:
-            firstUserMsg && firstUserMsg.content !== lastUserMsg?.content
-              ? firstUserMsg.content
-              : null,
-          latestQuestion: lastUserMsg?.content ?? "",
-          answerExcerptHtml,
-        });
-        setShareModalUrl(`${window.location.origin}${path}`);
-      } catch (err) {
-        console.error("Failed to create share:", err);
-      }
+          const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
+          const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
+          const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
+          const excerptMarkdown = lastAssistantMsg
+            ? truncateAfterFirstCitation(
+                stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
+              )
+            : "";
+          const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
+
+          setShareModalCard({
+            // Omit the muted "first question" line entirely for a
+            // single-turn conversation — showing the same text twice
+            // (once muted, once as the bold heading) reads as a mistake.
+            firstQuestion:
+              firstUserMsg && firstUserMsg.content !== lastUserMsg?.content
+                ? firstUserMsg.content
+                : null,
+            latestQuestion: lastUserMsg?.content ?? "",
+            answerExcerptHtml,
+          });
+        } catch (err) {
+          console.error("Failed to create share:", err);
+          setShareModalError(true);
+        }
+      })();
     },
     [user, chatLanguage],
   );
@@ -1405,19 +1421,22 @@ export function ChatShell({
       )}
 
       {/* ── Share modal ── */}
-      {shareModalUrl && shareModalCard && (
+      {shareModalUrl && (
         <ShareModal
           onClose={() => {
             setShareModalUrl(null);
             setShareModalCard(null);
             setShareModalHash("");
+            setShareModalError(false);
           }}
           strings={strings}
           shareUrl={shareModalUrl}
           shareHash={shareModalHash}
-          firstQuestion={shareModalCard.firstQuestion}
-          latestQuestion={shareModalCard.latestQuestion}
-          answerExcerptHtml={shareModalCard.answerExcerptHtml}
+          cardReady={!!shareModalCard}
+          shareError={shareModalError}
+          firstQuestion={shareModalCard?.firstQuestion ?? null}
+          latestQuestion={shareModalCard?.latestQuestion ?? ""}
+          answerExcerptHtml={shareModalCard?.answerExcerptHtml ?? ""}
         />
       )}
 

@@ -11,6 +11,14 @@ interface ShareModalProps {
   strings: ChatStrings;
   shareUrl: string;
   shareHash: string;
+  // True once the background share-creation work (fetching messages,
+  // writing the conversation_shares row, building the card excerpt) has
+  // finished — the modal opens before this is true so the user sees the
+  // link immediately instead of waiting on network round-trips.
+  cardReady: boolean;
+  // True if that background work failed — the displayed link and card
+  // controls are non-functional in that case.
+  shareError: boolean;
   firstQuestion: string | null;
   latestQuestion: string;
   answerExcerptHtml: string;
@@ -21,6 +29,8 @@ export function ShareModal({
   strings,
   shareUrl,
   shareHash,
+  cardReady,
+  shareError,
   firstQuestion,
   latestQuestion,
   answerExcerptHtml,
@@ -39,7 +49,7 @@ export function ShareModal({
   }
 
   async function handleDownload() {
-    if (!cardRef.current) return;
+    if (!cardRef.current || !cardReady) return;
     setGenerating(true);
     setDownloadError(false);
     try {
@@ -90,6 +100,12 @@ export function ShareModal({
           </button>
         </div>
 
+        {shareError && (
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+            {strings.shareCreateError}
+          </p>
+        )}
+
         <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
           {strings.shareLinkLabel}
         </label>
@@ -104,7 +120,8 @@ export function ShareModal({
           <button
             type="button"
             onClick={handleCopy}
-            className="flex-shrink-0 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            disabled={shareError}
+            className="flex-shrink-0 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
             {copied ? strings.shareCopied : strings.shareCopyLink}
           </button>
@@ -163,10 +180,10 @@ export function ShareModal({
         <button
           type="button"
           onClick={handleDownload}
-          disabled={generating}
+          disabled={generating || !cardReady || shareError}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
-          {generating ? strings.shareGenerating : strings.shareDownloadCard}
+          {generating || !cardReady ? strings.shareGenerating : strings.shareDownloadCard}
         </button>
         {downloadError && (
           <p className="mt-2 text-sm text-red-600 dark:text-red-400">{strings.shareDownloadError}</p>

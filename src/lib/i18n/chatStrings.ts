@@ -60,6 +60,7 @@ const CHAT_STRINGS = {
     shareForkError: "Something went wrong — please try again.",
     shareReadMore: "Read more",
     shareDownloadError: "Couldn't generate the image — please try again.",
+    shareCreateError: "Couldn't create this share — please close and try again.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Share your conversations",
     shareAnnounceSubtext:
@@ -136,6 +137,7 @@ const CHAT_STRINGS = {
     shareForkError: "Algo salió mal — inténtalo de nuevo.",
     shareReadMore: "Leer más",
     shareDownloadError: "No se pudo generar la imagen — inténtalo de nuevo.",
+    shareCreateError: "No se pudo crear este enlace — cierra e inténtalo de nuevo.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Comparte tus conversaciones",
     shareAnnounceSubtext:
@@ -212,6 +214,7 @@ const CHAT_STRINGS = {
     shareForkError: "Une erreur s'est produite — veuillez réessayer.",
     shareReadMore: "Lire la suite",
     shareDownloadError: "Impossible de générer l'image — veuillez réessayer.",
+    shareCreateError: "Impossible de créer ce lien — fermez et réessayez.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Partagez vos conversations",
     shareAnnounceSubtext:
