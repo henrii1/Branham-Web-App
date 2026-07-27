@@ -32,7 +32,7 @@ export default async function SharePage({
   const share = await fetchShareByHash(hash);
   if (!share || share.language !== "en") notFound();
 
-  const messageRows = await fetchSharedMessages(share.conversation_id, share.cutoff_created_at);
+  const messageRows = await fetchSharedMessages(hash);
   if (messageRows.length === 0) notFound();
 
   const supabase = await createClient();

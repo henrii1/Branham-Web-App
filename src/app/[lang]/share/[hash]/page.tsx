@@ -37,7 +37,7 @@ export default async function LocalizedSharePage({
   const share = await fetchShareByHash(hash);
   if (!share || share.language !== lang) notFound();
 
-  const messageRows = await fetchSharedMessages(share.conversation_id, share.cutoff_created_at);
+  const messageRows = await fetchSharedMessages(hash);
   if (messageRows.length === 0) notFound();
 
   const supabase = await createClient();

@@ -23,7 +23,7 @@ export async function forkConversationFromShare(
   const share = await fetchShareByHash(shareHash);
   if (!share) return null;
 
-  const messages = await fetchSharedMessages(share.conversation_id, share.cutoff_created_at);
+  const messages = await fetchSharedMessages(shareHash);
   if (messages.length === 0) return null;
 
   const newConversationId = generateId();

@@ -58,16 +58,20 @@ export async function fetchShareByHash(
   return data;
 }
 
+// Goes through the get_shared_messages() RPC, not a direct
+// `.from("chat_messages").select()` — a plain table-level policy
+// would grant access to every message of any shared conversation to
+// anyone holding the public anon key, since anon/authenticated retain
+// the default SELECT grant on chat_messages; it can't be scoped to
+// "the caller possesses this specific hash" without going through a
+// function that takes the hash as an argument. This RPC does the
+// share_hash -> conversation_id -> cutoff join internally.
 export async function fetchSharedMessages(
-  conversationId: string,
-  cutoffCreatedAt: string,
+  shareHash: string,
 ): Promise<SharedMessageRow[]> {
   const supabase = getPublicClient();
   const { data, error } = await supabase
-    .from("chat_messages")
-    .select("id, role, content, created_at")
-    .eq("conversation_id", conversationId)
-    .lte("created_at", cutoffCreatedAt)
+    .rpc("get_shared_messages", { p_share_hash: shareHash })
     .order("created_at", { ascending: true });
 
   if (error) throw error;
