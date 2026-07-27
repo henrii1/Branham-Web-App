@@ -16,9 +16,9 @@ export async function generateMetadata({
   const { hash } = await params;
   const share = await fetchShareByHash(hash);
   if (!share || share.language !== "en") return { title: "Not Found" };
-  const title = share.title_snapshot ?? "Shared conversation";
+  const title = `${share.title_snapshot ?? "Shared conversation"} | Branham Sermons Assistant`;
   return {
-    title: `${title} — Branham Sermons Assistant`,
+    title: { absolute: title },
     alternates: { canonical: `${SITE_URL}/share/${hash}` },
   };
 }
