@@ -39,8 +39,12 @@ function getPublicClient() {
 // Goes through the get_conversation_share() RPC (Task 1), not a direct
 // `.from("conversation_shares").select()` — direct table select is
 // revoked for anon/authenticated, so this is the only valid read path.
-// The RPC returns null when no row matches (share_hash is unique, so a
-// match returns exactly one row or none, never more).
+// The underlying SQL function is declared `returns public.conversation_shares`
+// (a scalar composite, not `setof`) — when zero rows match, Postgres
+// returns a single row with every field NULL rather than a true SQL NULL,
+// so PostgREST serializes a *truthy* object with every property null
+// instead of `null`. Normalize that here so callers can rely on
+// `ShareRow | null` meaning "found" vs "not found".
 export async function fetchShareByHash(
   shareHash: string,
 ): Promise<ShareRow | null> {
@@ -50,6 +54,7 @@ export async function fetchShareByHash(
   });
 
   if (error) throw error;
+  if (!data || data.id === null) return null;
   return data;
 }
 
