@@ -99,18 +99,26 @@ export function ShareModal({
         <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
           {strings.shareBackgroundLabel}
         </label>
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 flex gap-3">
           {SHARE_CARD_BACKGROUNDS.map((bg, i) => (
             <button
               key={bg.id}
               type="button"
               onClick={() => setBackgroundIndex(i)}
               aria-label={bg.label}
-              className={`h-8 w-8 rounded-full border-2 ${
-                i === backgroundIndex ? "border-blue-500" : "border-transparent"
-              }`}
-              style={{ background: bg.css }}
-            />
+              aria-pressed={i === backgroundIndex}
+              className="flex flex-col items-center gap-1"
+            >
+              <span
+                className={`block h-8 w-8 rounded-full border-2 ${
+                  i === backgroundIndex
+                    ? "border-blue-500"
+                    : "border-zinc-300 dark:border-zinc-600"
+                }`}
+                style={{ background: bg.css }}
+              />
+              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">{bg.label}</span>
+            </button>
           ))}
         </div>
 
