@@ -60,15 +60,10 @@ const CHAT_STRINGS = {
     shareNotFoundTitle: "Share not found",
     shareNotFoundBody: "This share link is no longer available.",
     shareForkError: "Something went wrong — please try again.",
-    // Language announcement banner
-    announceHeading: "Spanish & French are now available 🇪🇸 🇫🇷",
-    announceSubtext:
-      "Know someone who'd find this useful? Share it — English, Spanish, and French are all supported.",
-    announceShare: "Share",
-    announceCopyLink: "Copy link",
-    announceCopied: "Copied!",
-    announceShareText:
-      "Explore William Branham's sermons with AI — available in English, Spanish, and French.",
+    // Share-feature announcement banner
+    shareAnnounceHeading: "Share your conversations",
+    shareAnnounceSubtext:
+      "Turn any chat into a downloadable card for WhatsApp, Facebook, and more — tap the share icon above.",
     // Language feature modal
     featureHeading: "Spanish & French are now available",
     featureBody:
@@ -141,15 +136,10 @@ const CHAT_STRINGS = {
     shareNotFoundTitle: "Enlace no encontrado",
     shareNotFoundBody: "Este enlace para compartir ya no está disponible.",
     shareForkError: "Algo salió mal — inténtalo de nuevo.",
-    // Language announcement banner
-    announceHeading: "Inglés, Español y Francés disponibles 🇺🇸 🇪🇸 🇫🇷",
-    announceSubtext:
-      "¿Conoce a alguien que se beneficiaría? Compártalo — disponible en inglés, español y francés.",
-    announceShare: "Compartir",
-    announceCopyLink: "Copiar enlace",
-    announceCopied: "¡Copiado!",
-    announceShareText:
-      "Explora los sermones de William Marrion Branham con IA — disponible en inglés, español y francés.",
+    // Share-feature announcement banner
+    shareAnnounceHeading: "Comparte tus conversaciones",
+    shareAnnounceSubtext:
+      "Convierte cualquier chat en una tarjeta descargable para WhatsApp, Facebook y más — toca el ícono de compartir arriba.",
     // Language feature modal
     featureHeading: "Inglés, Español y Francés ahora disponibles",
     featureBody:
@@ -222,15 +212,10 @@ const CHAT_STRINGS = {
     shareNotFoundTitle: "Lien introuvable",
     shareNotFoundBody: "Ce lien de partage n'est plus disponible.",
     shareForkError: "Une erreur s'est produite — veuillez réessayer.",
-    // Language announcement banner
-    announceHeading: "Anglais, Espagnol et Français disponibles 🇺🇸 🇪🇸 🇫🇷",
-    announceSubtext:
-      "Vous connaissez quelqu'un qui en bénéficierait ? Partagez — disponible en anglais, espagnol et français.",
-    announceShare: "Partager",
-    announceCopyLink: "Copier le lien",
-    announceCopied: "Copié !",
-    announceShareText:
-      "Explorez les sermons de William Marrion Branham avec l'IA — disponible en anglais, espagnol et français.",
+    // Share-feature announcement banner
+    shareAnnounceHeading: "Partagez vos conversations",
+    shareAnnounceSubtext:
+      "Transformez n'importe quelle discussion en une carte téléchargeable pour WhatsApp, Facebook et plus — appuyez sur l'icône de partage ci-dessus.",
     // Language feature modal
     featureHeading: "Anglais, Espagnol et Français maintenant disponibles",
     featureBody:

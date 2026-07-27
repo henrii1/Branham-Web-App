@@ -47,8 +47,8 @@ import { Composer } from "./Composer";
 import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
 import dynamic from "next/dynamic";
-const LangAnnounceBanner = dynamic(
-  () => import("./LangAnnounceBanner").then((m) => ({ default: m.LangAnnounceBanner })),
+const ShareFeatureBanner = dynamic(
+  () => import("./ShareFeatureBanner").then((m) => ({ default: m.ShareFeatureBanner })),
   { ssr: false },
 );
 import { LoginModal } from "./LoginModal";
@@ -1209,8 +1209,8 @@ export function ChatShell({
           faqHref={faqHref}
         />
 
-        {/* ── Language announcement banner (all users, once per browser) ── */}
-        <LangAnnounceBanner language={chatLanguage} />
+        {/* ── Share-feature announcement banner (all users, once per browser) ── */}
+        <ShareFeatureBanner language={chatLanguage} />
 
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
