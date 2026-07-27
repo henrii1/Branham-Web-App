@@ -1200,6 +1200,8 @@ export function ChatShell({
           onTabChange={handleTabChange}
           onMenuOpen={openMobileDrawer}
           onNewChat={handleNewConversation}
+          onShare={() => conversationId && handleShareConversation(conversationId)}
+          hasMessages={messages.length > 0}
           hasRag={!!ragData}
           chatReady={chatReady}
           sourcesReady={sourcesReady}
@@ -1216,6 +1218,26 @@ export function ChatShell({
             <AnonymousBanner strings={strings} faqHref={faqHref} />
           </div>
         )}
+
+        {/* ── Desktop share bar ── */}
+        <div className="hidden items-center justify-end border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2 lg:flex dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={() => conversationId && handleShareConversation(conversationId)}
+            disabled={messages.length === 0}
+            aria-label={strings.shareAction}
+            title={strings.shareAction}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+              />
+            </svg>
+          </button>
+        </div>
 
         {/* ── Desktop: two-panel layout ── */}
         <div
@@ -1519,6 +1541,8 @@ interface MobileHeaderProps {
   onTabChange: (tab: "chat" | "sources") => void;
   onMenuOpen: () => void;
   onNewChat: () => void;
+  onShare: () => void;
+  hasMessages: boolean;
   hasRag: boolean;
   chatReady: boolean;
   sourcesReady: boolean;
@@ -1531,6 +1555,8 @@ function MobileHeader({
   onTabChange,
   onMenuOpen,
   onNewChat,
+  onShare,
+  hasMessages,
   hasRag,
   chatReady,
   sourcesReady,
@@ -1575,6 +1601,21 @@ function MobileHeader({
           >
             {strings.popularQuestions}
           </Link>
+          <button
+            type="button"
+            onClick={onShare}
+            disabled={!hasMessages}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            aria-label={strings.shareAction}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+              />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={onNewChat}
