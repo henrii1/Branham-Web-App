@@ -242,7 +242,13 @@ export function SeoShell({
 
         setShareModalHash(shareHash);
         setShareModalCard({
-          firstQuestion: firstUserMsg?.content ?? null,
+          // Omit the muted "first question" line entirely for a
+          // single-turn conversation — showing the same text twice
+          // (once muted, once as the bold heading) reads as a mistake.
+          firstQuestion:
+            firstUserMsg && firstUserMsg.content !== lastUserMsg?.content
+              ? firstUserMsg.content
+              : null,
           latestQuestion: lastUserMsg?.content ?? "",
           answerExcerptHtml,
         });

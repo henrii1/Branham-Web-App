@@ -57,9 +57,9 @@ const CHAT_STRINGS = {
     shareReadOnlyBanner: "This is a shared, read-only conversation.",
     shareContinueButton: "Continue this conversation",
     shareLoginToContinue: "Log in to continue this conversation",
-    shareNotFoundTitle: "Share not found",
-    shareNotFoundBody: "This share link is no longer available.",
     shareForkError: "Something went wrong — please try again.",
+    shareReadMore: "Read more",
+    shareDownloadError: "Couldn't generate the image — please try again.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Share your conversations",
     shareAnnounceSubtext:
@@ -133,9 +133,9 @@ const CHAT_STRINGS = {
     shareReadOnlyBanner: "Esta es una conversación compartida de solo lectura.",
     shareContinueButton: "Continuar esta conversación",
     shareLoginToContinue: "Inicia sesión para continuar esta conversación",
-    shareNotFoundTitle: "Enlace no encontrado",
-    shareNotFoundBody: "Este enlace para compartir ya no está disponible.",
     shareForkError: "Algo salió mal — inténtalo de nuevo.",
+    shareReadMore: "Leer más",
+    shareDownloadError: "No se pudo generar la imagen — inténtalo de nuevo.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Comparte tus conversaciones",
     shareAnnounceSubtext:
@@ -209,9 +209,9 @@ const CHAT_STRINGS = {
     shareReadOnlyBanner: "Ceci est une conversation partagée en lecture seule.",
     shareContinueButton: "Continuer cette conversation",
     shareLoginToContinue: "Connectez-vous pour continuer cette conversation",
-    shareNotFoundTitle: "Lien introuvable",
-    shareNotFoundBody: "Ce lien de partage n'est plus disponible.",
     shareForkError: "Une erreur s'est produite — veuillez réessayer.",
+    shareReadMore: "Lire la suite",
+    shareDownloadError: "Impossible de générer l'image — veuillez réessayer.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Partagez vos conversations",
     shareAnnounceSubtext:

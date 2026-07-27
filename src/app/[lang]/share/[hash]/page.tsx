@@ -23,6 +23,7 @@ export async function generateMetadata({
   return {
     title: { absolute: title },
     alternates: { canonical: `${SITE_URL}/${lang}/share/${hash}` },
+    robots: { index: false, follow: false },
   };
 }
 

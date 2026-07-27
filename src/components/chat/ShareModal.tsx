@@ -29,6 +29,7 @@ export function ShareModal({
   const [backgroundIndex, setBackgroundIndex] = useState(0);
   const [textShadeIndex, setTextShadeIndex] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [downloadError, setDownloadError] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   async function handleCopy() {
@@ -40,14 +41,27 @@ export function ShareModal({
   async function handleDownload() {
     if (!cardRef.current) return;
     setGenerating(true);
+    setDownloadError(false);
     try {
       const blob = await renderCardToPng(cardRef.current);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `branham-sermons-share-${shareHash.slice(0, 8)}.png`;
+      // The anchor must be attached to the document for .click() to
+      // reliably trigger a download in every browser (some silently
+      // no-op on a detached element), and revoking the object URL must
+      // wait until the browser has actually started reading it — doing
+      // it synchronously right after .click() is a race that can
+      // truncate/corrupt the downloaded file in some browsers, even
+      // though it often appears to work in Chromium-based ones.
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (err) {
+      console.error("Failed to generate share card image:", err);
+      setDownloadError(true);
     } finally {
       setGenerating(false);
     }
@@ -154,6 +168,9 @@ export function ShareModal({
         >
           {generating ? strings.shareGenerating : strings.shareDownloadCard}
         </button>
+        {downloadError && (
+          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{strings.shareDownloadError}</p>
+        )}
 
         <div style={{ position: "fixed", top: -9999, left: -9999 }} aria-hidden="true">
           <ShareCardTemplate
@@ -163,7 +180,7 @@ export function ShareModal({
             answerExcerptHtml={answerExcerptHtml}
             backgroundCss={SHARE_CARD_BACKGROUNDS[backgroundIndex].css}
             textShade={SHARE_CARD_TEXT_SHADES[textShadeIndex]}
-            readMoreLabel="Read more"
+            readMoreLabel={strings.shareReadMore}
             readMoreUrl={shareUrl}
           />
         </div>
