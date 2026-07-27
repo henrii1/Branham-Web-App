@@ -1,19 +1,21 @@
 "use client";
 
 import { forwardRef } from "react";
+import type { ShareCardTextShade } from "@/lib/share/cardBackgrounds";
 
 export interface ShareCardTemplateProps {
   firstQuestion: string | null;
   latestQuestion: string;
   answerExcerptHtml: string;
   backgroundCss: string;
+  textShade: ShareCardTextShade;
   readMoreLabel: string;
   readMoreUrl: string;
 }
 
 export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplateProps>(
   function ShareCardTemplate(
-    { firstQuestion, latestQuestion, answerExcerptHtml, backgroundCss, readMoreLabel, readMoreUrl },
+    { firstQuestion, latestQuestion, answerExcerptHtml, backgroundCss, textShade, readMoreLabel, readMoreUrl },
     ref,
   ) {
     return (
@@ -24,11 +26,12 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
           height: 630,
           position: "relative",
           fontFamily: "sans-serif",
-          color: "#1f1f1f",
+          color: textShade.textColor,
           overflow: "hidden",
         }}
       >
         <div style={{ position: "absolute", inset: 0, background: backgroundCss }} />
+        <div style={{ position: "absolute", inset: 0, background: textShade.scrimCss }} />
         <div
           style={{
             position: "absolute",
@@ -41,7 +44,7 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
         >
           <div>
             {firstQuestion && (
-              <div style={{ fontSize: 20, color: "#6b7280", marginBottom: 12 }}>
+              <div style={{ fontSize: 20, color: textShade.mutedColor, marginBottom: 12 }}>
                 {firstQuestion}
               </div>
             )}
@@ -53,7 +56,7 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
             style={{ fontSize: 18, lineHeight: 1.5, maxHeight: 260, overflow: "hidden" }}
             dangerouslySetInnerHTML={{ __html: answerExcerptHtml }}
           />
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#1d4ed8" }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: textShade.linkColor }}>
             {readMoreLabel} → {readMoreUrl}
           </div>
         </div>

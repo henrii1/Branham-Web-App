@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { ChatStrings } from "@/lib/i18n/chatStrings";
-import { SHARE_CARD_BACKGROUNDS } from "@/lib/share/cardBackgrounds";
+import { SHARE_CARD_BACKGROUNDS, SHARE_CARD_TEXT_SHADES } from "@/lib/share/cardBackgrounds";
 import { renderCardToPng } from "@/lib/share/generateShareCard";
 import { ShareCardTemplate } from "./ShareCardTemplate";
 
@@ -27,6 +27,7 @@ export function ShareModal({
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [backgroundIndex, setBackgroundIndex] = useState(0);
+  const [textShadeIndex, setTextShadeIndex] = useState(0);
   const [generating, setGenerating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +114,30 @@ export function ShareModal({
           ))}
         </div>
 
+        <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          {strings.shareTextColorLabel}
+        </label>
+        <div className="mb-4 flex gap-2">
+          {SHARE_CARD_TEXT_SHADES.map((shade, i) => (
+            <button
+              key={shade.id}
+              type="button"
+              onClick={() => setTextShadeIndex(i)}
+              aria-label={shade.label}
+              aria-pressed={i === textShadeIndex}
+              className={`flex h-8 w-11 items-center justify-center rounded-lg border-2 text-sm font-semibold ${
+                i === textShadeIndex ? "border-blue-500" : "border-zinc-200 dark:border-zinc-700"
+              }`}
+              style={{
+                background: shade.id === "dark" ? "#f4f4f5" : "#27272a",
+                color: shade.textColor,
+              }}
+            >
+              Aa
+            </button>
+          ))}
+        </div>
+
         <button
           type="button"
           onClick={handleDownload}
@@ -129,6 +154,7 @@ export function ShareModal({
             latestQuestion={latestQuestion}
             answerExcerptHtml={answerExcerptHtml}
             backgroundCss={SHARE_CARD_BACKGROUNDS[backgroundIndex].css}
+            textShade={SHARE_CARD_TEXT_SHADES[textShadeIndex]}
             readMoreLabel="Read more"
             readMoreUrl={shareUrl}
           />
