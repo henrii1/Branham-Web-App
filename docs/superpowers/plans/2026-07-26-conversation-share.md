@@ -1478,3 +1478,170 @@ Expected: no errors across all files touched in Tasks 1-9.
 git add -A
 git commit -m "test(share): verify deletion cascade and full continue-flow regression"
 ```
+
+---
+
+### Task 11: Persistent top-right Share icon + SEO-page share flow
+
+**Added after initial user feedback** (not in the original spec): the Share action needed a more prominent, always-visible entry point — top-right of the content column, matching Claude/ChatGPT's placement — rather than only living inside the sidebar's three-dot menu. This also surfaced a gap: SEO `/q/[slug]` pages (a single public Q&A, not a saved `conversations` row) had no share action at all.
+
+**Files:**
+- Modify: `src/components/chat/ChatShell.tsx`
+- Modify: `src/components/seo/SeoShell.tsx`
+
+**Interfaces:**
+- Consumes: existing `handleShareConversation` (Task 6, `ChatShell.tsx`), existing `shareModalUrl`/`shareModalHash`/`shareModalCard` state and `<ShareModal>` (Tasks 6+9, both files), `truncateAfterFirstCitation`/`applyCitations` (`@/lib/markdown/citations`), `renderMarkdown` (`@/lib/markdown/render`), `stripAnswerPrefix` (`@/lib/utils/answerDedup`).
+- Produces: `handleShareSeoPage(): void` in `SeoShell.tsx` — a new share flow that does **not** call `createShare()` and writes **no** `conversation_shares` row, since an SEO page is already a public, permanent URL; it only needs a link + card, not the hash-gated privacy mechanism built for conversations. Also produces a Share icon button, wired identically in both files' desktop header bar and mobile header, at both the top of the content column (desktop) and inside the existing mobile header's right-side button group (mobile).
+
+**Desktop layout note:** this app's desktop view is **not** split left/right — it's a vertically resizable split, Sources panel on top, Chat/Answer panel on bottom (`<div ref={panelsRef} className="... flex-col ... lg:flex">` in both files). There is currently no persistent header row above that split on desktop (only mobile has one). "Top right" therefore means: a new slim header bar spanning the full width of the main content column, sitting above the Sources/Chat split, with the icon right-aligned inside it — not attached to either individual pane.
+
+- [ ] **Step 1: Add `handleShareSeoPage` to `SeoShell.tsx`**
+
+Place near the existing `handleShareConversation` (~line 205). Reuse the file's existing `shareModalUrl`/`shareModalHash`/`shareModalCard` state (already present from Tasks 6/9 — do not add new state for this). Reuse whatever imports of `truncateAfterFirstCitation`, `stripParagraphLetterSuffixes`, `stripAnswerPrefix`, `applyCitations`, `renderMarkdown` already exist in the file from Task 9's card-generation wiring — do not add duplicate imports.
+
+```ts
+const handleShareSeoPage = useCallback(() => {
+  const langPrefix = language === "en" ? "" : `/${language}`;
+  const url = `${window.location.origin}${langPrefix}/q/${slug}`;
+  const excerptMarkdown = truncateAfterFirstCitation(
+    stripParagraphLetterSuffixes(stripAnswerPrefix(answerMarkdown)),
+  );
+  setShareModalHash(slug);
+  setShareModalCard({
+    firstQuestion: null,
+    latestQuestion: question,
+    answerExcerptHtml: applyCitations(renderMarkdown(excerptMarkdown)),
+  });
+  setShareModalUrl(url);
+}, [language, slug, question, answerMarkdown, question]);
+```
+
+(Note: `question` appears in the deps array once — the snippet above has a duplicate, fix it to list each dependency exactly once: `[language, slug, question, answerMarkdown]`.)
+
+- [ ] **Step 2: Add the desktop header bar to `ChatShell.tsx`**
+
+Insert immediately after the existing `{isAnonymous && (<div className="hidden lg:block">...AnonymousBanner...</div>)}` block and before `{/* ── Desktop: two-panel layout ── */}`'s `<div ref={panelsRef} ...>`:
+
+```tsx
+{/* ── Desktop share bar ── */}
+<div className="hidden items-center justify-end border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2 lg:flex dark:border-zinc-800">
+  <button
+    type="button"
+    onClick={() => conversationId && handleShareConversation(conversationId)}
+    disabled={messages.length === 0}
+    aria-label={strings.shareAction}
+    title={strings.shareAction}
+    className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+  >
+    <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+      />
+    </svg>
+  </button>
+</div>
+```
+
+This uses the exact same SVG path already used for the Share menu item in `ConversationSidebar.tsx` (Task 6) — visual consistency between the two entry points. `disabled={messages.length === 0}` prevents sharing a brand-new, empty chat (mirrors `handleShareConversation`'s own internal `if (msgs.length === 0) return;` guard from Task 6, just surfaced as a disabled affordance instead of a silent no-op).
+
+- [ ] **Step 3: Add the desktop header bar to `SeoShell.tsx`**
+
+Same placement pattern (after the `AnonymousBanner` block, before the two-panel split `<div ref={panelsRef}...>`), same SVG icon, but always enabled (an SEO page's Q&A content always exists once the page has rendered — there's no "empty" state to guard against) and calling `handleShareSeoPage` instead:
+
+```tsx
+{/* ── Desktop share bar ── */}
+<div className="hidden items-center justify-end border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2 lg:flex dark:border-zinc-800">
+  <button
+    type="button"
+    onClick={handleShareSeoPage}
+    aria-label={strings.shareAction}
+    title={strings.shareAction}
+    className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+  >
+    <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+      />
+    </svg>
+  </button>
+</div>
+```
+
+- [ ] **Step 4: Add the Share icon to `ChatShell.tsx`'s mobile `MobileHeader`**
+
+`MobileHeader` is a separate function component within `ChatShell.tsx` (~line 1529), so this needs prop threading. Add to `MobileHeaderProps` (~line 1517):
+```ts
+onShare: () => void;
+hasMessages: boolean;
+```
+Destructure both in the `MobileHeader` function signature. Add a button into the existing right-side `<div className="flex items-center gap-2">` group (the one containing the FAQ link and New-chat button, ~line 1571-1598), placed between the FAQ link and the New-chat button:
+```tsx
+<button
+  type="button"
+  onClick={onShare}
+  disabled={!hasMessages}
+  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+  aria-label={strings.shareAction}
+>
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+    />
+  </svg>
+</button>
+```
+Note `MobileHeaderProps` doesn't currently include `strings` — check whether it already does (it's used elsewhere in the header for other labels per the existing code); if it's already a prop, reuse it, don't add a duplicate.
+
+At the `<MobileHeader ... />` call site (~line 1198), add:
+```tsx
+onShare={() => conversationId && handleShareConversation(conversationId)}
+hasMessages={messages.length > 0}
+```
+
+- [ ] **Step 5: Add the Share icon to `SeoShell.tsx`'s mobile header**
+
+`SeoShell.tsx`'s mobile header is inline JSX directly in the main render (not a separate function component), so no prop threading is needed — `handleShareSeoPage` is already in scope. Add a button into the header's right-side group (~line 582-584, alongside `<BrandLogo>`/`<LangSwitcher>`):
+```tsx
+<button
+  type="button"
+  onClick={handleShareSeoPage}
+  className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+  aria-label={strings.shareAction}
+>
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+    />
+  </svg>
+</button>
+```
+Placed so it doesn't break the existing `justify-between` row layout (e.g. group it with `<LangSwitcher>` inside a small `flex items-center gap-2` wrapper if the row currently has exactly two flex children).
+
+- [ ] **Step 6: Verify it compiles**
+
+Run: `npx tsc --noEmit && npm run lint`
+Expected: no new errors (a few pre-existing, unrelated errors/warnings are expected — confirmed by every prior task in this plan).
+
+- [ ] **Step 7: Verify with Playwright MCP**
+
+1. Open an existing conversation with at least one reply in `/chat/[id]` on a desktop-sized viewport — assert the new share bar renders above the Sources/Chat split with a visible, enabled Share icon top-right; click it and assert the same `ShareModal` opens as the sidebar entry point produces.
+2. Open `/chat` fresh (no messages yet) on desktop — assert the Share icon is present but disabled (dimmed, not clickable).
+3. Resize to mobile width — assert the Share icon appears in the mobile header's button row, same enabled/disabled behavior.
+4. Open a published SEO page (`/q/[slug]`) on desktop — assert the share bar renders with an always-enabled Share icon; click it and assert `ShareModal` opens showing the SEO page's own canonical URL (`/q/[slug]`, not a `/share/[hash]` URL) and a card preview built from that page's question/answer.
+5. Resize to mobile width on the SEO page — assert the Share icon appears in that header's button row and works identically.
+6. Confirm via SQL (Supabase Dashboard SQL editor) that clicking Share on an SEO page does **not** insert any row: `select count(*) from conversation_shares where created_at > now() - interval '5 minutes';` — compare before/after the SEO-page share click and confirm no new row appears from that action (a genuine conversation share, if also tested in the same window, would still show up — isolate the SEO-page click if testing both in one session).
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/components/chat/ChatShell.tsx src/components/seo/SeoShell.tsx
+git commit -m "feat(share): add persistent top-right Share icon + SEO-page share flow"
+```
