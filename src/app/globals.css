@@ -644,6 +644,23 @@ html {
   }
 }
 
+/* ── Passage n-gram highlight — Sources panel only ────────────────────
+ * Subtle background tint marking literal query/passage word overlap.
+ * Deliberately a different hue from .citation-pill (blue) so the two
+ * styles never read as the same affordance if they ever appear near
+ * each other.
+ */
+.passage-highlight {
+  background-color: rgba(250, 204, 21, 0.35);
+  border-radius: 3px;
+  padding: 0 1px;
+  color: inherit;
+}
+
+.dark .passage-highlight {
+  background-color: rgba(250, 204, 21, 0.22);
+}
+
 /* Sources panel markdown: slightly muted, compact styling */
 .sources-markdown h3 {
   font-size: 0.9rem;

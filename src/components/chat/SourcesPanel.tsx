@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { RagData, StreamingStatus } from "@/lib/chat/types";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
+import { applyNgramHighlights } from "@/lib/markdown/ngramHighlight";
 
 interface SourcesPanelProps {
   ragData: RagData | null;
@@ -80,7 +81,8 @@ export function SourcesPanel({
   const renderedHtml = useMemo(() => {
     if (!ragData) return "";
     const cleaned = postprocessRag(ragData.ragContext);
-    return renderMarkdown(cleaned);
+    const html = renderMarkdown(cleaned);
+    return applyNgramHighlights(html, ragData.retrievalQuery);
   }, [ragData]);
 
   return (
