@@ -15,6 +15,14 @@ import { fetchShareByHash, fetchSharedMessages } from "@/lib/db/share-queries";
  * The new conversation's title comes from share.title_snapshot, not a
  * live read of the original `conversations` row — Task 1's RLS design
  * means there is no public select policy to read that row live at all.
+ *
+ * If `newOwnerId` is already the share's owner, this is a no-op that
+ * just returns the original conversation_id — no fork, no duplicate
+ * row. Callers that already know `isOwner` (e.g. from a server-rendered
+ * prop) can skip calling this entirely for that case, but this check
+ * is also needed here as a backstop for callers that only have a raw
+ * share hash to go on (e.g. the anonymous-then-logs-in handoff, where
+ * the visitor might turn out to be the original owner logging back in).
  */
 export async function forkConversationFromShare(
   shareHash: string,
@@ -22,6 +30,7 @@ export async function forkConversationFromShare(
 ): Promise<string | null> {
   const share = await fetchShareByHash(shareHash);
   if (!share) return null;
+  if (share.owner_id === newOwnerId) return share.conversation_id;
 
   const messages = await fetchSharedMessages(shareHash);
   if (messages.length === 0) return null;

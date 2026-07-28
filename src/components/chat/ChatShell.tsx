@@ -515,7 +515,7 @@ export function ChatShell({
     loadConversations();
     fetchUserLanguage(user.id)
       .then((lang) => {
-        // Don't overwrite if seo_followup already set a language for this conversation.
+        // Don't overwrite if seo_followup/pending_share_followup already set a language for this conversation.
         if (!userLanguageRef.current) {
           userLanguageRef.current = lang;
           if (lang) setChatLanguage(lang);
@@ -523,15 +523,29 @@ export function ChatShell({
       })
       .catch(console.error);
 
-    const pendingShareHash = localStorage.getItem("pending_share_hash");
+    const pendingShareFollowupRaw = localStorage.getItem("pending_share_followup");
     const pendingSlug = localStorage.getItem("pending_seo_slug");
 
-    if (pendingShareHash && !initialConversationId) {
-      localStorage.removeItem("pending_share_hash");
+    if (pendingShareFollowupRaw && !initialConversationId) {
+      localStorage.removeItem("pending_share_followup");
       (async () => {
         try {
-          const newConvId = await forkConversationFromShare(pendingShareHash, user.id);
+          const parsed = JSON.parse(pendingShareFollowupRaw) as {
+            shareHash: string;
+            query: string | null;
+            language?: string;
+          };
+          const newConvId = await forkConversationFromShare(parsed.shareHash, user.id);
           if (newConvId) {
+            if (parsed.query) {
+              pendingFollowUpRef.current = parsed.query;
+            }
+            // Always use the share's language for this conversation —
+            // the user explicitly opened a link in that language.
+            if (parsed.language && ["en", "es", "fr"].includes(parsed.language)) {
+              userLanguageRef.current = parsed.language;
+              setChatLanguage(parsed.language);
+            }
             window.history.replaceState(null, "", `/chat/${newConvId}`);
             await loadConversation(newConvId);
           }
