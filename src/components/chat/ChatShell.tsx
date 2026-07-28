@@ -7,14 +7,10 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { generateId, generateShareHash } from "@/lib/utils/ids";
 import { processSSEStream } from "@/lib/sse/parser";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
-import {
-  stripParagraphLetterSuffixes,
-  truncateAfterFirstCitation,
-  applyCitations,
-} from "@/lib/markdown/citations";
-import { renderMarkdown } from "@/lib/markdown/render";
+import { stripParagraphLetterSuffixes } from "@/lib/markdown/citations";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { forkConversationFromShare } from "@/lib/chat/forkFromShare";
+import { buildCardAnswerExcerpt } from "@/lib/share/cardExcerpt";
 import { isOfflineError } from "@/lib/utils/networkError";
 import {
   fetchConversations,
@@ -1067,12 +1063,9 @@ export function ChatShell({
           const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
           const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
           const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
-          const excerptMarkdown = lastAssistantMsg
-            ? truncateAfterFirstCitation(
-                stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
-              )
+          const answerExcerptHtml = lastAssistantMsg
+            ? buildCardAnswerExcerpt(lastAssistantMsg.content)
             : "";
-          const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
 
           setShareModalCard({
             // Omit the muted "first question" line entirely for a

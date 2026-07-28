@@ -65,9 +65,9 @@ const CHAT_STRINGS = {
     shareDownloadError: "Couldn't generate the image — please try again.",
     shareCreateError: "Couldn't create this share — please close and try again.",
     // Share-feature announcement banner
-    shareAnnounceHeading: "Share your conversations",
+    shareAnnounceHeading: "Share as a card for WhatsApp",
     shareAnnounceSubtext:
-      "Turn any chat into a downloadable card for WhatsApp, Facebook, and more — tap the share icon above.",
+      "Or share a public link so others can read and continue the chat — tap the share icon above.",
     // Language feature modal
     featureHeading: "Spanish & French are now available",
     featureBody:
@@ -145,9 +145,9 @@ const CHAT_STRINGS = {
     shareDownloadError: "No se pudo generar la imagen — inténtalo de nuevo.",
     shareCreateError: "No se pudo crear este enlace — cierra e inténtalo de nuevo.",
     // Share-feature announcement banner
-    shareAnnounceHeading: "Comparte tus conversaciones",
+    shareAnnounceHeading: "Comparte como tarjeta para WhatsApp",
     shareAnnounceSubtext:
-      "Convierte cualquier chat en una tarjeta descargable para WhatsApp, Facebook y más — toca el ícono de compartir arriba.",
+      "O comparte un enlace público para que otros lean y continúen el chat — toca el ícono de compartir arriba.",
     // Language feature modal
     featureHeading: "Inglés, Español y Francés ahora disponibles",
     featureBody:
@@ -225,9 +225,9 @@ const CHAT_STRINGS = {
     shareDownloadError: "Impossible de générer l'image — veuillez réessayer.",
     shareCreateError: "Impossible de créer ce lien — fermez et réessayez.",
     // Share-feature announcement banner
-    shareAnnounceHeading: "Partagez vos conversations",
+    shareAnnounceHeading: "Partagez en carte pour WhatsApp",
     shareAnnounceSubtext:
-      "Transformez n'importe quelle discussion en une carte téléchargeable pour WhatsApp, Facebook et plus — appuyez sur l'icône de partage ci-dessus.",
+      "Ou partagez un lien public pour que d'autres puissent lire et poursuivre la discussion — appuyez sur l'icône de partage ci-dessus.",
     // Language feature modal
     featureHeading: "Anglais, Espagnol et Français maintenant disponibles",
     featureBody:

@@ -22,13 +22,8 @@ import {
 import type { Conversation } from "@/lib/chat/types";
 import type { ConversationRow } from "@/lib/db/queries";
 import { renderMarkdown } from "@/lib/markdown/render";
-import {
-  applyCitations,
-  stripParagraphLetterSuffixes,
-  truncateAfterFirstCitation,
-} from "@/lib/markdown/citations";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
-import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
+import { buildCardAnswerExcerpt } from "@/lib/share/cardExcerpt";
 import { TypewriterRenderer } from "./TypewriterRenderer";
 import { LangSwitcher } from "./LangSwitcher";
 import { LoginModal } from "@/components/chat/LoginModal";
@@ -245,12 +240,9 @@ export function SeoShell({
           const firstUserMsg = msgs.find((m) => m.role === "user") ?? null;
           const lastUserMsg = [...msgs].reverse().find((m) => m.role === "user");
           const lastAssistantMsg = [...msgs].reverse().find((m) => m.role === "assistant");
-          const excerptMarkdown = lastAssistantMsg
-            ? truncateAfterFirstCitation(
-                stripParagraphLetterSuffixes(stripAnswerPrefix(lastAssistantMsg.content)),
-              )
+          const answerExcerptHtml = lastAssistantMsg
+            ? buildCardAnswerExcerpt(lastAssistantMsg.content)
             : "";
-          const answerExcerptHtml = applyCitations(renderMarkdown(excerptMarkdown));
 
           setShareModalCard({
             // Omit the muted "first question" line entirely for a
@@ -280,15 +272,12 @@ export function SeoShell({
   const handleShareSeoPage = useCallback(() => {
     const langPrefix = language === "en" ? "" : `/${language}`;
     const url = `${window.location.origin}${langPrefix}/q/${slug}`;
-    const excerptMarkdown = truncateAfterFirstCitation(
-      stripParagraphLetterSuffixes(stripAnswerPrefix(answerMarkdown)),
-    );
     setShareModalHash(slug);
     setShareModalError(false);
     setShareModalCard({
       firstQuestion: null,
       latestQuestion: question,
-      answerExcerptHtml: applyCitations(renderMarkdown(excerptMarkdown)),
+      answerExcerptHtml: buildCardAnswerExcerpt(answerMarkdown),
     });
     setShareModalUrl(url);
   }, [language, slug, question, answerMarkdown]);

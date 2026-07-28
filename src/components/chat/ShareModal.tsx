@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatStrings } from "@/lib/i18n/chatStrings";
 import { SHARE_CARD_BACKGROUNDS, SHARE_CARD_TEXT_SHADES } from "@/lib/share/cardBackgrounds";
 import { renderCardToPng } from "@/lib/share/generateShareCard";
-import { ShareCardTemplate } from "./ShareCardTemplate";
+import { CARD_HEIGHT, CARD_WIDTH, ShareCardTemplate } from "./ShareCardTemplate";
 
 interface ShareModalProps {
   onClose: () => void;
@@ -38,9 +38,40 @@ export function ShareModal({
   const [copied, setCopied] = useState(false);
   const [backgroundIndex, setBackgroundIndex] = useState(0);
   const [textShadeIndex, setTextShadeIndex] = useState(0);
+  // Once the user manually picks a text shade, background changes stop
+  // auto-selecting a shade for them — their choice sticks for the rest
+  // of this modal session instead of being silently overridden.
+  const [shadeManuallyPicked, setShadeManuallyPicked] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const previewWrapperRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
+
+  useEffect(() => {
+    const el = previewWrapperRef.current;
+    if (!el) return;
+    const updateScale = () => setPreviewScale(el.offsetWidth / CARD_WIDTH);
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  function handleBackgroundSelect(index: number) {
+    setBackgroundIndex(index);
+    if (!shadeManuallyPicked) {
+      const defaultShadeIndex = SHARE_CARD_TEXT_SHADES.findIndex(
+        (shade) => shade.id === SHARE_CARD_BACKGROUNDS[index].defaultTextShadeId,
+      );
+      if (defaultShadeIndex !== -1) setTextShadeIndex(defaultShadeIndex);
+    }
+  }
+
+  function handleShadeSelect(index: number) {
+    setTextShadeIndex(index);
+    setShadeManuallyPicked(true);
+  }
 
   async function handleCopy() {
     await navigator.clipboard.writeText(shareUrl);
@@ -127,6 +158,25 @@ export function ShareModal({
           </button>
         </div>
 
+        <div
+          ref={previewWrapperRef}
+          className="mb-4 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700"
+          style={{ width: "100%", height: CARD_HEIGHT * previewScale || undefined }}
+        >
+          <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT, transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
+            <ShareCardTemplate
+              ref={cardRef}
+              firstQuestion={firstQuestion}
+              latestQuestion={latestQuestion}
+              answerExcerptHtml={answerExcerptHtml}
+              backgroundCss={SHARE_CARD_BACKGROUNDS[backgroundIndex].css}
+              textShade={SHARE_CARD_TEXT_SHADES[textShadeIndex]}
+              readMoreLabel={strings.shareReadMore}
+              readMoreUrl={shareUrl}
+            />
+          </div>
+        </div>
+
         <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
           {strings.shareBackgroundLabel}
         </label>
@@ -135,7 +185,7 @@ export function ShareModal({
             <button
               key={bg.id}
               type="button"
-              onClick={() => setBackgroundIndex(i)}
+              onClick={() => handleBackgroundSelect(i)}
               aria-label={bg.label}
               aria-pressed={i === backgroundIndex}
               className="flex flex-col items-center gap-1"
@@ -161,7 +211,7 @@ export function ShareModal({
             <button
               key={shade.id}
               type="button"
-              onClick={() => setTextShadeIndex(i)}
+              onClick={() => handleShadeSelect(i)}
               aria-label={shade.label}
               aria-pressed={i === textShadeIndex}
               className={`flex h-8 w-11 items-center justify-center rounded-lg border-2 text-sm font-semibold ${
@@ -188,19 +238,6 @@ export function ShareModal({
         {downloadError && (
           <p className="mt-2 text-sm text-red-600 dark:text-red-400">{strings.shareDownloadError}</p>
         )}
-
-        <div style={{ position: "fixed", top: -9999, left: -9999 }} aria-hidden="true">
-          <ShareCardTemplate
-            ref={cardRef}
-            firstQuestion={firstQuestion}
-            latestQuestion={latestQuestion}
-            answerExcerptHtml={answerExcerptHtml}
-            backgroundCss={SHARE_CARD_BACKGROUNDS[backgroundIndex].css}
-            textShade={SHARE_CARD_TEXT_SHADES[textShadeIndex]}
-            readMoreLabel={strings.shareReadMore}
-            readMoreUrl={shareUrl}
-          />
-        </div>
       </div>
     </div>
   );

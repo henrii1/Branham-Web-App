@@ -70,6 +70,30 @@ export function truncateAfterFirstCitation(text: string): string {
   return text.slice(0, match.index + match[0].length);
 }
 
+/**
+ * Truncates `text` at the last sentence boundary (. ! ?) at or before
+ * `maxChars`, appending "…". Falls back to a hard cut at `maxChars` if no
+ * sentence boundary exists in range. Used for the share-card excerpt when
+ * `truncateAfterFirstCitation`'s result is too long to fit the card —
+ * ending mid-word/mid-citation reads as broken, ending at a sentence
+ * boundary reads as an intentional pull-quote.
+ */
+export function truncateAtSentenceBoundary(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const window = text.slice(0, maxChars);
+  const lastBoundary = Math.max(
+    window.lastIndexOf(". "),
+    window.lastIndexOf("! "),
+    window.lastIndexOf("? "),
+  );
+  if (lastBoundary > maxChars * 0.4) {
+    return `${window.slice(0, lastBoundary + 1)}…`;
+  }
+  // No good sentence boundary found — hard cut at the last whole word.
+  const lastSpace = window.lastIndexOf(" ");
+  return `${window.slice(0, lastSpace > 0 ? lastSpace : maxChars)}…`;
+}
+
 // ── Reference parsing (for the clickable tooltip) ────────────────────
 // A pill's inner text is the only source of truth: `TITLE — DATE_ID: <ranges>`.
 // We parse it into the shape the /api/reference endpoint expects so a click
