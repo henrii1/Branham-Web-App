@@ -31,7 +31,7 @@ const HEADING_CLOSE_RE = /^<\/h[1-6]>/i;
 const TAG_RE = /<[^>]+>/g;
 
 function normalizeWord(raw: string): string {
-  return raw.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  return raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
 function tokenize(text: string): WordToken[] {
