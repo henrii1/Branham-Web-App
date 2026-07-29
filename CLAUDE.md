@@ -89,7 +89,8 @@ src/
 │   │   ├── render.ts                       # marked + sanitization (no raw HTML)
 │   │   ├── citations.ts                    # Citation pills + Evidence label + truncateAfterFirstCitation (share-card excerpt)
 │   │   ├── chatPostprocess.ts              # --- dividers, Reader Note normalization
-│   │   └── ragPostprocess.ts               # Strip boilerplate from RAG context
+│   │   ├── ragPostprocess.ts               # Strip boilerplate from RAG context
+│   │   └── ngramHighlight.ts               # ★ Literal query/passage word-overlap highlighting (Sources panel only)
 │   ├── db/
 │   │   ├── queries.ts                      # ★ Typed Supabase reads/writes (browser client, RLS-scoped to the caller)
 │   │   └── share-queries.ts                # ★ Public share reads — goes through RPCs, never a direct table select on conversation_shares/chat_messages (see "Conversation sharing" below)
@@ -282,6 +283,17 @@ Both RPCs are `security definer` with `set search_path = public` (required — a
 ### Deletion semantics
 
 `conversation_shares.conversation_id` has `on delete cascade` against `conversations` — deleting the source conversation cascades away every share row pointing at it, and the old links 404 immediately (the RPC lookups return no row).
+
+## Passage n-gram highlighting
+
+`src/lib/markdown/ngramHighlight.ts` (`applyNgramHighlights(html, query)`) highlights literal, contiguous word-overlap (3+ consecutive words, same order) between the retrieval query and each retrieved passage, in the Sources panel only — never in the chat answer panel, which already has its own citation-pill styling. Purely literal matching (NFKD diacritic-insensitive, lowercase, punctuation-agnostic via tokenization) — no stemming or semantic scoring, so many relevant passages will show no highlight at all when they were retrieved by dense/semantic search rather than keyword overlap. That's expected.
+
+It's a post-processing pass over already-rendered HTML (same safety argument as `citations.ts`: the HTML comes only from our own `renderMarkdown`, never arbitrary external HTML), wired into the two independent places passage HTML is rendered:
+
+- **Chat** (`SourcesPanel.tsx`): `applyNgramHighlights(renderMarkdown(postprocessRag(ragData.ragContext)), ragData.retrievalQuery)`.
+- **SEO pages** (`SeoShell.tsx`): same shape, keyed on `SeoCacheRow.robust_query` (the query actually used to produce that page's cached `rag_context`) rather than the display `question`.
+
+Note these two call sites are genuinely independent — `SeoShell.tsx` does not render through `SourcesPanel`, despite what an earlier version of this feature's design doc assumed. If either passage-rendering path changes, check whether the other needs the same change.
 
 ## Deployment (Cloudflare Workers via OpenNext)
 
