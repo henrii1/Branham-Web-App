@@ -22,10 +22,14 @@ interface MatchSpan {
 }
 
 const MIN_RUN_LENGTH = 3;
-// Unicode-aware run of letters/digits — everything else (punctuation,
-// whitespace, HTML entity markup like "&amp;") acts as a separator, so
-// tokenizing already strips punctuation; no separate step is needed.
-const WORD_RE = /[\p{L}\p{N}]+/gu;
+// Matches either a whole HTML entity (e.g. "&#39;", "&amp;") or a
+// Unicode-aware run of letters/digits. The entity alternative is tried
+// first so entities are consumed as one unit instead of fragmenting into
+// spurious alphanumeric tokens (e.g. "&#39;" would otherwise yield "39" as
+// its own token). tokenize() then discards entity matches entirely,
+// treating them as a separator rather than a word — everything else
+// (punctuation, whitespace) is already a separator by not being matched.
+const TOKEN_RE = /&#?[a-zA-Z0-9]+;|[\p{L}\p{N}]+/gu;
 const HEADING_OPEN_RE = /^<h[1-6][\s>]/i;
 const HEADING_CLOSE_RE = /^<\/h[1-6]>/i;
 const TAG_RE = /<[^>]+>/g;
@@ -36,9 +40,10 @@ function normalizeWord(raw: string): string {
 
 function tokenize(text: string): WordToken[] {
   const tokens: WordToken[] = [];
-  WORD_RE.lastIndex = 0;
+  TOKEN_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = WORD_RE.exec(text)) !== null) {
+  while ((match = TOKEN_RE.exec(text)) !== null) {
+    if (match[0].startsWith("&")) continue; // HTML entity — a separator, not a word
     tokens.push({
       word: normalizeWord(match[0]),
       start: match.index,
