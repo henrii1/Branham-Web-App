@@ -161,6 +161,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
         question={page.question}
         answerMarkdown={page.answer_markdown}
         ragContext={page.rag_context ?? ""}
+        retrievalQuery={page.robust_query}
         conversationSummary={page.conversation_summary}
         nextPage={adjacent.next}
         language={l}

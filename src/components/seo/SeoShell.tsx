@@ -23,6 +23,7 @@ import type { Conversation } from "@/lib/chat/types";
 import type { ConversationRow } from "@/lib/db/queries";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
+import { applyNgramHighlights } from "@/lib/markdown/ngramHighlight";
 import { buildCardAnswerExcerpt } from "@/lib/share/cardExcerpt";
 import { TypewriterRenderer } from "./TypewriterRenderer";
 import { LangSwitcher } from "./LangSwitcher";
@@ -43,6 +44,7 @@ interface SeoShellProps {
   question: string;
   answerMarkdown: string;
   ragContext: string;
+  retrievalQuery: string;
   conversationSummary: string | null;
   nextPage: { slug: string; question: string } | null;
   language: string;
@@ -65,6 +67,7 @@ export function SeoShell({
   question,
   answerMarkdown,
   ragContext,
+  retrievalQuery,
   conversationSummary,
   nextPage,
   language,
@@ -120,7 +123,7 @@ export function SeoShell({
   const drawerDragX = useRef(0);
 
   const processedRag = postprocessRag(ragContext);
-  const ragHtml = renderMarkdown(processedRag);
+  const ragHtml = applyNgramHighlights(renderMarkdown(processedRag), retrievalQuery);
 
   // Defer rendering the Passages content to client-only so Googlebot's
   // raw-HTML pass doesn't see the verbatim sermon chunks — those chunks are
