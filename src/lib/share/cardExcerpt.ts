@@ -35,6 +35,34 @@ const QUOTES_HEADING_RE = /^#{2,3}\s+(?:Quotes|Citas|Citations)\s*:?\s*$/im;
 const REFERENCES_HEADING_RE = /^#{2,3}\s+(?:References|Referencias|Références)\s*:?\s*$/im;
 const NEXT_HEADING_RE = /^#{2,3}\s+\S/m;
 
+// Some Quotes-section entries cite the source in parentheses instead of
+// square brackets — confirmed in real ES/FR content, e.g.
+// "(LA CRUELDAD DEL PECADO... — 53-0403: ¶97)" — while every other
+// citation surface in the app (citation pills, References-section
+// entries) uses square brackets exclusively. Requires the same strict
+// inner structure as findFirstCitation (TITLE — DATE_ID: ¶refs) so a
+// stray parenthetical aside in the quote's own prose is never mistaken
+// for one.
+const PAREN_CITATION_RE =
+  /\(([^()]+?\s[—–-]{1,3}\s\d{2}-\d{4}[A-Z]?\d?:\s*¶\d+[a-z]?(?:[—–-]+¶?\d+[a-z]?)?(?:[;,]\s*¶\d+[a-z]?(?:[—–-]+¶?\d+[a-z]?)?)*)\)/;
+
+/**
+ * Finds the first citation in `text`, accepting either the standard
+ * square-bracket form or the parenthesized form some Quotes entries use.
+ * A parenthesized match is normalized to `[...]` so it renders identically
+ * (as a styled citation pill) once spliced through applyCitations() —
+ * which only recognizes the bracket form.
+ */
+function findQuoteCitation(text: string): { match: string; index: number } | null {
+  const bracket = findFirstCitation(text);
+  const paren = PAREN_CITATION_RE.exec(text);
+  if (bracket && (!paren || bracket.index <= paren.index)) return bracket;
+  if (paren && paren.index !== undefined) {
+    return { match: `[${paren[1]}]`, index: paren.index };
+  }
+  return null;
+}
+
 function extractSectionBody(cleaned: string, headingRe: RegExp): string | null {
   const headingMatch = headingRe.exec(cleaned);
   if (!headingMatch) return null;
@@ -55,7 +83,8 @@ function extractSectionBody(cleaned: string, headingRe: RegExp): string | null {
  * citation matcher (not a loose `[...]` bracket match) because a quoted
  * sermon excerpt can itself contain other bracketed content — e.g. "[…]"
  * marking words omitted mid-quote — that a loose match would misidentify
- * as the citation.
+ * as the citation. Also accepts the parenthesized citation form some
+ * entries use instead of brackets (see findQuoteCitation).
  */
 function extractFirstQuote(cleaned: string): { text: string; citation: string } | null {
   const section = extractSectionBody(cleaned, QUOTES_HEADING_RE);
@@ -70,7 +99,7 @@ function extractFirstQuote(cleaned: string): { text: string; citation: string } 
     .filter(Boolean)
     .join(" ");
 
-  const citationMatch = findFirstCitation(joined);
+  const citationMatch = findQuoteCitation(joined);
   if (!citationMatch) return null;
 
   const text = joined
