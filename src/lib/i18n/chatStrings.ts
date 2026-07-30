@@ -67,6 +67,8 @@ const CHAT_STRINGS = {
     shareReadMore: "Read more",
     shareDownloadError: "Couldn't generate the image — please try again.",
     shareCreateError: "Couldn't create this share — please close and try again.",
+    shareNativeButton: "Share directly",
+    shareNativeError: "Couldn't open the share sheet — please try again.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Share as a card for WhatsApp",
     shareAnnounceSubtext:
@@ -150,6 +152,8 @@ const CHAT_STRINGS = {
     shareReadMore: "Leer más",
     shareDownloadError: "No se pudo generar la imagen — inténtalo de nuevo.",
     shareCreateError: "No se pudo crear este enlace — cierra e inténtalo de nuevo.",
+    shareNativeButton: "Compartir directamente",
+    shareNativeError: "No se pudo abrir el panel de compartir — inténtalo de nuevo.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Comparte como tarjeta para WhatsApp",
     shareAnnounceSubtext:
@@ -233,6 +237,8 @@ const CHAT_STRINGS = {
     shareReadMore: "Lire la suite",
     shareDownloadError: "Impossible de générer l'image — veuillez réessayer.",
     shareCreateError: "Impossible de créer ce lien — fermez et réessayez.",
+    shareNativeButton: "Partager directement",
+    shareNativeError: "Impossible d'ouvrir le panneau de partage — veuillez réessayer.",
     // Share-feature announcement banner
     shareAnnounceHeading: "Partagez en carte pour WhatsApp",
     shareAnnounceSubtext:
