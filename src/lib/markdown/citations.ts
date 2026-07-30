@@ -60,6 +60,15 @@ const CITATION_RE_SINGLE =
   /\[([^\]]+?\s[—–\-]{1,3}\s\d{2}-\d{4}[A-Z]?(?:\d)?:\s*¶\d+[a-z]?(?:[—–\-]+¶?\d+[a-z]?)?(?:[;,]\s*¶\d+[a-z]?(?:[—–\-]+¶?\d+[a-z]?)?)*)\]/;
 
 /**
+ * True if `text` contains at least one citation pill match. Used by the
+ * share-card excerpt builder to detect when truncation cut the text before
+ * any citation appeared, so a fallback quote can be spliced in instead.
+ */
+export function hasCitation(text: string): boolean {
+  return CITATION_RE_SINGLE.test(text);
+}
+
+/**
  * Slices `text` to end right after its first citation pill, for the
  * share-card excerpt. Returns the full text unchanged if no citation is
  * present.

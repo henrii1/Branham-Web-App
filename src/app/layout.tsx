@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthGate";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { createClient } from "@/lib/supabase/server";
@@ -23,6 +23,16 @@ const geistMono = Geist_Mono({
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
+});
+
+// Share-card question display face only — Fraunces' optical-size axis
+// gives it real character at large display sizes (ball terminals, ink
+// traps) that Newsreader's calmer literary tone doesn't, which is what a
+// social pull-quote card wants. Not used anywhere else in the app.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["600"],
 });
 
 export const viewport: Viewport = {
@@ -182,7 +192,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} ${fraunces.variable} antialiased`}
       >
         <ThemeProvider initialTheme={initialTheme}>
           <AuthProvider initialUser={user}>{children}</AuthProvider>

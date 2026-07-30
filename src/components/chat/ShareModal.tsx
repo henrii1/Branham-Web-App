@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatStrings } from "@/lib/i18n/chatStrings";
 import { SHARE_CARD_BACKGROUNDS, SHARE_CARD_TEXT_SHADES } from "@/lib/share/cardBackgrounds";
 import { renderCardToPng } from "@/lib/share/generateShareCard";
-import { CARD_HEIGHT, CARD_WIDTH, ShareCardTemplate } from "./ShareCardTemplate";
+import { CARD_DIMENSIONS, ShareCardTemplate, type ShareCardFormat } from "./ShareCardTemplate";
+
+// Fixed preview letterbox height — both landscape (wide, short) and
+// portrait (narrow, tall) cards scale-to-fit inside this same box instead
+// of the modal growing to whatever height a 9:16 card would need.
+const PREVIEW_BOX_HEIGHT = 360;
 
 interface ShareModalProps {
   onClose: () => void;
@@ -36,6 +41,7 @@ export function ShareModal({
   answerExcerptHtml,
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
+  const [format, setFormat] = useState<ShareCardFormat>("landscape");
   const [backgroundIndex, setBackgroundIndex] = useState(0);
   const [textShadeIndex, setTextShadeIndex] = useState(0);
   // Once the user manually picks a text shade, background changes stop
@@ -47,16 +53,25 @@ export function ShareModal({
   const cardRef = useRef<HTMLDivElement>(null);
   const previewWrapperRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
+  const cardWidth = CARD_DIMENSIONS[format].width;
+  const cardHeight = CARD_DIMENSIONS[format].height;
 
   useEffect(() => {
     const el = previewWrapperRef.current;
     if (!el) return;
-    const updateScale = () => setPreviewScale(el.offsetWidth / CARD_WIDTH);
+    // Fit within both the wrapper's width AND the fixed preview-box
+    // height — portrait cards are 3x taller per unit width than
+    // landscape, so scaling by width alone would blow past the box.
+    const updateScale = () => {
+      const scaleByWidth = el.offsetWidth / cardWidth;
+      const scaleByHeight = PREVIEW_BOX_HEIGHT / cardHeight;
+      setPreviewScale(Math.min(scaleByWidth, scaleByHeight));
+    };
     updateScale();
     const observer = new ResizeObserver(updateScale);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [cardWidth, cardHeight]);
 
   function handleBackgroundSelect(index: number) {
     setBackgroundIndex(index);
@@ -84,7 +99,7 @@ export function ShareModal({
     setGenerating(true);
     setDownloadError(false);
     try {
-      const blob = await renderCardToPng(cardRef.current);
+      const blob = await renderCardToPng(cardRef.current, { width: cardWidth, height: cardHeight });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -160,21 +175,45 @@ export function ShareModal({
 
         <div
           ref={previewWrapperRef}
-          className="mb-4 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700"
-          style={{ width: "100%", height: CARD_HEIGHT * previewScale || undefined }}
+          className="mb-4 flex items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950"
+          style={{ width: "100%", height: PREVIEW_BOX_HEIGHT }}
         >
-          <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT, transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
-            <ShareCardTemplate
-              ref={cardRef}
-              firstQuestion={firstQuestion}
-              latestQuestion={latestQuestion}
-              answerExcerptHtml={answerExcerptHtml}
-              backgroundCss={SHARE_CARD_BACKGROUNDS[backgroundIndex].css}
-              textShade={SHARE_CARD_TEXT_SHADES[textShadeIndex]}
-              readMoreLabel={strings.shareReadMore}
-              readMoreUrl={shareUrl}
-            />
+          <div style={{ width: cardWidth * previewScale, height: cardHeight * previewScale }}>
+            <div style={{ width: cardWidth, height: cardHeight, transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
+              <ShareCardTemplate
+                ref={cardRef}
+                firstQuestion={firstQuestion}
+                latestQuestion={latestQuestion}
+                answerExcerptHtml={answerExcerptHtml}
+                backgroundCss={SHARE_CARD_BACKGROUNDS[backgroundIndex].css}
+                textShade={SHARE_CARD_TEXT_SHADES[textShadeIndex]}
+                readMoreLabel={strings.shareReadMore}
+                readMoreUrl={shareUrl}
+                format={format}
+              />
+            </div>
           </div>
+        </div>
+
+        <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          {strings.shareFormatLabel}
+        </label>
+        <div className="mb-4 flex gap-2">
+          {(["landscape", "portrait"] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFormat(f)}
+              aria-pressed={format === f}
+              className={`flex-1 rounded-lg border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
+                format === f
+                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                  : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {f === "landscape" ? strings.shareFormatFacebook : strings.shareFormatWhatsapp}
+            </button>
+          ))}
         </div>
 
         <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">

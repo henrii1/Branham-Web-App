@@ -661,6 +661,15 @@ html {
   background-color: rgba(250, 204, 21, 0.22);
 }
 
+/* Share-card excerpt: the answer body normally renders as one paragraph,
+ * but the fallback-quote splice (cardExcerpt.ts) can add a second and
+ * third paragraph (the quote itself, then its Evidence line) — Tailwind's
+ * preflight zeroes all margins, so without this those would run together
+ * with no visual separation. */
+.share-card-excerpt p + p {
+  margin-top: 0.6em;
+}
+
 /* Sources panel markdown: slightly muted, compact styling */
 .sources-markdown h3 {
   font-size: 0.9rem;
