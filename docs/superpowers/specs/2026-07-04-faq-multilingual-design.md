@@ -276,6 +276,24 @@ Also update `EVIDENCE_ROW_RE` which matches the word to split citation rows:
 
 The language only becomes useful once the Model API is serving answers in it. Confirm with the backend that `user_language: "pt"` is accepted and returns answers in the target language before flipping it on in the frontend. The population script must also succeed for the SEO pages to have content.
 
+### H. Share-card excerpt fallback — `src/lib/share/cardExcerpt.ts`
+
+The share-card builder (`buildCardAnswerExcerpt`) guarantees every card includes a reference: if truncation cuts the excerpt before its own inline citation appears, it falls back to the answer's `Quotes` section (quote text + citation), or failing that, a bare citation from the `References` section. Both fallbacks locate their section by heading text, which — like `ANSWER_PREFIX` (item C) and `EVIDENCE_PREFIX_RE` (item D) — is a **separate per-language word list that does not automatically pick up a new language**:
+
+```ts
+const QUOTES_HEADING_RE = /^#{2,3}\s+(?:Quotes|Citas|Citations|Quotes-pt)\s*:?\s*$/im;
+const REFERENCES_HEADING_RE = /^#{2,3}\s+(?:References|Referencias|Références|Referências-pt)\s*:?\s*$/im;
+```
+
+(Replace `Quotes-pt`/`Referências-pt` with the real Portuguese heading text the API actually emits — don't guess it; see below.)
+
+**Before wiring the regex, pull several real published answers in the new language and check by hand — do not assume the pattern holds:**
+
+1. **Exact heading text**, including whether the language puts a space before the trailing colon. French does ("### Citations :"); Spanish doesn't ("### Citas:"). The `\s*:?\s*$` in both regexes already tolerates either, but confirm the *word itself* matches what the API actually emits (not a guessed translation).
+2. **Citation punctuation inside the Quotes section.** English, Spanish, and French all use the same square-bracket citation format `[TITLE — DATE_ID: ¶refs]` everywhere *except* that some Spanish and French `Quotes` entries cite the source in **parentheses** instead — `(TITLE — DATE_ID: ¶refs)` — confirmed against real content, not a hypothetical. `findQuoteCitation` in `cardExcerpt.ts` already checks both shapes and normalizes a parenthesized match to brackets, so this is covered *for a language that also uses one of these two forms* — but if the new language's answers use some third convention (e.g. em-dash-prefixed, differently bracketed), `findQuoteCitation` needs a third case added, the same way the parenthesized one was.
+3. **Whether every answer even has a `Quotes` section.** It's optional in practice — one real English page and roughly two-thirds of real French pages in the current corpus have none at all (the References-only fallback correctly handles this) — so don't treat a missing Quotes section as evidence the regex is broken; confirm against the raw markdown first.
+4. **Verify the guarantee, not just a sample.** Pull every published page in the new language (not a handful) and run `buildCardAnswerExcerpt` against each raw `answer_markdown`, checking every result contains a citation pill. Spot-checking three pages missed a real bug in this exact function (Spanish parenthesized citations) that only surfaced once every page was checked — the earlier "add ANSWER_PREFIX/EVIDENCE_PREFIX_RE and ship" workflow for items C/D is not sufficient rigor for this specific fallback, because its correctness depends on unpredictable *formatting* variance in the API's own quoted-citation output, not just a fixed vocabulary word to translate.
+
 ---
 
 ## 10. File Checklist
