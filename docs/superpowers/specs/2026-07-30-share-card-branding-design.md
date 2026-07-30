@@ -1,7 +1,7 @@
 # Share Card Branding Line
 
 **Date:** 2026-07-30
-**Status:** Approved
+**Status:** Superseded — see `2026-07-30-share-card-corner-logo-design.md`. The small-quiet-footer-line design below shipped, then was rejected after user review: placement was wrong (should be its own corner mark, not stacked under "Read more →"), and "quiet, like a logo" was clarified to mean prominent (icon + name, matching the app header's own logo treatment), not small/muted text. Left here for history only — do not implement from this file.
 
 ## Problem
 
