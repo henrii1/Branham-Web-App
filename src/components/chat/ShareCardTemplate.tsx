@@ -85,9 +85,14 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
     // is virtually guaranteed to stay on one line even at the largest
     // tier's font size, so center it instead.
     const answerWraps = plainAnswerLength > 80;
-    const padding = format === "portrait" ? "160px 80px" : "48px 88px";
+    const paddingY = format === "portrait" ? 160 : 48;
+    const paddingX = format === "portrait" ? 80 : 88;
     const answerMaxWidth = format === "portrait" ? 840 : 880;
     const titleCasedQuestion = toTitleCase(latestQuestion);
+    // Corner brand mark scales up a little for portrait, matching the
+    // pattern the rest of the card's type already follows.
+    const brandMarkIconSize = format === "portrait" ? 40 : 32;
+    const brandMarkTextSize = format === "portrait" ? 20 : 16;
 
     return (
       <div
@@ -107,7 +112,7 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
           style={{
             position: "absolute",
             inset: 0,
-            padding,
+            padding: `${paddingY}px ${paddingX}px`,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -155,34 +160,58 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
 
           <ContinuationDots color={textShade.mutedColor} />
 
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div
-              style={{
-                fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                fontSize: 15,
-                fontWeight: 600,
-                color: textShade.linkColor,
-              }}
-            >
-              {readMoreLabel} → {readMoreUrl}
-            </div>
-            {/* Brand footer — deliberately quiet (smaller, reduced opacity)
-                so it reads as a logo/watermark, not a second call-to-action
-                competing with the Read More line above it. Not a real
-                hyperlink: the card is a static rasterized PNG, same as
-                Read More itself — both are visual-only. */}
-            <div
-              style={{
-                fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                fontSize: 11,
-                fontWeight: 600,
-                color: textShade.linkColor,
-                opacity: 0.75,
-              }}
-            >
-              Branham Sermons Assistant → https://branhamsermons.ai
-            </div>
+          <div
+            style={{
+              fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+              fontSize: 15,
+              fontWeight: 600,
+              color: textShade.linkColor,
+            }}
+          >
+            {readMoreLabel} → {readMoreUrl}
           </div>
+        </div>
+
+        {/* Corner brand mark — icon + name, matching the app's own header
+            lockup (BrandLogo.tsx: logo image + Newsreader wordmark), not
+            the card's own Fraunces question face. Plain text, no arrow, no
+            URL, no link color: this is a logo, not a second link. Not a
+            real hyperlink either way — the card is a static rasterized
+            PNG, nothing on it is clickable in any viewer. */}
+        <div
+          style={{
+            position: "absolute",
+            left: paddingX,
+            bottom: paddingY,
+            display: "flex",
+            alignItems: "center",
+            gap: brandMarkIconSize * 0.22,
+          }}
+        >
+          {/* Plain <img> against the public static path (not next/image's
+              optimization proxy) — html-to-image rasterizes the live DOM,
+              and a stable, directly-fetchable URL avoids any risk of the
+              logo being blank in the exported PNG because an optimization
+              request hadn't resolved yet. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt=""
+            width={brandMarkIconSize}
+            height={brandMarkIconSize}
+            style={{ width: brandMarkIconSize, height: brandMarkIconSize, borderRadius: brandMarkIconSize * 0.22 }}
+          />
+          <span
+            style={{
+              fontFamily: "var(--font-newsreader), 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif",
+              letterSpacing: "-0.02em",
+              fontSize: brandMarkTextSize,
+              fontWeight: 600,
+              color: textShade.textColor,
+            }}
+          >
+            Branham Sermons Assistant
+          </span>
         </div>
       </div>
     );
