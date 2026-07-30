@@ -155,15 +155,33 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
 
           <ContinuationDots color={textShade.mutedColor} />
 
-          <div
-            style={{
-              fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-              fontSize: 15,
-              fontWeight: 600,
-              color: textShade.linkColor,
-            }}
-          >
-            {readMoreLabel} → {readMoreUrl}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <div
+              style={{
+                fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                fontSize: 15,
+                fontWeight: 600,
+                color: textShade.linkColor,
+              }}
+            >
+              {readMoreLabel} → {readMoreUrl}
+            </div>
+            {/* Brand footer — deliberately quiet (smaller, reduced opacity)
+                so it reads as a logo/watermark, not a second call-to-action
+                competing with the Read More line above it. Not a real
+                hyperlink: the card is a static rasterized PNG, same as
+                Read More itself — both are visual-only. */}
+            <div
+              style={{
+                fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                fontSize: 11,
+                fontWeight: 600,
+                color: textShade.linkColor,
+                opacity: 0.75,
+              }}
+            >
+              Branham Sermons Assistant → https://branhamsermons.ai
+            </div>
           </div>
         </div>
       </div>
