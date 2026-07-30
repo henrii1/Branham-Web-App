@@ -69,6 +69,20 @@ export function hasCitation(text: string): boolean {
 }
 
 /**
+ * Returns the first properly-formatted citation bracket in `text` (with its
+ * start index), or null. Deliberately the same strict pattern as
+ * hasCitation/truncateAfterFirstCitation rather than a loose `[...]` match —
+ * quoted sermon excerpts can contain other bracketed content (e.g. "[…]"
+ * marking omitted words mid-quote) that a loose match would misidentify as
+ * the citation.
+ */
+export function findFirstCitation(text: string): { match: string; index: number } | null {
+  const match = CITATION_RE_SINGLE.exec(text);
+  if (!match || match.index === undefined) return null;
+  return { match: match[0], index: match.index };
+}
+
+/**
  * Slices `text` to end right after its first citation pill, for the
  * share-card excerpt. Returns the full text unchanged if no citation is
  * present.

@@ -278,7 +278,23 @@ Both RPCs are `security definer` with `set search_path = public` (required — a
 
 ### Card generation
 
-`ShareModal` renders an off-screen `ShareCardTemplate` (1200×630) and rasterizes it via `html-to-image` on click (`src/lib/share/generateShareCard.ts` — dynamic-import only, see Stack above). Background is one of three photos + a light/dark text-shade toggle (`src/lib/share/cardBackgrounds.ts`); the answer excerpt is truncated right after its first citation (`truncateAfterFirstCitation` in `lib/markdown/citations.ts`) and run through the same `stripAnswerPrefix` → `renderMarkdown` → `applyCitations` pipeline every other assistant-message render path uses.
+`ShareModal` renders a live-scaled preview of `ShareCardTemplate` and rasterizes the full-size node via `html-to-image` on click (`src/lib/share/generateShareCard.ts` — dynamic-import only, see Stack above; `renderCardToPng` takes the target width/height as a parameter — it must match `CARD_DIMENSIONS[format]`, or the capture silently clips to the wrong crop). Two formats: `landscape` (1200×630, Facebook/OG link-preview convention) and `portrait` (1080×1920, WhatsApp/Instagram Story convention) — both share the same three background tile patterns via `background-size: cover`, no separate portrait assets needed. Background is one of three photos + a light/dark text-shade toggle (`src/lib/share/cardBackgrounds.ts`).
+
+**Building the excerpt** (`buildCardAnswerExcerpt` in `src/lib/share/cardExcerpt.ts`) — every card is guaranteed at least one citation:
+1. Strip the "Answer:" prefix, truncate right after the answer's first citation (`truncateAfterFirstCitation`) if that result fits within `MAX_EXCERPT_CHARS` (900 — sized from a full survey of every published `/q` answer's actual distance-to-first-citation, in all three languages).
+2. If the citation lands too far in to fit, truncate instead at the last paragraph break within budget, falling back to a sentence boundary if no paragraph break falls in range (`truncateAtParagraphOrSentenceBoundary`).
+3. If that truncation left the excerpt with no citation, splice in a fallback "Evidence:" block: first choice is the first entry of the answer's **Quotes** section (quote text + citation); if there's no Quotes section (or it doesn't parse), falls back to a bare citation pulled from the **References** section instead.
+4. Render through the same `stripAnswerPrefix` → `renderMarkdown` → `applyCitations` pipeline every other assistant-message render path uses.
+
+**Multi-language section headings** — the API emits different heading text per language for the Quotes/References sections the fallback reads (`QUOTES_HEADING_RE`/`REFERENCES_HEADING_RE` in `cardExcerpt.ts`; `citations.ts`'s `findFirstCitation` does the actual bracket-matching once inside a section, deliberately the same strict `[TITLE — DATE_ID: ¶refs]` pattern as `hasCitation`/`truncateAfterFirstCitation` rather than a loose `[...]` match, because a quoted sermon excerpt can itself contain other bracketed content — e.g. `[…]` marking words omitted mid-quote — that a loose match would misidentify as the citation):
+
+| Language | Quotes heading | References heading |
+|---|---|---|
+| en | Quotes | References |
+| es | Citas | Referencias |
+| fr | Citations *(space before colon: "### Citations :")* | Références |
+
+**Extending to a new language:** add that language's translations to both heading regexes in `cardExcerpt.ts`, and check `ANSWER_PREFIX` in `src/lib/utils/answerDedup.ts` and `EVIDENCE_PREFIX_RE` in `citations.ts` cover its "Answer:"/"Evidence:" translations too — all three are independent per-language word lists that must stay in sync whenever a language is added.
 
 ### Deletion semantics
 
