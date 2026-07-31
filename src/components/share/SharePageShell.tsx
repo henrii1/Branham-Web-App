@@ -107,15 +107,11 @@ export function SharePageShell({
     [continueConversation],
   );
 
-  const handleContinueLinkClick = useCallback(() => {
-    void continueConversation(null);
-  }, [continueConversation]);
-
   return (
     <div className="flex h-dvh flex-col">
       <header className="border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-3 dark:border-zinc-800">
         <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-          {strings.shareReadOnlyBanner}
+          {strings.shareContinueGuidance}
         </p>
         {title && (
           <h1 className="truncate text-lg font-semibold text-foreground">{title}</h1>
@@ -127,22 +123,14 @@ export function SharePageShell({
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
-
-          <div className="flex flex-col items-center gap-2 pt-2 pb-4">
-            <button
-              type="button"
-              onClick={handleContinueLinkClick}
-              disabled={working}
-              className="text-sm font-medium text-blue-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400"
-            >
-              {isOwner || user ? strings.shareContinueButton : strings.shareLoginToContinue}
-            </button>
-            {continueError && (
-              <p className="text-sm text-red-600 dark:text-red-400">{strings.shareForkError}</p>
-            )}
-          </div>
         </div>
       </div>
+
+      {continueError && (
+        <p className="px-4 pt-2 text-center text-sm text-red-600 dark:text-red-400">
+          {strings.shareForkError}
+        </p>
+      )}
 
       <ShareComposer
         onFocus={handleComposerFocus}

@@ -9,7 +9,7 @@ export interface ShareCardTemplateProps {
   firstQuestion: string | null;
   latestQuestion: string;
   answerExcerptHtml: string;
-  backgroundCss: string;
+  backgroundSrc: string;
   textShade: ShareCardTextShade;
   readMoreLabel: string;
   readMoreUrl: string;
@@ -71,7 +71,7 @@ function ContinuationDots({ color }: { color: string }) {
 
 export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplateProps>(
   function ShareCardTemplate(
-    { firstQuestion, latestQuestion, answerExcerptHtml, backgroundCss, textShade, readMoreLabel, readMoreUrl, format },
+    { firstQuestion, latestQuestion, answerExcerptHtml, backgroundSrc, textShade, readMoreLabel, readMoreUrl, format },
     ref,
   ) {
     const { width: cardWidth, height: cardHeight } = CARD_DIMENSIONS[format];
@@ -106,7 +106,16 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
           overflow: "hidden",
         }}
       >
-        <div style={{ position: "absolute", inset: 0, background: backgroundCss }} />
+        {/* Plain <img> rather than a CSS background-image — html-to-image
+            is less reliable at embedding `background: url(...)` across
+            browsers than a real <img> src during rasterization (same fix
+            already applied to the corner brand mark's logo below). */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={backgroundSrc}
+          alt=""
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
         <div style={{ position: "absolute", inset: 0, background: textShade.scrimCss }} />
         <div
           style={{

@@ -1,7 +1,17 @@
 export interface ShareCardBackground {
   id: string;
   label: string;
+  // Full CSS `background` shorthand (image + position + size), used only
+  // for the small live-preview swatch buttons in ShareModal — cheap,
+  // browser-rendered UI that never goes through html-to-image.
   css: string;
+  // Plain path to the same image, used by ShareCardTemplate itself via a
+  // real <img> tag rather than a CSS background-image. html-to-image is
+  // less reliable at embedding CSS `background: url(...)` than a plain
+  // <img> src across browsers (same class of issue already fixed for the
+  // corner brand mark's logo icon) — an <img> is what actually gets
+  // rasterized into the exported/shared card.
+  src: string;
   // Which text shade reads best on this background by default — light.png
   // and grey.png are light-to-mid toned (dark text default), dark.png is
   // near-black (light text default). ShareModal auto-selects this shade
@@ -13,25 +23,26 @@ export interface ShareCardBackground {
 }
 
 // Real backgrounds, supplied as static assets under public/share-backgrounds/.
-// `css` is a full CSS `background` shorthand (image + position + size), so
-// ShareCardTemplate can apply it directly via `style={{ background: css }}`.
 export const SHARE_CARD_BACKGROUNDS: ShareCardBackground[] = [
   {
     id: "light",
     label: "Light",
     css: "url('/share-backgrounds/light.png') center / cover no-repeat",
+    src: "/share-backgrounds/light.png",
     defaultTextShadeId: "dark",
   },
   {
     id: "grey",
     label: "Grey",
     css: "url('/share-backgrounds/grey.png') center / cover no-repeat",
+    src: "/share-backgrounds/grey.png",
     defaultTextShadeId: "dark",
   },
   {
     id: "dark",
     label: "Dark",
     css: "url('/share-backgrounds/dark.png') center / cover no-repeat",
+    src: "/share-backgrounds/dark.png",
     defaultTextShadeId: "light",
   },
 ];

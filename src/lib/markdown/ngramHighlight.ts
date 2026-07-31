@@ -22,6 +22,15 @@ interface MatchSpan {
 }
 
 const MIN_RUN_LENGTH = 3;
+// Retrieval is largely semantic, not literal, so a passage rephrasing the
+// query with a word or two inserted between otherwise-matching terms (e.g.
+// query "baptism of the holy spirit" against passage "baptism in the name
+// of the holy spirit") should still read as one contiguous match rather
+// than being split or dropped entirely. Allows up to this many unmatched
+// passage words between each pair of consecutively matched query words —
+// those filler words are absorbed into the highlighted span rather than
+// left as gaps, since they're still part of the same matched phrase.
+const MAX_GAP = 2;
 // Matches either a whole HTML entity (e.g. "&#39;", "&amp;") or a
 // Unicode-aware run of letters/digits. The entity alternative is tried
 // first so entities are consumed as one unit instead of fragmenting into
@@ -54,11 +63,13 @@ function tokenize(text: string): WordToken[] {
 }
 
 /**
- * Greedy left-to-right scan: at each unconsumed passage token, find the
- * longest run (>= MIN_RUN_LENGTH) that matches a contiguous run anywhere in
- * the query tokens. Both lists are short (a handful of query words; a
- * paragraph-sized passage), so trying every query start position per
- * passage position is cheap — no LCS/suffix-array needed.
+ * Greedy left-to-right scan: at each unconsumed passage token, find the run
+ * with the most matched words (>= MIN_RUN_LENGTH) against any query start
+ * position, walking the query in order but tolerating up to MAX_GAP
+ * unmatched passage words between each consecutively matched pair. Both
+ * lists are short (a handful of query words; a paragraph-sized passage), so
+ * trying every query start position per passage position is cheap — no
+ * LCS/suffix-array needed.
  */
 function findMatchRuns(passageTokens: WordToken[], queryTokens: string[]): MatchSpan[] {
   const spans: MatchSpan[] = [];
@@ -66,27 +77,39 @@ function findMatchRuns(passageTokens: WordToken[], queryTokens: string[]): Match
   const m = queryTokens.length;
   let i = 0;
   while (i < n) {
-    let bestLen = 0;
+    let best: { matchedCount: number; endTokenIdx: number } | null = null;
     for (let j = 0; j < m; j++) {
       if (passageTokens[i].word !== queryTokens[j]) continue;
-      let len = 1;
-      while (
-        i + len < n &&
-        j + len < m &&
-        passageTokens[i + len].word === queryTokens[j + len]
-      ) {
-        len++;
+      let matchedCount = 1;
+      let pIdx = i;
+      let qIdx = j;
+      while (qIdx + 1 < m) {
+        let found = -1;
+        for (let gap = 0; gap <= MAX_GAP; gap++) {
+          const candidate = pIdx + 1 + gap;
+          if (candidate >= n) break;
+          if (passageTokens[candidate].word === queryTokens[qIdx + 1]) {
+            found = candidate;
+            break;
+          }
+        }
+        if (found === -1) break;
+        pIdx = found;
+        qIdx++;
+        matchedCount++;
       }
-      if (len > bestLen) bestLen = len;
+      if (!best || matchedCount > best.matchedCount) {
+        best = { matchedCount, endTokenIdx: pIdx };
+      }
     }
-    if (bestLen >= MIN_RUN_LENGTH) {
+    if (best && best.matchedCount >= MIN_RUN_LENGTH) {
       spans.push({
         startTokenIdx: i,
-        endTokenIdx: i + bestLen - 1,
+        endTokenIdx: best.endTokenIdx,
         start: passageTokens[i].start,
-        end: passageTokens[i + bestLen - 1].end,
+        end: passageTokens[best.endTokenIdx].end,
       });
-      i += bestLen;
+      i = best.endTokenIdx + 1;
     } else {
       i += 1;
     }

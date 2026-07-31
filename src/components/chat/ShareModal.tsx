@@ -263,7 +263,7 @@ export function ShareModal({
                 firstQuestion={firstQuestion}
                 latestQuestion={latestQuestion}
                 answerExcerptHtml={answerExcerptHtml}
-                backgroundCss={SHARE_CARD_BACKGROUNDS[backgroundIndex].css}
+                backgroundSrc={SHARE_CARD_BACKGROUNDS[backgroundIndex].src}
                 textShade={SHARE_CARD_TEXT_SHADES[textShadeIndex]}
                 readMoreLabel={strings.shareReadMore}
                 readMoreUrl={shareUrl}
