@@ -7,7 +7,6 @@ import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 import { createClient } from "@/lib/supabase/server";
 
 const SITE_URL = "https://branhamsermons.ai";
-const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -48,19 +47,21 @@ export async function generateMetadata({
     description,
     robots: { index: true, follow: true },
     alternates: { canonical: canonicalUrl },
+    // No explicit `images` here — Next.js auto-detects the per-slug
+    // opengraph-image.tsx route in this same directory and injects its
+    // URL into openGraph/twitter metadata automatically. An explicit
+    // `images` key here would silently override that with a stale value.
     openGraph: {
       title,
       description,
       url: canonicalUrl,
       type: "article",
-      images: [{ url: OG_IMAGE }],
       siteName: "Branham Sermons Assistant",
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [OG_IMAGE],
     },
   };
 }
@@ -95,6 +96,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
   const prevUrl = adjacent.prev ? `${SITE_URL}/q/${adjacent.prev.slug}` : null;
   const nextUrl = adjacent.next ? `${SITE_URL}/q/${adjacent.next.slug}` : null;
   const answerPlain = stripMarkdownToPlain(page.answer_markdown);
+  const ogImageUrl = `${canonicalUrl}/opengraph-image`;
 
   const appOrg = {
     "@type": "Organization",
@@ -117,7 +119,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
     datePublished: page.created_at,
     dateModified: page.updated_at,
     mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
-    image: OG_IMAGE,
+    image: ogImageUrl,
     author: appOrg,
     publisher: {
       "@type": "Organization",

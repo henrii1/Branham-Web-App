@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatStrings } from "@/lib/i18n/chatStrings";
 import { SHARE_CARD_BACKGROUNDS, SHARE_CARD_TEXT_SHADES } from "@/lib/share/cardBackgrounds";
 import { renderCardToPng } from "@/lib/share/generateShareCard";
+import { generateQrMatrix } from "@/lib/share/generateQrMatrix";
 import { CARD_DIMENSIONS, ShareCardTemplate, type ShareCardFormat } from "./ShareCardTemplate";
 
 // Fixed preview letterbox height — both landscape (wide, short) and
@@ -56,49 +57,39 @@ export function ShareModal({
   const cardWidth = CARD_DIMENSIONS[format].width;
   const cardHeight = CARD_DIMENSIONS[format].height;
 
-  // Web Share API (navigator.share with files) — only meaningful on
-  // platforms that can hand a file to another app. Detected client-only
-  // (starts false to match SSR) so desktop browsers never render a dead
-  // button. See docs/superpowers/specs/2026-07-30-native-share-design.md.
+  // Web Share API, text/url only (no files) — "Share directly" hands off
+  // just the link so the destination app renders its own rich link
+  // preview (see docs/superpowers/specs/2026-08-03-share-card-qr-and-og-preview-design.md
+  // for why a combined file+url share never actually produces both a
+  // picture and a clickable preview). Detected client-only (starts false
+  // to match SSR) so desktop browsers without support never render a
+  // dead button.
   const [nativeShareSupported, setNativeShareSupported] = useState(false);
-  // Proactively rasterized, ready to hand off the instant the user taps
-  // Share — navigator.share() must fire within a live user-activation
-  // window, and rasterizing on click would frequently miss it.
-  const [nativeShareBlob, setNativeShareBlob] = useState<Blob | null>(null);
   const [nativeSharing, setNativeSharing] = useState(false);
   const [nativeShareError, setNativeShareError] = useState(false);
-  // Guards against a slow, now-superseded render overwriting a newer one —
-  // only the most recently triggered generation is allowed to commit.
-  const nativeShareGenerationRef = useRef(0);
+  // QR module matrix for the card's bottom-right QR code — encodes the
+  // exact deep link (shareUrl), generated once since it doesn't change
+  // while the modal is open. Needed for the live preview, not just
+  // Download, so it's generated eagerly on mount rather than on click.
+  const [qrMatrix, setQrMatrix] = useState<boolean[][] | null>(null);
 
   useEffect(() => {
-    setNativeShareSupported(
-      typeof navigator !== "undefined" &&
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function",
-    );
+    setNativeShareSupported(typeof navigator !== "undefined" && typeof navigator.share === "function");
   }, []);
 
   useEffect(() => {
-    if (!nativeShareSupported || !cardReady || shareError) return;
-    // Invalidate immediately (not just after the debounce fires) so
-    // Download's blob-reuse below can never hand out a stale image for
-    // the format/background/shade combination that's on screen right now.
-    setNativeShareBlob(null);
-    const token = ++nativeShareGenerationRef.current;
-    const timer = setTimeout(() => {
-      const node = cardRef.current;
-      if (!node) return;
-      renderCardToPng(node, { width: cardWidth, height: cardHeight })
-        .then((blob) => {
-          if (nativeShareGenerationRef.current === token) setNativeShareBlob(blob);
-        })
-        .catch((err) => {
-          console.error("Failed to pre-generate share image for native share:", err);
-        });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [nativeShareSupported, cardReady, shareError, format, backgroundIndex, textShadeIndex, cardWidth, cardHeight]);
+    let cancelled = false;
+    generateQrMatrix(shareUrl)
+      .then((matrix) => {
+        if (!cancelled) setQrMatrix(matrix);
+      })
+      .catch((err) => {
+        console.error("Failed to generate QR code for share card:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [shareUrl]);
 
   useEffect(() => {
     const el = previewWrapperRef.current;
@@ -143,12 +134,7 @@ export function ShareModal({
     setGenerating(true);
     setDownloadError(false);
     try {
-      // Reuse the pre-generated native-share blob when it's ready and
-      // fresh (cleared synchronously on any format/background/shade
-      // change — see the effect above) instead of rasterizing twice.
-      // Platforms without native-share support never populate it, so
-      // this falls through to the original on-click render unchanged.
-      const blob = nativeShareBlob ?? (await renderCardToPng(cardRef.current, { width: cardWidth, height: cardHeight }));
+      const blob = await renderCardToPng(cardRef.current, { width: cardWidth, height: cardHeight });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -173,19 +159,11 @@ export function ShareModal({
   }
 
   async function handleNativeShare() {
-    if (!nativeShareBlob || nativeSharing) return;
+    if (nativeSharing) return;
     setNativeSharing(true);
     setNativeShareError(false);
     try {
-      const file = new File([nativeShareBlob], `branham-sermons-share-${shareHash.slice(0, 8)}.png`, {
-        type: "image/png",
-      });
-      if (!navigator.canShare({ files: [file] })) {
-        setNativeShareError(true);
-        return;
-      }
       await navigator.share({
-        files: [file],
         title: "Branham Sermons Assistant",
         text: latestQuestion,
         url: shareUrl,
@@ -268,6 +246,7 @@ export function ShareModal({
                 readMoreLabel={strings.shareReadMore}
                 readMoreUrl={shareUrl}
                 format={format}
+                qrMatrix={qrMatrix}
               />
             </div>
           </div>
@@ -360,7 +339,7 @@ export function ShareModal({
           <button
             type="button"
             onClick={handleNativeShare}
-            disabled={!nativeShareBlob || nativeSharing || shareError}
+            disabled={nativeSharing || shareError}
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
             <svg
@@ -377,7 +356,7 @@ export function ShareModal({
                 d="M12 3v13m0-13 4 4m-4-4-4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"
               />
             </svg>
-            {!nativeShareBlob || nativeSharing ? strings.shareGenerating : strings.shareNativeButton}
+            {strings.shareNativeButton}
           </button>
         )}
         {nativeShareError && (

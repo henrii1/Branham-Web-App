@@ -163,16 +163,15 @@ function truncateAtParagraphOrSentenceBoundary(text: string, maxChars: number): 
 }
 
 /**
- * Builds the share-card's answer excerpt: strip -> truncate (preferring a
- * paragraph boundary, then a sentence boundary) -> splice in a fallback
- * reference if truncation left no citation -> render -> citation-pill
- * styling. Every card is guaranteed at least one reference: either the
- * excerpt's own inline citation survives truncation, or the Quotes/
- * References fallback supplies one. Shared by every place that generates a
- * share card (ChatShell/SeoShell's conversation-share flow, SeoShell's
- * own-page share flow) so the truncation strategy can't drift between them.
+ * Strip -> truncate (preferring a paragraph boundary, then a sentence
+ * boundary) -> splice in a fallback reference if truncation left no
+ * citation. Every excerpt is guaranteed at least one reference: either its
+ * own inline citation survives truncation, or the Quotes/References
+ * fallback supplies one. Shared by both consumers below so the truncation
+ * strategy can't drift between the downloadable card and the Open Graph
+ * preview image.
  */
-export function buildCardAnswerExcerpt(rawAnswer: string): string {
+function buildExcerptWithEvidence(rawAnswer: string): string {
   const cleaned = stripParagraphLetterSuffixes(stripAnswerPrefix(rawAnswer));
   const withCitation = truncateAfterFirstCitation(cleaned);
   const excerpt =
@@ -180,12 +179,40 @@ export function buildCardAnswerExcerpt(rawAnswer: string): string {
       ? withCitation
       : truncateAtParagraphOrSentenceBoundary(cleaned, MAX_EXCERPT_CHARS);
 
-  const excerptWithEvidence = hasCitation(excerpt)
+  return hasCitation(excerpt)
     ? excerpt
     : (() => {
         const fallback = buildFallbackEvidenceText(cleaned);
         return fallback ? `${excerpt}\n\n${fallback}` : excerpt;
       })();
+}
 
-  return applyCitations(renderMarkdown(excerptWithEvidence));
+/**
+ * Builds the share-card's answer excerpt: buildExcerptWithEvidence's plain
+ * text, rendered -> citation-pill styling. Shared by every place that
+ * generates a *downloadable/rasterized* share card (ChatShell/SeoShell's
+ * conversation-share flow, SeoShell's own-page share flow) so the
+ * truncation strategy can't drift between them.
+ */
+export function buildCardAnswerExcerpt(rawAnswer: string): string {
+  return applyCitations(renderMarkdown(buildExcerptWithEvidence(rawAnswer)));
+}
+
+/**
+ * Plain-text variant for the Open Graph preview image (next/og's
+ * ImageResponse, Satori-rendered) — it can't render our citation-pill HTML
+ * (dangerouslySetInnerHTML/arbitrary DOM isn't supported there), so this
+ * strips markdown syntax instead of styling it, and collapses paragraph
+ * breaks into one flowing line since the preview is a small thumbnail, not
+ * a multi-paragraph layout. Citation brackets (`[TITLE — DATE: ¶N]`) are
+ * left as plain visible text — they read fine unstyled at this size.
+ */
+export function buildOgExcerptText(rawAnswer: string): string {
+  return buildExcerptWithEvidence(rawAnswer)
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\n{2,}/g, " ")
+    .replace(/\n/g, " ")
+    .trim();
 }

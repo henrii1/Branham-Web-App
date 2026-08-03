@@ -1,7 +1,7 @@
 # Native Share (Web Share API) for the Share Card
 
 **Date:** 2026-07-30
-**Status:** Approved
+**Status:** Superseded — see `2026-08-03-share-card-qr-and-og-preview-design.md`. The file-attaching design below shipped, then was revised after investigating how WhatsApp actually handles a combined `navigator.share({ files, url, text })` call: attaching a file means the destination never unfurls a separate link-preview card, so the combined approach never delivered "both a picture and a clickable link" the way this doc assumed. "Share directly" is now a pure link-share (no file) relying on a new dynamic Open Graph preview image instead. Left here for history only — do not implement from this file.
 
 ## Problem
 

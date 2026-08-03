@@ -10,7 +10,6 @@ import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 
 const SITE_URL = "https://branhamsermons.ai";
-const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 const SUPPORTED_LANGS = ["es", "fr"] as const;
 type SupportedLang = (typeof SUPPORTED_LANGS)[number];
@@ -70,19 +69,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         "x-default": `${SITE_URL}/q/${slug}`,
       },
     },
+    // No explicit `images` here — Next.js auto-detects the per-slug
+    // opengraph-image.tsx route in this same directory and injects its
+    // URL into openGraph/twitter metadata automatically. An explicit
+    // `images` key here would silently override that with a stale value.
     openGraph: {
       title,
       description,
       url: canonicalUrl,
       type: "article",
-      images: [{ url: OG_IMAGE }],
       siteName: "Branham Sermons Assistant",
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [OG_IMAGE],
     },
   };
 }
@@ -103,6 +104,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
   const prevUrl = adjacent.prev ? `${SITE_URL}/${l}/q/${adjacent.prev.slug}` : null;
   const nextUrl = adjacent.next ? `${SITE_URL}/${l}/q/${adjacent.next.slug}` : null;
   const answerPlain = stripMarkdownToPlain(page.answer_markdown);
+  const ogImageUrl = `${canonicalUrl}/opengraph-image`;
 
   const appOrg = { "@type": "Organization", name: "Branham Sermons AI", url: SITE_URL };
 
@@ -116,7 +118,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
     datePublished: page.created_at,
     dateModified: page.updated_at,
     mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
-    image: OG_IMAGE,
+    image: ogImageUrl,
     author: appOrg,
     publisher: {
       "@type": "Organization",

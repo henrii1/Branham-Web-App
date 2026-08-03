@@ -14,6 +14,10 @@ export interface ShareCardTemplateProps {
   readMoreLabel: string;
   readMoreUrl: string;
   format: ShareCardFormat;
+  // Null while the QR module matrix is still being generated — renders
+  // nothing until ready rather than a placeholder, since generation
+  // resolves quickly and the modal is already gated on cardReady.
+  qrMatrix: boolean[][] | null;
 }
 
 // Landscape (1200x630) matches the Open Graph / Facebook link-preview
@@ -71,7 +75,7 @@ function ContinuationDots({ color }: { color: string }) {
 
 export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplateProps>(
   function ShareCardTemplate(
-    { firstQuestion, latestQuestion, answerExcerptHtml, backgroundSrc, textShade, readMoreLabel, readMoreUrl, format },
+    { firstQuestion, latestQuestion, answerExcerptHtml, backgroundSrc, textShade, readMoreLabel, readMoreUrl, format, qrMatrix },
     ref,
   ) {
     const { width: cardWidth, height: cardHeight } = CARD_DIMENSIONS[format];
@@ -79,12 +83,6 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
     const totalChars = (firstQuestion?.length ?? 0) + latestQuestion.length + plainAnswerLength;
     const { questionSize, answerSize, gap } =
       format === "portrait" ? getPortraitSizing(totalChars) : getLandscapeSizing(totalChars);
-    // `text-align: justify` stretches ugly, oversized gaps into a short
-    // answer that only ever renders as a single line — justify only reads
-    // well once a paragraph actually wraps. Below this length the answer
-    // is virtually guaranteed to stay on one line even at the largest
-    // tier's font size, so center it instead.
-    const answerWraps = plainAnswerLength > 80;
     const paddingY = format === "portrait" ? 160 : 48;
     const paddingX = format === "portrait" ? 80 : 88;
     const answerMaxWidth = format === "portrait" ? 840 : 880;
@@ -93,6 +91,12 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
     // pattern the rest of the card's type already follows.
     const brandMarkIconSize = format === "portrait" ? 40 : 32;
     const brandMarkTextSize = format === "portrait" ? 20 : 16;
+    // Bare domain, not the full URL — a long share URL is impractical to
+    // read or type by hand. Parsed rather than hardcoded so it stays
+    // correct on preview/staging domains. The QR code (bottom-right)
+    // carries the exact deep link instead.
+    const shortReadMoreUrl = new URL(readMoreUrl).host;
+    const qrSize = format === "portrait" ? 96 : 76;
 
     return (
       <div
@@ -160,8 +164,7 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
             style={{
               fontSize: answerSize,
               lineHeight: 1.55,
-              textAlign: answerWraps ? "justify" : "center",
-              textAlignLast: "center",
+              textAlign: "center",
               maxWidth: answerMaxWidth,
             }}
             dangerouslySetInnerHTML={{ __html: answerExcerptHtml }}
@@ -177,7 +180,7 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
               color: textShade.linkColor,
             }}
           >
-            {readMoreLabel} → {readMoreUrl}
+            {readMoreLabel} → {shortReadMoreUrl}
           </div>
         </div>
 
@@ -222,6 +225,39 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
             Branham Sermons Assistant
           </span>
         </div>
+
+        {/* QR code, bottom-right — mirrors the corner brand mark's inset on
+            the opposite corner. Encodes the exact deep link (readMoreUrl),
+            not the shortened domain text above: this is what makes the
+            Download Image card self-contained even when it travels with no
+            accompanying clickable link (WhatsApp Status, Instagram, saved
+            and reposted elsewhere). Fixed white/dark contrast regardless of
+            the card's text shade — scannability needs guaranteed contrast,
+            which deriving from the light/dark theme could compromise on
+            some background/shade combinations. */}
+        {qrMatrix && (
+          <div
+            style={{
+              position: "absolute",
+              right: paddingX,
+              bottom: paddingY,
+              display: "grid",
+              gridTemplateColumns: `repeat(${qrMatrix.length}, 1fr)`,
+              gridTemplateRows: `repeat(${qrMatrix.length}, 1fr)`,
+              width: qrSize,
+              height: qrSize,
+              background: "#ffffff",
+              padding: qrSize * 0.08,
+              boxSizing: "border-box",
+            }}
+          >
+            {qrMatrix.flatMap((row, r) =>
+              row.map((dark, c) => (
+                <div key={`${r}-${c}`} style={{ background: dark ? "#18181b" : "#ffffff" }} />
+              )),
+            )}
+          </div>
+        )}
       </div>
     );
   },
