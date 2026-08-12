@@ -42,9 +42,14 @@ import { ChatPanel } from "./ChatPanel";
 import { Composer } from "./Composer";
 import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
+import { SensitiveUseBanner } from "./SensitiveUseBanner";
 import dynamic from "next/dynamic";
 const ShareFeatureBanner = dynamic(
   () => import("./ShareFeatureBanner").then((m) => ({ default: m.ShareFeatureBanner })),
+  { ssr: false },
+);
+const SensitiveUseModal = dynamic(
+  () => import("./SensitiveUseModal").then((m) => ({ default: m.SensitiveUseModal })),
   { ssr: false },
 );
 import { LoginModal } from "./LoginModal";
@@ -1140,6 +1145,7 @@ export function ChatShell({
   return (
     <div className="flex h-dvh bg-background">
       <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
+      <SensitiveUseModal language={chatLanguage} />
 
       {/* ── Desktop sidebar ── */}
       <aside
@@ -1237,6 +1243,9 @@ export function ChatShell({
           strings={strings}
           faqHref={faqHref}
         />
+
+        {/* ── Sensitive-inquiry disclaimer (all users, always visible) ── */}
+        <SensitiveUseBanner language={chatLanguage} />
 
         {/* ── Share-feature announcement banner (all users, once per browser) ── */}
         <ShareFeatureBanner language={chatLanguage} />

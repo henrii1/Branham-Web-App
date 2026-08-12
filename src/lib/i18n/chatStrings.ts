@@ -79,6 +79,13 @@ const CHAT_STRINGS = {
     featureFrenchStat: "359 sermons available in French",
     featureSetLanguage: "Set my language",
     featureLater: "Later",
+    // Sensitive-inquiry disclaimer
+    sensitiveModalHeading: "Before you begin",
+    sensitiveModalBody:
+      "This tool is for comparing sermon quotes, finding exact references, and learning general doctrine — not for personal or sensitive spiritual questions. Its answers cannot be trusted for matters like that. If something sensitive or personal is on your heart, please ask your pastor instead.",
+    sensitiveModalAck: "I understand",
+    sensitiveBannerText:
+      "Not for personal or sensitive questions — ask your pastor. This tool is for comparing quotes, references, and general doctrine.",
     // Sermon count note (shown beneath language pill for non-English; empty for EN)
     sermonCountNote: "",
   },
@@ -162,6 +169,13 @@ const CHAT_STRINGS = {
     featureFrenchStat: "359 sermones disponibles en francés",
     featureSetLanguage: "Establecer mi idioma",
     featureLater: "Más tarde",
+    // Sensitive-inquiry disclaimer
+    sensitiveModalHeading: "Antes de comenzar",
+    sensitiveModalBody:
+      "Esta herramienta sirve para comparar citas de sermones, encontrar referencias exactas y aprender doctrina general — no para preguntas personales o espirituales sensibles. Sus respuestas no son confiables para ese tipo de asuntos. Si tienes algo sensible o personal en el corazón, por favor consulta a tu pastor.",
+    sensitiveModalAck: "Entendido",
+    sensitiveBannerText:
+      "No es para preguntas personales o sensibles — consulta a tu pastor. Esta herramienta sirve para comparar citas, referencias y doctrina general.",
     sermonCountNote:
       "385 de ~1,200 sermones indexados en español. Puede continuar con estas respuestas en mente.",
   },
@@ -245,6 +259,13 @@ const CHAT_STRINGS = {
     featureFrenchStat: "359 sermons disponibles en français",
     featureSetLanguage: "Définir ma langue",
     featureLater: "Plus tard",
+    // Sensitive-inquiry disclaimer
+    sensitiveModalHeading: "Avant de commencer",
+    sensitiveModalBody:
+      "Cet outil sert à comparer des citations de sermons, trouver des références exactes et apprendre la doctrine générale — pas à répondre à des questions personnelles ou spirituelles sensibles. Ses réponses ne sont pas fiables pour ce genre de sujets. Si vous portez quelque chose de sensible ou de personnel sur le cœur, veuillez consulter votre pasteur.",
+    sensitiveModalAck: "J'ai compris",
+    sensitiveBannerText:
+      "Pas pour les questions personnelles ou sensibles — consultez votre pasteur. Cet outil sert à comparer des citations, des références et la doctrine générale.",
     sermonCountNote:
       "359 des ~1 200 sermons indexés en français. Vous pouvez maintenant continuer avec ces réponses à l'esprit.",
   },
