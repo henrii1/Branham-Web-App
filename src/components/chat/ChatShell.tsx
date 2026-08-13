@@ -44,10 +44,6 @@ import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
 import { SensitiveUseBanner } from "./SensitiveUseBanner";
 import dynamic from "next/dynamic";
-const ShareFeatureBanner = dynamic(
-  () => import("./ShareFeatureBanner").then((m) => ({ default: m.ShareFeatureBanner })),
-  { ssr: false },
-);
 const SensitiveUseModal = dynamic(
   () => import("./SensitiveUseModal").then((m) => ({ default: m.SensitiveUseModal })),
   { ssr: false },
@@ -1247,9 +1243,6 @@ export function ChatShell({
         {/* ── Sensitive-inquiry disclaimer (all users, always visible) ── */}
         <SensitiveUseBanner language={chatLanguage} />
 
-        {/* ── Share-feature announcement banner (all users, once per browser) ── */}
-        <ShareFeatureBanner language={chatLanguage} />
-
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
           <div className="hidden lg:block">
@@ -1263,9 +1256,7 @@ export function ChatShell({
             type="button"
             onClick={() => conversationId && handleShareConversation(conversationId)}
             disabled={messages.length === 0}
-            aria-label={strings.shareAction}
-            title={strings.shareAction}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
           >
             <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
               <path
@@ -1274,6 +1265,7 @@ export function ChatShell({
                 d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
               />
             </svg>
+            {strings.shareAction}
           </button>
         </div>
 

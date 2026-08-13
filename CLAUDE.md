@@ -71,7 +71,8 @@ src/
 │   │   ├── MessageBubble.tsx               # Final message render with citation pills; reused as-is on the public share page
 │   │   ├── ChatPanel.tsx, SourcesPanel.tsx, Composer.tsx
 │   │   ├── ConversationSidebar.tsx, MobileHeader.tsx, SidebarRail.tsx
-│   │   ├── LoginModal.tsx, AnonymousBanner.tsx, ShareFeatureBanner.tsx
+│   │   ├── LoginModal.tsx, AnonymousBanner.tsx
+│   │   ├── SensitiveUseModal.tsx, SensitiveUseBanner.tsx  # ★ Sensitive-inquiry disclaimer (once-per-account/session modal + persistent header banner)
 │   │   ├── ShareModal.tsx                  # ★ Share link/copy + card background+text-shade picker + download
 │   │   ├── ShareCardTemplate.tsx           # ★ Off-screen 1200×630 DOM node captured by html-to-image
 │   │   └── DragDivider.tsx, WelcomeEmailTrigger.tsx

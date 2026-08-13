@@ -4,7 +4,7 @@ import { getChatStrings } from "@/lib/i18n/chatStrings";
 
 // Always visible for as long as the chat surface is mounted — deliberately
 // no dismiss control. This is a standing safety notice, not a one-time
-// feature announcement like ShareFeatureBanner.
+// feature announcement.
 export function SensitiveUseBanner({ language = "en" }: { language?: string }) {
   const s = getChatStrings(language);
 
