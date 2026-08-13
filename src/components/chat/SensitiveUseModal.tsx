@@ -3,15 +3,35 @@
 import { useState } from "react";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
 
-const ACK_KEY = "branham_sensitive_disclaimer_ack_v1";
+const ANON_ACK_KEY = "branham_sensitive_disclaimer_ack_v1";
 
-export function SensitiveUseModal({ language = "en" }: { language?: string }) {
-  const [visible, setVisible] = useState(() => !sessionStorage.getItem(ACK_KEY));
+// Logged-in users: once ever per account on this browser, stored in
+// localStorage keyed by user id — survives new tabs/sessions and even a
+// later logout/login, so it only interrupts once. Anonymous users have no
+// stable identity, so they get the weaker "once per browser session"
+// behavior via sessionStorage instead (once each time they open the app).
+function getAckStorage(userId: string | null): Storage {
+  return userId ? localStorage : sessionStorage;
+}
+function getAckKey(userId: string | null): string {
+  return userId ? `branham_sensitive_disclaimer_ack_user_${userId}` : ANON_ACK_KEY;
+}
+
+export function SensitiveUseModal({
+  language = "en",
+  userId = null,
+}: {
+  language?: string;
+  userId?: string | null;
+}) {
+  const [visible, setVisible] = useState(
+    () => !getAckStorage(userId).getItem(getAckKey(userId)),
+  );
 
   const s = getChatStrings(language);
 
   function acknowledge() {
-    sessionStorage.setItem(ACK_KEY, "true");
+    getAckStorage(userId).setItem(getAckKey(userId), "true");
     setVisible(false);
   }
 

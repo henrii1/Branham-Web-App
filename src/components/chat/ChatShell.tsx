@@ -1145,7 +1145,7 @@ export function ChatShell({
   return (
     <div className="flex h-dvh bg-background">
       <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
-      <SensitiveUseModal language={chatLanguage} />
+      <SensitiveUseModal language={chatLanguage} userId={user?.id ?? null} />
 
       {/* ── Desktop sidebar ── */}
       <aside
