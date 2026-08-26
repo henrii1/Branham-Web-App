@@ -84,16 +84,18 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full flex-col bg-[var(--surface-chat)]">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
+      <div className="flex items-center border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
         <h2 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase lg:hidden dark:text-zinc-400">
           Chat
         </h2>
-        <AnswerViewToggle
-          mode={mode}
-          onChange={onModeChange}
-          fullLabel={answerViewFullLabel}
-          quotesLabel={answerViewQuotesLabel}
-        />
+        <div className="ml-auto">
+          <AnswerViewToggle
+            mode={mode}
+            onChange={onModeChange}
+            fullLabel={answerViewFullLabel}
+            quotesLabel={answerViewQuotesLabel}
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
