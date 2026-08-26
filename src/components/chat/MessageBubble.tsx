@@ -1,33 +1,52 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Message } from "@/lib/chat/types";
+import type { Message, AnswerViewMode } from "@/lib/chat/types";
 import { renderMarkdown } from "@/lib/markdown/render";
 import {
   applyCitations,
   stripParagraphLetterSuffixes,
+  extractOrderedCitations,
+  dedupeCitations,
+  renderCitationList,
 } from "@/lib/markdown/citations";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 
 interface MessageBubbleProps {
   message: Message;
+  mode?: AnswerViewMode;
+  quotesEmptyText?: string;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  mode = "full",
+  quotesEmptyText = "No sermon quotes cited in this answer.",
+}: MessageBubbleProps) {
   const isUser = message.role === "user";
 
   // Memoize the full render pipeline for assistant messages.
-  // Messages are immutable once added, so this only runs once per message.
-  const renderedHtml = useMemo(() => {
-    if (isUser) return "";
+  // Messages are immutable once added, so this only runs once per message
+  // per mode.
+  const rendered = useMemo(() => {
+    if (isUser) return { html: "", isEmptyQuotes: false };
     // stripAnswerPrefix at render time catches historical DB messages saved before dedup existed
     // stripParagraphLetterSuffixes at render catches historical messages; new ones are normalized before save
     const cleaned = stripParagraphLetterSuffixes(stripAnswerPrefix(message.content));
     const processed = postprocessChatResponse(cleaned);
     const html = renderMarkdown(processed);
-    return applyCitations(html);
-  }, [isUser, message.content]);
+
+    if (mode === "quotes") {
+      const entries = dedupeCitations(extractOrderedCitations(html));
+      if (entries.length === 0) {
+        return { html: "", isEmptyQuotes: true };
+      }
+      return { html: renderCitationList(entries), isEmptyQuotes: false };
+    }
+
+    return { html: applyCitations(html), isEmptyQuotes: false };
+  }, [isUser, message.content, mode]);
 
   if (isUser) {
     return (
@@ -47,11 +66,15 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div role="article" aria-label="Assistant message">
-      <div
-        className="chat-markdown prose prose-sm prose-zinc max-w-none break-words dark:prose-invert"
-        data-message-lang={message.language ?? "en"}
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      />
+      {rendered.isEmptyQuotes ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{quotesEmptyText}</p>
+      ) : (
+        <div
+          className="chat-markdown prose prose-sm prose-zinc max-w-none break-words dark:prose-invert"
+          data-message-lang={message.language ?? "en"}
+          dangerouslySetInnerHTML={{ __html: rendered.html }}
+        />
+      )}
     </div>
   );
 }

@@ -20,6 +20,8 @@ export type StreamingStatus =
   | "complete"
   | "error";
 
+export type AnswerViewMode = "full" | "quotes";
+
 export interface Conversation {
   id: string;
   title: string | null;

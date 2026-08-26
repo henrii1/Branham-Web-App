@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useMemo } from "react";
-import type { Message, StreamingStatus } from "@/lib/chat/types";
+import type { Message, StreamingStatus, AnswerViewMode } from "@/lib/chat/types";
 import { MessageBubble } from "./MessageBubble";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
@@ -12,6 +12,8 @@ interface MessageListProps {
   streamingStatus: StreamingStatus;
   streamBuffer: string;
   finalizingText?: string;
+  mode?: AnswerViewMode;
+  quotesEmptyText?: string;
 }
 
 function StreamingIndicator({
@@ -80,6 +82,8 @@ export function MessageList({
   streamingStatus,
   streamBuffer,
   finalizingText,
+  mode,
+  quotesEmptyText,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +99,12 @@ export function MessageList({
       aria-live="polite"
     >
       {messages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} />
+        <MessageBubble
+          key={msg.id}
+          message={msg}
+          mode={mode}
+          quotesEmptyText={quotesEmptyText}
+        />
       ))}
 
       {streamingStatus === "streaming" && streamBuffer && (

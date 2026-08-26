@@ -167,6 +167,15 @@ html {
   }
 }
 
+/* ── Raw reference list rows — one clickable pill per line ("Sermon Quotes" view) ── */
+.raw-reference-row {
+  margin-bottom: 8px;
+}
+
+.raw-reference-row:last-child {
+  margin-bottom: 0;
+}
+
 /* ── Evidence label (§8.4) — metadata chip before citation groups ─── */
 .evidence-label {
   display: inline-block;

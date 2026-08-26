@@ -128,7 +128,7 @@ export interface CitationRange {
   paragraph_end?: number;
 }
 
-interface ParsedSermonRef {
+export interface CitationEntry {
   date_id: string;
   title: string;
   ranges: CitationRange[];
@@ -166,8 +166,8 @@ function parseRanges(rangePart: string): CitationRange[] {
  * title, date_id, and paragraph ranges. Returns an empty array when nothing
  * resolves (in which case the pill stays non-clickable, as before).
  */
-function parseCitationReferences(innerText: string): ParsedSermonRef[] {
-  const refs: ParsedSermonRef[] = [];
+function parseCitationReferences(innerText: string): CitationEntry[] {
+  const refs: CitationEntry[] = [];
   SERMON_SEGMENT_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = SERMON_SEGMENT_RE.exec(innerText)) !== null) {
@@ -202,7 +202,7 @@ function formatRanges(ranges: CitationRange[]): string {
  * so a bracket that cites several sermons becomes several separate pills. The
  * sermon's data is embedded as a single-element `data-references` JSON payload.
  */
-function makeSinglePill(ref: ParsedSermonRef): string {
+function makeSinglePill(ref: CitationEntry): string {
   // ref.title comes from already-HTML-escaped source (applyCitations runs on
   // rendered HTML), so it's safe to interpolate into both contexts as-is.
   const displayText = `${ref.title} — ${ref.date_id}: ${formatRanges(ref.ranges)}`;
@@ -274,4 +274,64 @@ export function applyCitations(html: string): string {
   );
 
   return result;
+}
+
+/**
+ * Scans `html` for every citation bracket, in document order, expanding a
+ * multi-sermon bracket into one entry per sermon — the same expansion
+ * makePill already does for inline pills. No awareness of "sections": a
+ * citation counts wherever it appears (inline, Quotes section, References
+ * section). Call this on renderMarkdown() output, NOT raw markdown — title
+ * text must already be HTML-entity-escaped, matching makeSinglePill's
+ * existing escaping assumption (see its docstring above).
+ */
+export function extractOrderedCitations(html: string): CitationEntry[] {
+  const entries: CitationEntry[] = [];
+  const re = new RegExp(CITATION_RE.source, CITATION_RE.flags);
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html)) !== null) {
+    if (match[0].length === 0) {
+      re.lastIndex += 1;
+      continue;
+    }
+    entries.push(...parseCitationReferences(match[1]));
+  }
+  return entries;
+}
+
+function citationKey(entry: CitationEntry): string {
+  const ranges = entry.ranges
+    .map((r) => `${r.paragraph_start}-${r.paragraph_end ?? ""}`)
+    .join(",");
+  return `${entry.date_id}|${ranges}`;
+}
+
+/**
+ * Keeps the first occurrence of each exact citation (same date_id AND same
+ * paragraph range) and drops later duplicates. Two citations of the same
+ * sermon with different ranges are NOT duplicates of each other.
+ */
+export function dedupeCitations(entries: CitationEntry[]): CitationEntry[] {
+  const seen = new Set<string>();
+  const result: CitationEntry[] = [];
+  for (const entry of entries) {
+    const key = citationKey(entry);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(entry);
+  }
+  return result;
+}
+
+/**
+ * Renders a deduped, ordered citation list as one clickable pill per row —
+ * used by the chat window's "Sermon Quotes" view. Reuses the single-pill
+ * builder, so each row carries the same .citation-pill--clickable class and
+ * data-references JSON payload ReferencePopover's delegated click listener
+ * already handles — no new click-handling code needed.
+ */
+export function renderCitationList(entries: CitationEntry[]): string {
+  return entries
+    .map((entry) => `<div class="raw-reference-row">${makeSinglePill(entry)}</div>`)
+    .join("");
 }
