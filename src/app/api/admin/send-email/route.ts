@@ -4,6 +4,7 @@ import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { resolveRecipients } from "@/lib/email/recipients";
 import { applyGreeting, type EmailLanguage } from "@/lib/email/greeting";
 import { sendBulkEmail } from "@/lib/email/sendEmail";
+import { hasRecentInFlightSend, startSend, completeSend, failSend } from "@/lib/email/sendHistory";
 
 const VALID_LANGUAGES: EmailLanguage[] = ["en", "es", "fr"];
 
@@ -44,17 +45,46 @@ export async function POST(request: Request) {
     const subject = body.subject.trim();
     const bodyMarkdown = body.bodyMarkdown;
 
-    const messages = recipients.map((recipient) => ({
-      to: recipient.email,
-      subject,
-      bodyMarkdown: applyGreeting(bodyMarkdown, language, recipient.displayName),
-    }));
+    if (await hasRecentInFlightSend(admin, user.id)) {
+      return Response.json(
+        {
+          ok: false,
+          error: "A send from this account is already in progress — wait a moment and try again.",
+        },
+        { status: 409 },
+      );
+    }
 
-    const result = await sendBulkEmail(messages);
+    const sendId = await startSend(admin, {
+      senderUserId: user.id,
+      language,
+      subject,
+      bodyMarkdown,
+      recipientCount: recipients.length,
+    });
+
+    let result;
+    try {
+      const messages = recipients.map((recipient) => ({
+        to: recipient.email,
+        subject,
+        bodyMarkdown: applyGreeting(bodyMarkdown, language, recipient.displayName),
+      }));
+      result = await sendBulkEmail(messages);
+    } catch (err) {
+      await failSend(admin, sendId, err instanceof Error ? err.message : "Unknown error");
+      throw err;
+    }
 
     if (result.failed > 0) {
       console.error("Bulk email: some sends failed", result.failures);
     }
+
+    await completeSend(admin, sendId, {
+      sentCount: result.sent,
+      failedCount: result.failed,
+      failures: result.failures,
+    });
 
     return Response.json({
       ok: true,

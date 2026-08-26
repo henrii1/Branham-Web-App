@@ -4,7 +4,7 @@ import type { EmailLanguage } from "./greeting";
 const IN_FLIGHT_WINDOW_MS = 5 * 60 * 1000;
 
 export interface SendFailure {
-  email: string;
+  to: string;
   error: string;
 }
 
