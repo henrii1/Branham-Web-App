@@ -97,3 +97,113 @@ export async function sendEmail({
 // Back-compat alias for callers that imported the old welcome-email helper.
 export const sendWelcomeEmail = sendEmail;
 export type SendWelcomeEmailResult = SendEmailResult;
+
+const POSTMARK_BATCH_ENDPOINT = "https://api.postmarkapp.com/email/batch";
+const BULK_BATCH_SIZE = 500;
+
+export interface BulkEmailMessage {
+  to: string;
+  subject: string;
+  bodyMarkdown: string;
+}
+
+export interface BulkSendResult {
+  total: number;
+  sent: number;
+  failed: number;
+  failures: Array<{ to: string; error: string }>;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
+ * Sends a personalized message to each recipient individually via
+ * Postmark's batch endpoint (never a shared To list), chunked to its
+ * 500-message-per-call limit. Batches run SEQUENTIALLY -- not Promise.all --
+ * since Cloudflare Workers caps simultaneous in-flight connections waiting
+ * on response headers at 6 per invocation, and this isn't latency-sensitive
+ * (no user is waiting on a streamed response, unlike chat).
+ */
+export async function sendBulkEmail(
+  messages: BulkEmailMessage[],
+  from: string = process.env.POSTMARK_FROM_EMAIL || DEFAULT_FROM_EMAIL,
+): Promise<BulkSendResult> {
+  const token = process.env.POSTMARK_SERVER_TOKEN;
+  const result: BulkSendResult = {
+    total: messages.length,
+    sent: 0,
+    failed: 0,
+    failures: [],
+  };
+
+  if (!token) {
+    result.failed = messages.length;
+    result.failures = messages.map((m) => ({
+      to: m.to,
+      error: "POSTMARK_SERVER_TOKEN is not configured.",
+    }));
+    return result;
+  }
+
+  for (const batch of chunk(messages, BULK_BATCH_SIZE)) {
+    const response = await fetch(POSTMARK_BATCH_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Postmark-Server-Token": token,
+      },
+      body: JSON.stringify(
+        batch.map((m) => ({
+          From: from,
+          To: m.to,
+          Subject: m.subject,
+          TextBody: m.bodyMarkdown,
+          HtmlBody: markdownToEmailHtml(m.bodyMarkdown),
+          MessageStream: "outbound",
+        })),
+      ),
+    });
+
+    const payload = (await response.json().catch(() => null)) as PostmarkResponse[] | null;
+
+    if (!response.ok || !payload) {
+      for (const m of batch) {
+        result.failed += 1;
+        result.failures.push({
+          to: m.to,
+          error: `Postmark batch request failed with ${response.status}.`,
+        });
+      }
+      continue;
+    }
+
+    payload.forEach((item, index) => {
+      const recipient = batch[index];
+      if (item.ErrorCode === 0) {
+        result.sent += 1;
+      } else {
+        result.failed += 1;
+        result.failures.push({ to: recipient?.to ?? "unknown", error: item.Message });
+      }
+    });
+
+    if (payload.length < batch.length) {
+      for (let i = payload.length; i < batch.length; i++) {
+        result.failed += 1;
+        result.failures.push({
+          to: batch[i].to,
+          error: "No response received from Postmark for this recipient.",
+        });
+      }
+    }
+  }
+
+  return result;
+}

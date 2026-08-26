@@ -317,6 +317,40 @@ The plain-text excerpt comes from `buildOgExcerptText()` in `cardExcerpt.ts` —
 
 `conversation_shares.conversation_id` has `on delete cascade` against `conversations` — deleting the source conversation cascades away every share row pointing at it, and the old links 404 immediately (the RPC lookups return no row).
 
+## Admin bulk email
+
+An admin-only tool (`/admin/send-email`) that lets two hardcoded operator accounts compose one message and send it to every registered user whose saved `profiles.language` matches a selected language (en/es/fr), from a form that shows a live-recipient-count confirmation step before sending.
+
+### Dual-gate access control
+
+`isAdminEmail()` in `src/lib/email/adminAllowlist.ts` is the **single source of truth** for the two hardcoded addresses (`info@branhamsermons.ai`, `admin@branhamsermons.ai`) — never sourced from an env var or DB flag. It's checked **independently** in two places, neither trusting the other:
+- `src/app/admin/send-email/page.tsx` — server-component redirect (`redirect("/login")` if signed out, `redirect("/chat")` if signed in but not an admin email).
+- `src/app/api/admin/send-email/route.ts` — the API route re-checks and returns a 403 if the caller isn't an admin, since the page-level redirect is not itself an access boundary against a direct POST.
+
+`src/lib/supabase/middleware.ts`'s protected-route list also includes `/admin` as defense-in-depth (redirects signed-out visitors to `/login`) — this is a third, coarser layer on top of the two above, not a replacement for either.
+
+### Service-role client
+
+`src/lib/supabase/admin.ts` exports `createAdminClient()`, a service-role Supabase client factory (bypasses RLS, used for `auth.admin.listUsers()`, which an RLS-scoped client can't call). **This must never be imported into client-side code** — it reads `SUPABASE_SERVICE_ROLE_KEY`, and pulling it into the browser bundle would leak that key. It's only ever instantiated inside the `/api/admin/send-email` route handler.
+
+### Recipient resolution
+
+`src/lib/email/recipients.ts`'s `resolveRecipients()` builds the send list by joining two independent sources (`profiles` has no email column):
+- `buildEmailMap()` paginates `admin.auth.admin.listUsers()` until an **empty** page (not a short page — a short-page heuristic is fragile if a true last page happens to exactly fill the page size), filtering out any user missing `email`, unverified (`!email_confirmed_at`), banned (`banned_until` set), or soft-deleted (`deleted_at` set).
+- A `profiles` query filtered by `language`, requested with `{ count: "exact" }` so the row count can be checked against the actual returned row count — if they diverge (e.g. Supabase's hosted API's default max-rows setting silently truncated the result), `resolveRecipients` throws rather than returning a partial list. A silent under-count here would mean a bulk send silently skips real recipients with no error surfaced anywhere.
+
+### Personalization and sending
+
+`src/lib/email/greeting.ts` is a pure module: `applyGreeting(bodyMarkdown, language, displayName)` strips a hand-typed leading salutation line in the target language (if the admin included one) and prepends a code-generated greeting (named if `displayName` is present, generic otherwise — Email-OTP signups have no `display_name`). The compose form's confirmation-modal preview runs the actual admin-composed body through this function with a placeholder name ("Sample Recipient") so what's shown before sending is the real personalized output, not the raw unprocessed textarea contents.
+
+`src/lib/email/sendEmail.ts`'s `sendBulkEmail()` sends one message per recipient (never a shared `To` list) via Postmark's `/email/batch` endpoint, chunked to 500 messages per call, batches run **sequentially** (Cloudflare Workers caps simultaneous in-flight connections at 6 per invocation, and this path isn't latency-sensitive — no one is waiting on a streamed response). It also guards against Postmark returning a batch response array shorter than the request batch, counting any missing index as a failure rather than leaving that recipient uncounted.
+
+The confirm-send button resets its confirmation checkbox back to unchecked on a failed send (forcing the admin to consciously re-confirm rather than immediately re-clicking a still-armed button) and the error banner explicitly calls out that the request may have partially completed.
+
+### Known limitation (not fixed in this branch)
+
+Bulk sends go out on Postmark's transactional `MessageStream: "outbound"` — the same stream and server token used by the welcome email — rather than a dedicated broadcast stream. This is a real operational risk (Postmark can flag or suspend an account for sending bulk/marketing-shaped mail on a transactional stream) and requires a Postmark-account-level decision (provisioning a separate broadcast stream) before this tool is used for a real send at any meaningful scale. Not something fixable in code alone.
+
 ## Passage n-gram highlighting
 
 `src/lib/markdown/ngramHighlight.ts` (`applyNgramHighlights(html, query)`) highlights literal, contiguous word-overlap (3+ consecutive words, same order) between the retrieval query and each retrieved passage, in the Sources panel only — never in the chat answer panel, which already has its own citation-pill styling. Purely literal matching (NFKD diacritic-insensitive, lowercase, punctuation-agnostic via tokenization) — no stemming or semantic scoring, so many relevant passages will show no highlight at all when they were retrieved by dense/semantic search rather than keyword overlap. That's expected.
