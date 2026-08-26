@@ -1,24 +1,34 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Message } from "@/lib/chat/types";
+import type { Message, AnswerViewMode } from "@/lib/chat/types";
 import { renderMarkdown } from "@/lib/markdown/render";
 import {
   applyCitations,
   stripParagraphLetterSuffixes,
+  extractOrderedCitations,
+  dedupeCitations,
+  renderCitationList,
 } from "@/lib/markdown/citations";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 
 interface MessageBubbleProps {
   message: Message;
+  mode?: AnswerViewMode;
+  quotesEmptyText?: string;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  mode = "full",
+  quotesEmptyText = "No sermon quotes cited in this answer.",
+}: MessageBubbleProps) {
   const isUser = message.role === "user";
 
   // Memoize the full render pipeline for assistant messages.
-  // Messages are immutable once added, so this only runs once per message.
+  // Messages are immutable once added, so this only runs once per message
+  // per mode.
   const renderedHtml = useMemo(() => {
     if (isUser) return "";
     // stripAnswerPrefix at render time catches historical DB messages saved before dedup existed
@@ -26,8 +36,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     const cleaned = stripParagraphLetterSuffixes(stripAnswerPrefix(message.content));
     const processed = postprocessChatResponse(cleaned);
     const html = renderMarkdown(processed);
+
+    if (mode === "quotes") {
+      const entries = dedupeCitations(extractOrderedCitations(html));
+      if (entries.length === 0) {
+        return `<p class="answer-view-empty">${quotesEmptyText}</p>`;
+      }
+      return renderCitationList(entries);
+    }
+
     return applyCitations(html);
-  }, [isUser, message.content]);
+  }, [isUser, message.content, mode, quotesEmptyText]);
 
   if (isUser) {
     return (
