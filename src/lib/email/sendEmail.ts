@@ -4,7 +4,7 @@ const DEFAULT_FROM_EMAIL = "info@branhamsermons.ai";
 // the "outbound" transactional stream the welcome email uses below -- so a
 // bulk send being flagged or throttled by Postmark can never take down
 // transactional mail, and vice versa.
-const BULK_MESSAGE_STREAM = "broadcast-email-stream";
+const BULK_MESSAGE_STREAM = "send-bulk-email";
 
 interface SendEmailInput {
   to: string;

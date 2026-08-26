@@ -347,7 +347,7 @@ An admin-only tool (`/admin/send-email`) that lets two hardcoded operator accoun
 
 The confirm-send button resets its confirmation checkbox back to unchecked on a failed send (forcing the admin to consciously re-confirm rather than immediately re-clicking a still-armed button) and the error banner explicitly calls out that the request may have partially completed.
 
-Bulk sends use their own Postmark message stream, `BULK_MESSAGE_STREAM = "broadcast-email-stream"` (a constant in `sendEmail.ts`), separate from the `"outbound"` transactional stream the single-recipient `sendEmail()` (welcome email) uses. This is deliberate: Postmark can flag or suspend an account for sending bulk/marketing-shaped mail on a transactional stream, and keeping the streams separate means that risk can never take down the welcome email.
+Bulk sends use their own Postmark message stream, `BULK_MESSAGE_STREAM = "send-bulk-email"` (a constant in `sendEmail.ts`), separate from the `"outbound"` transactional stream the single-recipient `sendEmail()` (welcome email) uses. This is deliberate: Postmark can flag or suspend an account for sending bulk/marketing-shaped mail on a transactional stream, and keeping the streams separate means that risk can never take down the welcome email. Message streams are scoped per Postmark server — this stream must exist on the same server as `POSTMARK_SERVER_TOKEN`, not just any Postmark server on the account.
 
 ### Send history and the double-send guard
 
