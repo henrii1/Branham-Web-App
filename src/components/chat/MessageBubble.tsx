@@ -29,8 +29,8 @@ export function MessageBubble({
   // Memoize the full render pipeline for assistant messages.
   // Messages are immutable once added, so this only runs once per message
   // per mode.
-  const renderedHtml = useMemo(() => {
-    if (isUser) return "";
+  const rendered = useMemo(() => {
+    if (isUser) return { html: "", isEmptyQuotes: false };
     // stripAnswerPrefix at render time catches historical DB messages saved before dedup existed
     // stripParagraphLetterSuffixes at render catches historical messages; new ones are normalized before save
     const cleaned = stripParagraphLetterSuffixes(stripAnswerPrefix(message.content));
@@ -40,13 +40,13 @@ export function MessageBubble({
     if (mode === "quotes") {
       const entries = dedupeCitations(extractOrderedCitations(html));
       if (entries.length === 0) {
-        return `<p class="answer-view-empty">${quotesEmptyText}</p>`;
+        return { html: "", isEmptyQuotes: true };
       }
-      return renderCitationList(entries);
+      return { html: renderCitationList(entries), isEmptyQuotes: false };
     }
 
-    return applyCitations(html);
-  }, [isUser, message.content, mode, quotesEmptyText]);
+    return { html: applyCitations(html), isEmptyQuotes: false };
+  }, [isUser, message.content, mode]);
 
   if (isUser) {
     return (
@@ -66,11 +66,15 @@ export function MessageBubble({
 
   return (
     <div role="article" aria-label="Assistant message">
-      <div
-        className="chat-markdown prose prose-sm prose-zinc max-w-none break-words dark:prose-invert"
-        data-message-lang={message.language ?? "en"}
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      />
+      {rendered.isEmptyQuotes ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{quotesEmptyText}</p>
+      ) : (
+        <div
+          className="chat-markdown prose prose-sm prose-zinc max-w-none break-words dark:prose-invert"
+          data-message-lang={message.language ?? "en"}
+          dangerouslySetInnerHTML={{ __html: rendered.html }}
+        />
+      )}
     </div>
   );
 }
