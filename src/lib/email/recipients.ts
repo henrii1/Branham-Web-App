@@ -18,12 +18,16 @@ async function buildEmailMap(admin: SupabaseClient): Promise<Map<string, string>
       perPage: LIST_USERS_PAGE_SIZE,
     });
     if (error) throw new Error(`Failed to list users: ${error.message}`);
+    if (data.users.length === 0) break;
 
     for (const user of data.users) {
-      if (user.email) emailByUserId.set(user.id, user.email);
+      if (!user.email) continue;
+      if (!user.email_confirmed_at) continue;
+      if (user.banned_until) continue;
+      if (user.deleted_at) continue;
+      emailByUserId.set(user.id, user.email);
     }
 
-    if (data.users.length < LIST_USERS_PAGE_SIZE) break;
     page += 1;
   }
 
@@ -44,18 +48,29 @@ export async function resolveRecipients(
 ): Promise<EmailRecipient[]> {
   const [emailByUserId, profilesResult] = await Promise.all([
     buildEmailMap(admin),
-    admin.from("profiles").select("user_id, display_name").eq("language", language),
+    admin
+      .from("profiles")
+      .select("user_id, display_name", { count: "exact" })
+      .eq("language", language),
   ]);
 
   if (profilesResult.error) {
     throw new Error(`Failed to load profiles: ${profilesResult.error.message}`);
   }
 
-  const recipients: EmailRecipient[] = [];
-  for (const profile of (profilesResult.data ?? []) as Array<{
+  const rows = (profilesResult.data ?? []) as Array<{
     user_id: string;
     display_name: string | null;
-  }>) {
+  }>;
+
+  if (profilesResult.count !== null && rows.length !== profilesResult.count) {
+    throw new Error(
+      `Profiles query returned ${rows.length} rows but ${profilesResult.count} exist for language "${language}" — results were truncated (likely Supabase's max-rows limit). Refusing to resolve a partial recipient list.`,
+    );
+  }
+
+  const recipients: EmailRecipient[] = [];
+  for (const profile of rows) {
     const email = emailByUserId.get(profile.user_id);
     if (!email) continue;
     recipients.push({ email, displayName: profile.display_name ?? null });

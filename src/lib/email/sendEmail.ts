@@ -193,6 +193,16 @@ export async function sendBulkEmail(
         result.failures.push({ to: recipient?.to ?? "unknown", error: item.Message });
       }
     });
+
+    if (payload.length < batch.length) {
+      for (let i = payload.length; i < batch.length; i++) {
+        result.failed += 1;
+        result.failures.push({
+          to: batch[i].to,
+          error: "No response received from Postmark for this recipient.",
+        });
+      }
+    }
   }
 
   return result;

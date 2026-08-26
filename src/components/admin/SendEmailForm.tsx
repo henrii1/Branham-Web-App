@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-
-type EmailLanguage = "en" | "es" | "fr";
+import { useState, useMemo } from "react";
+import { applyGreeting, type EmailLanguage } from "@/lib/email/greeting";
 
 const LANGUAGE_OPTIONS: { code: EmailLanguage; label: string }[] = [
   { code: "en", label: "English" },
@@ -41,6 +40,11 @@ export function SendEmailForm() {
   const [summary, setSummary] = useState<SendSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const previewBody = useMemo(
+    () => applyGreeting(bodyMarkdown, language, "Sample Recipient"),
+    [bodyMarkdown, language],
+  );
+
   const canContinue = subject.trim().length > 0 && bodyMarkdown.trim().length > 0;
 
   async function handleContinue() {
@@ -67,7 +71,11 @@ export function SendEmailForm() {
       });
       setPhase("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      setError(
+        `${message} This request may have partially completed — check Postmark's activity feed before retrying.`,
+      );
+      setConfirmChecked(false);
       setPhase("confirming");
     }
   }
@@ -177,9 +185,13 @@ export function SendEmailForm() {
             <div className="max-h-48 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-800">
               <p className="font-medium text-foreground">{subject}</p>
               <p className="mt-2 whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">
-                {bodyMarkdown}
+                {previewBody}
               </p>
             </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Preview shown with a sample name — each recipient sees their own name (or a
+              generic greeting if none is on file) in place of &ldquo;Sample Recipient&rdquo;.
+            </p>
             <label className="flex items-start gap-2 text-sm text-foreground">
               <input
                 type="checkbox"

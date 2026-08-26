@@ -114,7 +114,8 @@ export async function updateSession(request: NextRequest) {
     const isProtected =
       pathname.startsWith("/chat/") ||
       pathname.startsWith("/profile") ||
-      pathname.startsWith("/onboarding");
+      pathname.startsWith("/onboarding") ||
+      pathname.startsWith("/admin");
 
     if (isProtected) {
       const url = request.nextUrl.clone();
