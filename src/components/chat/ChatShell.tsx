@@ -33,6 +33,7 @@ import type {
   RagData,
   StreamingStatus,
   Conversation,
+  AnswerViewMode,
 } from "@/lib/chat/types";
 import type { MessageRow, RagRow } from "@/lib/db/queries";
 
@@ -76,6 +77,14 @@ function getStoredMobileTab(): "chat" | "sources" {
   if (typeof window === "undefined") return "chat";
   const storedTab = window.sessionStorage.getItem(MOBILE_ACTIVE_TAB_KEY);
   return storedTab === "chat" || storedTab === "sources" ? storedTab : "chat";
+}
+
+const ANSWER_VIEW_MODE_KEY = "branham-answer-view-mode";
+
+function getStoredAnswerViewMode(): AnswerViewMode {
+  if (typeof window === "undefined") return "full";
+  const stored = window.sessionStorage.getItem(ANSWER_VIEW_MODE_KEY);
+  return stored === "full" || stored === "quotes" ? stored : "full";
 }
 
 function generateTitle(query: string): string {
@@ -175,6 +184,9 @@ export function ChatShell({
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [answerViewMode, setAnswerViewMode] = useState<AnswerViewMode>(
+    getStoredAnswerViewMode,
+  );
 
   // ── Refs ────────────────────────────────────────────────────────────
   const panelsRef = useRef<HTMLDivElement>(null);
@@ -310,6 +322,13 @@ export function ChatShell({
       return;
     }
     setSourcesReady(false);
+  }, []);
+
+  const handleAnswerViewModeChange = useCallback((mode: AnswerViewMode) => {
+    setAnswerViewMode(mode);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(ANSWER_VIEW_MODE_KEY, mode);
+    }
   }, []);
 
   // ── Animated swipe-to-switch-tab — fully imperative, zero re-renders ──
@@ -1308,6 +1327,11 @@ export function ChatShell({
               isLoading={conversationLoading}
               welcomeDescription={strings.welcomeDescription}
               finalizingText={strings.finalizingResponse}
+              mode={answerViewMode}
+              onModeChange={handleAnswerViewModeChange}
+              answerViewFullLabel={strings.answerViewFullLabel}
+              answerViewQuotesLabel={strings.answerViewQuotesLabel}
+              answerViewQuotesEmpty={strings.answerViewQuotesEmpty}
             />
           </div>
         </div>
@@ -1343,6 +1367,11 @@ export function ChatShell({
                   isLoading={conversationLoading}
                   welcomeDescription={strings.welcomeDescription}
                   finalizingText={strings.finalizingResponse}
+                  mode={answerViewMode}
+                  onModeChange={handleAnswerViewModeChange}
+                  answerViewFullLabel={strings.answerViewFullLabel}
+                  answerViewQuotesLabel={strings.answerViewQuotesLabel}
+                  answerViewQuotesEmpty={strings.answerViewQuotesEmpty}
                 />
               </div>
               {/* Sources — 50% of 200% inner = 100% of viewport */}
