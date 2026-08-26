@@ -1,5 +1,10 @@
 const POSTMARK_EMAIL_ENDPOINT = "https://api.postmarkapp.com/email";
 const DEFAULT_FROM_EMAIL = "info@branhamsermons.ai";
+// Bulk/announcement mail goes out on its own Postmark stream, separate from
+// the "outbound" transactional stream the welcome email uses below -- so a
+// bulk send being flagged or throttled by Postmark can never take down
+// transactional mail, and vice versa.
+const BULK_MESSAGE_STREAM = "broadcast-email-stream";
 
 interface SendEmailInput {
   to: string;
@@ -173,7 +178,7 @@ export async function sendBulkEmail(
             Subject: m.subject,
             TextBody: m.bodyMarkdown,
             HtmlBody: markdownToEmailHtml(m.bodyMarkdown),
-            MessageStream: "outbound",
+            MessageStream: BULK_MESSAGE_STREAM,
           })),
         ),
       });

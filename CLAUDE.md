@@ -347,9 +347,17 @@ An admin-only tool (`/admin/send-email`) that lets two hardcoded operator accoun
 
 The confirm-send button resets its confirmation checkbox back to unchecked on a failed send (forcing the admin to consciously re-confirm rather than immediately re-clicking a still-armed button) and the error banner explicitly calls out that the request may have partially completed.
 
-### Known limitation (not fixed in this branch)
+Bulk sends use their own Postmark message stream, `BULK_MESSAGE_STREAM = "broadcast-email-stream"` (a constant in `sendEmail.ts`), separate from the `"outbound"` transactional stream the single-recipient `sendEmail()` (welcome email) uses. This is deliberate: Postmark can flag or suspend an account for sending bulk/marketing-shaped mail on a transactional stream, and keeping the streams separate means that risk can never take down the welcome email.
 
-Bulk sends go out on Postmark's transactional `MessageStream: "outbound"` — the same stream and server token used by the welcome email — rather than a dedicated broadcast stream. This is a real operational risk (Postmark can flag or suspend an account for sending bulk/marketing-shaped mail on a transactional stream) and requires a Postmark-account-level decision (provisioning a separate broadcast stream) before this tool is used for a real send at any meaningful scale. Not something fixable in code alone.
+### Send history and the double-send guard
+
+`admin_email_sends` (migration `010_admin_email_sends.sql`) is an audit-trail table, locked down the same way as `conversation_shares` — RLS enabled with zero policies (deny-all by default) plus an explicit `revoke all from anon, authenticated` — only the service-role client ever touches it, from inside the already-gated route.
+
+`src/lib/email/sendHistory.ts` wraps every confirmed send:
+- `startSend()` inserts a `sending` row before `sendBulkEmail()` is called, `completeSend()`/`failSend()` update it to `complete`/`failed` once the send resolves or throws.
+- **Double-send guard**: a partial unique index, `create unique index ... on admin_email_sends (sender_user_id) where status = 'sending'`, makes "at most one in-flight send per admin" a database-enforced constraint, not just an application check — closing the race a plain check-then-insert would leave open between reading "is anything in flight" and writing the new row. `hasRecentInFlightSend()` is a fast, non-authoritative pre-check the route runs first (avoids the Postmark round-trip in the common case); `startSend()`'s unique-index conflict is the real enforcement.
+- **Self-healing, not a lockout**: if a request crashes without ever reaching `completeSend`/`failSend` (a killed Worker, a dropped connection), its row is left at `status: 'sending'` — but `startSend()` treats a unique-index conflict against a row older than `IN_FLIGHT_WINDOW_MS` (5 minutes) as stale, reclaims it (marks it `failed`), and retries the insert once. A crashed request can only block its sender for that bounded window, never permanently. A conflict against a genuinely fresh row throws `SendInFlightError`, which the route turns into a 409.
+- `completeSend()` is called in its own try/catch in the route: a failure to *record* a successful send must never surface as a false "the send failed" response to the admin — that would invite a real duplicate send on retry. The send having actually gone out takes priority over the audit write succeeding.
 
 ## Passage n-gram highlighting
 
