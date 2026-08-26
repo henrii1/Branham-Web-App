@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { applyGreeting, type EmailLanguage } from "@/lib/email/greeting";
 
 const LANGUAGE_OPTIONS: { code: EmailLanguage; label: string }[] = [
@@ -95,13 +96,21 @@ export function SendEmailForm() {
         <p className="text-sm text-foreground">
           {summary.sent} sent, {summary.failed} failed, out of {summary.total} recipients.
         </p>
-        <button
-          type="button"
-          onClick={handleStartOver}
-          className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-foreground hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-        >
-          Send another
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleStartOver}
+            className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-foreground hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Send another
+          </button>
+          <Link
+            href="/profile"
+            className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-foreground hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Back to profile
+          </Link>
+        </div>
       </div>
     );
   }
