@@ -115,4 +115,4 @@ export const LANGUAGES: Language[] = [
   { code: "haw", name: "Hawaiian", nativeName: "ʻŌlelo Hawaiʻi" },
 ];
 
-export const SUPPORTED_LANGUAGES = ["en"];
+export const SUPPORTED_LANGUAGES = ["en", "es", "fr"];

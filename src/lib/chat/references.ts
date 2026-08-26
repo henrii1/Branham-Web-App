@@ -19,6 +19,7 @@ export interface ReferenceRequest {
   date_id: string;
   title?: string;
   ranges: ReferenceRange[];
+  language?: string;
 }
 
 /** One sermon cited by a pill. A single pill may cite several of these. */
@@ -64,7 +65,7 @@ export function parsePillElement(el: HTMLElement): SermonReference[] | null {
 }
 
 function cacheKey(req: ReferenceRequest): string {
-  return `${req.date_id}|${JSON.stringify(req.ranges)}`;
+  return `${req.date_id}|${req.language ?? "en"}|${JSON.stringify(req.ranges)}`;
 }
 
 // Per-session cache (cleared on full reload). Clicks are cheap but identical
