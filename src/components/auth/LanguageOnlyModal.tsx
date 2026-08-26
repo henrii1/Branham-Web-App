@@ -2,11 +2,13 @@
 
 interface LanguageOnlyModalProps {
   languageName: string;
+  onBack: () => void;
   onContinue: () => void;
 }
 
 export function LanguageOnlyModal({
   languageName,
+  onBack,
   onContinue,
 }: LanguageOnlyModalProps) {
   return (
@@ -39,26 +41,31 @@ export function LanguageOnlyModal({
               id="language-modal-title"
               className="text-lg font-semibold text-foreground"
             >
-              English only (for now)
+              {languageName} isn&apos;t available yet
             </h2>
             <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-              Only English is supported right now. We&apos;re actively working
-              to extend support to {languageName} and other languages in
-              upcoming updates.
-            </p>
-            <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-500">
-              For now, your app language will stay on English so the current
-              experience remains consistent everywhere.
+              We&apos;re working to add more languages. Right now, English,
+              Español, and Français are supported — choose one of these to get
+              started.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onContinue}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Continue in English
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row-reverse">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Choose a language
+            </button>
+            <button
+              type="button"
+              onClick={onContinue}
+              className="flex-1 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            >
+              Use English for now
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -49,6 +49,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     <div role="article" aria-label="Assistant message">
       <div
         className="chat-markdown prose prose-sm prose-zinc max-w-none break-words dark:prose-invert"
+        data-message-lang={message.language ?? "en"}
         dangerouslySetInnerHTML={{ __html: renderedHtml }}
       />
     </div>

@@ -24,6 +24,7 @@ interface ReferenceRequestBody {
   ranges?: ReferenceRange[];
   paragraph_start?: number;
   paragraph_end?: number;
+  language?: string;
 }
 
 const MAX_DATE_ID_LENGTH = 32;
@@ -99,6 +100,12 @@ function parseReferenceBody(raw: unknown): ReferenceRequestBody | null {
     const title = obj.title.trim();
     if (title.length > MAX_TITLE_LENGTH) return null;
     if (title) body.title = title;
+  }
+
+  const VALID_LANGUAGES = ["en", "es", "fr"];
+  if (typeof obj.language === "string") {
+    const lang = obj.language.trim().toLowerCase();
+    if (VALID_LANGUAGES.includes(lang)) body.language = lang;
   }
 
   // Preferred multi-range form.

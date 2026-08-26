@@ -15,6 +15,7 @@ interface SermonResult {
   ref: SermonReference;
   status: Status;
   data: ReferenceResponse | null;
+  language: string;
 }
 
 /**
@@ -52,16 +53,22 @@ export function ReferencePopover() {
     const refs = parsePillElement(pill);
     if (!refs || refs.length === 0) return;
 
+    // Walk up the DOM to find the data-message-lang attribute set by MessageBubble.
+    // Falls back to "en" for historical messages that predate multilingual support.
+    const language =
+      pill.closest<HTMLElement>("[data-message-lang]")?.dataset.messageLang ??
+      "en";
+
     anchorRef.current = pill;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setResults(refs.map((ref) => ({ ref, status: "loading", data: null })));
+    setResults(refs.map((ref) => ({ ref, status: "loading", data: null, language })));
     setOpen(true);
 
     refs.forEach((ref, index) => {
-      fetchReference(ref, controller.signal)
+      fetchReference({ ...ref, language }, controller.signal)
         .then((data) => {
           if (controller.signal.aborted) return;
           setResults((prev) =>
@@ -93,7 +100,7 @@ export function ReferencePopover() {
         ),
       );
 
-      fetchReference(target.ref, controller.signal)
+      fetchReference({ ...target.ref, language: target.language }, controller.signal)
         .then((data) => {
           if (controller.signal.aborted) return;
           setResults((prev) =>

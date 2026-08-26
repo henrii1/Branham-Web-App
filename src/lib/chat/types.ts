@@ -3,6 +3,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   createdAt: string;
+  language?: string;
 }
 
 export interface RagData {

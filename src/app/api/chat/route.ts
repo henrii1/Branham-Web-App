@@ -163,6 +163,8 @@ function parseChatRequestBody(raw: unknown): ChatRequestBody | null {
 }
 
 export async function POST(request: NextRequest) {
+
+
   const apiBaseUrl = process.env.MODEL_API_BASE_URL;
   const bearerKey = process.env.CHAT_API_BEARER_KEY;
 

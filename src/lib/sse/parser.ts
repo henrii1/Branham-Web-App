@@ -16,6 +16,7 @@ export type ChatSSEEvent =
       type: "final";
       mode: string;
       answer: string;
+      language: string;
       externalInfo: unknown;
       conversationSummary: string | null;
       querySummary: string | null;
@@ -47,6 +48,7 @@ function parseChatEvent(raw: SSEEvent): ChatSSEEvent | null {
           type: "final",
           mode: data.mode,
           answer: data.answer,
+          language: data.language ?? "en",
           externalInfo: data.external_info ?? null,
           conversationSummary: data.conversation_summary ?? null,
           querySummary: data.query_summary ?? null,
