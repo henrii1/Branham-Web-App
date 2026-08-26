@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import type { Message, StreamingStatus } from "@/lib/chat/types";
+import type { Message, StreamingStatus, AnswerViewMode } from "@/lib/chat/types";
 import { MessageList } from "./MessageList";
+import { AnswerViewToggle } from "./AnswerViewToggle";
 import logo from "../../../logo.png";
 
 interface ChatPanelProps {
@@ -13,6 +14,11 @@ interface ChatPanelProps {
   isLoading?: boolean;
   welcomeDescription: string;
   finalizingText: string;
+  mode: AnswerViewMode;
+  onModeChange: (mode: AnswerViewMode) => void;
+  answerViewFullLabel: string;
+  answerViewQuotesLabel: string;
+  answerViewQuotesEmpty: string;
 }
 
 function WelcomeState({ description }: { description: string }) {
@@ -67,16 +73,27 @@ export function ChatPanel({
   isLoading,
   welcomeDescription,
   finalizingText,
+  mode,
+  onModeChange,
+  answerViewFullLabel,
+  answerViewQuotesLabel,
+  answerViewQuotesEmpty,
 }: ChatPanelProps) {
   const isEmpty =
     messages.length === 0 && streamingStatus === "idle" && !isLoading;
 
   return (
     <div className="flex h-full flex-col bg-[var(--surface-chat)]">
-      <div className="flex items-center border-b border-zinc-200 px-4 py-2 lg:hidden dark:border-zinc-700">
-        <h2 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
+        <h2 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase lg:hidden dark:text-zinc-400">
           Chat
         </h2>
+        <AnswerViewToggle
+          mode={mode}
+          onChange={onModeChange}
+          fullLabel={answerViewFullLabel}
+          quotesLabel={answerViewQuotesLabel}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -90,6 +107,8 @@ export function ChatPanel({
             streamingStatus={streamingStatus}
             streamBuffer={streamBuffer}
             finalizingText={finalizingText}
+            mode={mode}
+            quotesEmptyText={answerViewQuotesEmpty}
           />
         )}
       </div>
