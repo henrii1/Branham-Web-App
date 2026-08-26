@@ -4,7 +4,16 @@ import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { resolveRecipients } from "@/lib/email/recipients";
 import { applyGreeting, type EmailLanguage } from "@/lib/email/greeting";
 import { sendBulkEmail } from "@/lib/email/sendEmail";
-import { hasRecentInFlightSend, startSend, completeSend, failSend } from "@/lib/email/sendHistory";
+import {
+  hasRecentInFlightSend,
+  startSend,
+  completeSend,
+  failSend,
+  SendInFlightError,
+} from "@/lib/email/sendHistory";
+
+const SEND_IN_PROGRESS_MESSAGE =
+  "A send from this account is already in progress — wait a moment and try again.";
 
 const VALID_LANGUAGES: EmailLanguage[] = ["en", "es", "fr"];
 
@@ -45,23 +54,28 @@ export async function POST(request: Request) {
     const subject = body.subject.trim();
     const bodyMarkdown = body.bodyMarkdown;
 
+    // Fast, non-authoritative pre-check: avoids attempting the insert (and
+    // the Postmark work that would follow) in the common case. startSend's
+    // unique-index guard below is the actual, race-proof enforcement.
     if (await hasRecentInFlightSend(admin, user.id)) {
-      return Response.json(
-        {
-          ok: false,
-          error: "A send from this account is already in progress — wait a moment and try again.",
-        },
-        { status: 409 },
-      );
+      return Response.json({ ok: false, error: SEND_IN_PROGRESS_MESSAGE }, { status: 409 });
     }
 
-    const sendId = await startSend(admin, {
-      senderUserId: user.id,
-      language,
-      subject,
-      bodyMarkdown,
-      recipientCount: recipients.length,
-    });
+    let sendId: string;
+    try {
+      sendId = await startSend(admin, {
+        senderUserId: user.id,
+        language,
+        subject,
+        bodyMarkdown,
+        recipientCount: recipients.length,
+      });
+    } catch (err) {
+      if (err instanceof SendInFlightError) {
+        return Response.json({ ok: false, error: SEND_IN_PROGRESS_MESSAGE }, { status: 409 });
+      }
+      throw err;
+    }
 
     let result;
     try {
@@ -80,11 +94,21 @@ export async function POST(request: Request) {
       console.error("Bulk email: some sends failed", result.failures);
     }
 
-    await completeSend(admin, sendId, {
-      sentCount: result.sent,
-      failedCount: result.failed,
-      failures: result.failures,
-    });
+    // The send itself already happened by this point -- a failure to
+    // record it must never turn into a false "the send failed" response
+    // to the admin (which would invite a real duplicate send on retry).
+    // Log and move on; the send-history row is left stuck at "sending"
+    // until it self-heals via startSend's stale-row reclaim on the next
+    // attempt, same bounded window as every other stuck-row case.
+    try {
+      await completeSend(admin, sendId, {
+        sentCount: result.sent,
+        failedCount: result.failed,
+        failures: result.failures,
+      });
+    } catch (err) {
+      console.error("Bulk email: send succeeded but failed to record completion", err);
+    }
 
     return Response.json({
       ok: true,

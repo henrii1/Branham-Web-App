@@ -17,7 +17,7 @@
 create table public.admin_email_sends (
   id               uuid primary key default gen_random_uuid(),
   sender_user_id   uuid not null references auth.users(id),
-  language         text not null,
+  language         text not null check (language in ('en', 'es', 'fr')),
   subject          text not null,
   body_markdown    text not null,
   recipient_count  integer not null,
@@ -32,6 +32,17 @@ create table public.admin_email_sends (
 
 create index admin_email_sends_sender_status_idx
   on public.admin_email_sends (sender_user_id, status, created_at);
+
+-- Enforces "at most one in-flight send per sender" at the database level —
+-- closes the check-then-insert race a plain application-level guard would
+-- leave open between hasRecentInFlightSend's read and startSend's insert.
+-- A conflict here is handled in sendHistory.ts's startSend(): a genuinely
+-- stale 'sending' row (older than its in-flight window) is reclaimed
+-- (marked 'failed') and the insert retried once, so this can never turn
+-- into a permanent lockout from a crashed request — only a bounded one.
+create unique index admin_email_sends_one_sending_per_sender
+  on public.admin_email_sends (sender_user_id)
+  where status = 'sending';
 
 alter table public.admin_email_sends enable row level security;
 

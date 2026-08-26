@@ -152,24 +152,41 @@ export async function sendBulkEmail(
   }
 
   for (const batch of chunk(messages, BULK_BATCH_SIZE)) {
-    const response = await fetch(POSTMARK_BATCH_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": token,
-      },
-      body: JSON.stringify(
-        batch.map((m) => ({
-          From: from,
-          To: m.to,
-          Subject: m.subject,
-          TextBody: m.bodyMarkdown,
-          HtmlBody: markdownToEmailHtml(m.bodyMarkdown),
-          MessageStream: "outbound",
-        })),
-      ),
-    });
+    // fetch() itself can throw (network blip, DNS failure) -- caught here,
+    // not left to propagate, so a mid-run exception never loses the
+    // sent/failed counts already accumulated from earlier batches. This
+    // batch is simply recorded as failed and the loop continues, the same
+    // way an HTTP-level failure below is handled.
+    let response: Response;
+    try {
+      response = await fetch(POSTMARK_BATCH_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-Postmark-Server-Token": token,
+        },
+        body: JSON.stringify(
+          batch.map((m) => ({
+            From: from,
+            To: m.to,
+            Subject: m.subject,
+            TextBody: m.bodyMarkdown,
+            HtmlBody: markdownToEmailHtml(m.bodyMarkdown),
+            MessageStream: "outbound",
+          })),
+        ),
+      });
+    } catch (err) {
+      for (const m of batch) {
+        result.failed += 1;
+        result.failures.push({
+          to: m.to,
+          error: `Postmark batch request threw: ${err instanceof Error ? err.message : "unknown network error"}.`,
+        });
+      }
+      continue;
+    }
 
     const payload = (await response.json().catch(() => null)) as PostmarkResponse[] | null;
 
