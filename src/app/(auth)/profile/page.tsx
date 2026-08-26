@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SUPPORTED_LANGUAGES } from "@/lib/constants/languages";
+import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { ProfileContent } from "./ProfileContent";
 
 export default async function ProfilePage() {
@@ -35,6 +36,7 @@ export default async function ProfilePage() {
           displayName: profile?.display_name ?? undefined,
         }}
         currentLanguage={normalizeLanguagePreference(profile?.language)}
+        isAdmin={isAdminEmail(user.email)}
       />
     </div>
   );

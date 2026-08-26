@@ -16,11 +16,13 @@ interface ProfileContentProps {
     displayName?: string;
   };
   currentLanguage: string;
+  isAdmin?: boolean;
 }
 
 export function ProfileContent({
   user,
   currentLanguage,
+  isAdmin = false,
 }: ProfileContentProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -131,6 +133,17 @@ export function ProfileContent({
           for account support, feedback, or feature requests.
         </p>
       </div>
+
+      {isAdmin && (
+        <div className="space-y-3">
+          <Link
+            href="/admin/send-email"
+            className="block w-full rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-4 py-2.5 text-center text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Send bulk email
+          </Link>
+        </div>
+      )}
 
       <div className="space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
         <Link
