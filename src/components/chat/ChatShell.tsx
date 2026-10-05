@@ -57,6 +57,7 @@ import { ReferencePopover } from "./ReferencePopover";
 import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
+import { aboutHref } from "@/lib/about/content";
 
 const DEFAULT_PANEL_RATIO = 0.4;
 const MAX_TITLE_LENGTH = 50;
@@ -1156,6 +1157,7 @@ export function ChatShell({
   // ── Render ──────────────────────────────────────────────────────────
   const strings = getChatStrings(chatLanguage);
   const faqHref = chatLanguage === "en" ? "/faq" : `/${chatLanguage}/faq`;
+  const aboutPageHref = aboutHref(chatLanguage);
 
   return (
     <div className="flex h-dvh bg-background">
@@ -1173,6 +1175,8 @@ export function ChatShell({
             user={user ?? null}
             onExpand={() => setSidebarCollapsed(false)}
             onNewChat={handleNewConversation}
+            aboutHref={aboutPageHref}
+            aboutLabel={strings.aboutLink}
           />
         ) : (
           <ConversationSidebar
@@ -1188,6 +1192,7 @@ export function ChatShell({
             onCollapse={() => setSidebarCollapsed(true)}
             strings={strings}
             faqHref={faqHref}
+            aboutHref={aboutPageHref}
           />
         )}
       </aside>
@@ -1237,6 +1242,7 @@ export function ChatShell({
               onClose={closeMobileDrawer}
               strings={strings}
               faqHref={faqHref}
+              aboutHref={aboutPageHref}
             />
           </div>
         </div>

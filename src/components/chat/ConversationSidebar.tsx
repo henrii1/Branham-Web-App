@@ -22,6 +22,7 @@ interface ConversationSidebarProps {
   onCollapse?: () => void;
   strings: ChatStrings;
   faqHref: string;
+  aboutHref: string;
 }
 
 interface ConversationGroup {
@@ -319,6 +320,7 @@ export function ConversationSidebar({
   onCollapse,
   strings,
   faqHref,
+  aboutHref,
 }: ConversationSidebarProps) {
   const [signingOut, setSigningOut] = useState(false);
   const groups = groupConversations(conversations, {
@@ -476,6 +478,12 @@ export function ConversationSidebar({
           className="mb-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         >
           {strings.popularQuestions}
+        </Link>
+        <Link
+          href={aboutHref}
+          className="mb-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        >
+          {strings.aboutLink}
         </Link>
         <a
           href="mailto:info@branhamsermons.ai"

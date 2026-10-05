@@ -58,6 +58,7 @@ function buildLlmsTxt(pages: SeoCacheRow[]): string {
     `- [Popular Questions — English](${SITE_URL}/faq): Browse the full set of curated Q&A pages in English.`,
     `- [Popular Questions — Spanish / Preguntas frecuentes](${SITE_URL}/es/faq): Curated Q&A pages in Spanish.`,
     `- [Popular Questions — French / Questions fréquentes](${SITE_URL}/fr/faq): Curated Q&A pages in French.`,
+    `- [About](${SITE_URL}/about): Why the assistant exists, who it is for, what it does and does not do (not a substitute for a pastor or for the Table app), and how to make contact. Also at /es/about and /fr/about.`,
     "",
     "## Optional",
     "",

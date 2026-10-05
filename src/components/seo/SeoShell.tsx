@@ -38,6 +38,7 @@ import { SidebarRail } from "@/components/chat/SidebarRail";
 import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
 import { isOfflineError } from "@/lib/utils/networkError";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
+import { aboutHref } from "@/lib/about/content";
 
 interface SeoShellProps {
   slug: string;
@@ -503,6 +504,7 @@ export function SeoShell({
 
   const strings = getChatStrings(language);
   const faqHref = language === "en" ? "/faq" : `/${language}/faq`;
+  const aboutPageHref = aboutHref(language);
 
   return (
     <div className="flex h-dvh bg-background">
@@ -517,6 +519,8 @@ export function SeoShell({
             user={user ?? null}
             onExpand={() => setSidebarCollapsed(false)}
             onNewChat={handleNewChat}
+            aboutHref={aboutPageHref}
+            aboutLabel={strings.aboutLink}
           />
         ) : (
           <ConversationSidebar
@@ -532,6 +536,7 @@ export function SeoShell({
             onCollapse={() => setSidebarCollapsed(true)}
             strings={strings}
             faqHref={faqHref}
+            aboutHref={aboutPageHref}
           />
         )}
       </aside>
@@ -579,6 +584,7 @@ export function SeoShell({
               onClose={closeMobileDrawer}
               strings={strings}
               faqHref={faqHref}
+              aboutHref={aboutPageHref}
             />
           </div>
         </div>

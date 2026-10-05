@@ -59,6 +59,7 @@ src/
 │   │   └── faq/page.tsx
 │   ├── share/[hash]/page.tsx               # ★ Public read-only conversation share (EN)
 │   ├── [lang]/share/[hash]/page.tsx        # ★ Public read-only conversation share (ES/FR)
+│   ├── about/page.tsx, [lang]/about/page.tsx  # Static About page (EN / ES+FR); copy lives in lib/about/content.ts, rendered by components/about/AboutPage.tsx
 │   ├── sitemap.ts
 │   └── api/
 │       ├── chat/route.ts                   # ★ SSE proxy to Model API (server-only)
