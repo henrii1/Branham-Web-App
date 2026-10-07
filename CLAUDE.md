@@ -120,6 +120,7 @@ src/
 | `chat_messages` | Per-message rows (markdown content) | `id` PK, `conversation_id`, `user_id`, `role` (`user`\|`assistant`), `content`, `created_at` |
 | `conversation_rag` | Latest RAG context for a thread (1:1) | `conversation_id` PK, `rag_context`, `retrieval_query`, `retrieval_metadata` (jsonb), `updated_at` |
 | `conversation_shares` | Public read-only share links for a conversation | `id` PK, `share_hash` (unique, unguessable), `conversation_id`, `owner_id`, `language`, `cutoff_created_at`, `title_snapshot`, `rag_context_snapshot`, `retrieval_query_snapshot`, `retrieval_metadata_snapshot`, `conversation_summary_snapshot`, `created_at` |
+| `archived_accounts` | Email record for archived (soft-deleted) accounts — service-role only | `user_id` PK, `email`, `archived_at` |
 | `seo_cache` | Public Q/A pages | `slug` PK, `question`, `answer_markdown`, `rag_context`, etc. |
 | `sermon_metadata` | Pre-seeded sermon titles by `date_id` | `date_id` PK, `title`, `language` |
 | `intro_messages` | Email templates | `id`, `language`, `subject`, `body_markdown` |
@@ -317,6 +318,18 @@ The plain-text excerpt comes from `buildOgExcerptText()` in `cardExcerpt.ts` —
 ### Deletion semantics
 
 `conversation_shares.conversation_id` has `on delete cascade` against `conversations` — deleting the source conversation cascades away every share row pointing at it, and the old links 404 immediately (the RPC lookups return no row).
+
+## Account deletion (archive, never hard-delete)
+
+Every user except the two admin accounts sees a low-key "Delete account" link under Sign out on `/profile`; it opens an inline panel that only enables the delete button once the user types their own email. `POST /api/account/delete` re-checks the session, refuses admin emails (403), re-checks the typed email, then:
+
+1. Upserts `{ user_id, email }` into `archived_accounts` (RLS on, zero policies, `revoke all` from anon/authenticated — service-role only).
+2. Calls `auth.admin.deleteUser(id, true)` — Supabase's **soft** delete. The `auth.users` row stays, so the `on delete cascade` FKs never fire and all conversations/messages/RAG rows/shares are kept; the email is scrambled and identities removed, so the same address can sign up again as a fresh, empty account; `deleted_at` is set. Irreversible.
+3. Clears this browser's session cookies (`signOut({ scope: "local" })`).
+
+**Never switch this to a plain `deleteUser(id)`** — the cascades would wipe the user's data, which the product decision says must be archived. (It would also fail outright for anyone who has ever shared a link: `conversation_shares.owner_id` references `auth.users` with no cascade, so a hard delete errors with "Database error deleting user" until their share rows are removed first.) Step 1 must stay before step 2: after the soft delete, `archived_accounts` is the only link from the archived data to an email.
+
+Share links die with the account: `get_conversation_share` and `get_shared_messages` (migration `011_account_archive.sql`) join `auth.users` and require `deleted_at is null`, so an archived owner's `/share/[hash]` links 404 immediately, with no window between steps. Bulk email already skips `deleted_at` users (`recipients.ts`).
 
 ## Admin bulk email
 
