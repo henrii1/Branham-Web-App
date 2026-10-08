@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useLayoutEffect } from "react";
 import type { StreamingStatus } from "@/lib/chat/types";
 import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
 
@@ -12,7 +12,10 @@ interface ComposerProps {
   waitingPlaceholder?: string;
 }
 
-const MAX_TEXTAREA_HEIGHT = 200;
+// The box grows with its content up to this share of the viewport height,
+// then scrolls internally. Generous enough that a long question stays
+// readable while typing, without pushing the answer off-screen.
+const MAX_TEXTAREA_VH = 40;
 
 export function Composer({
   onSend,
@@ -33,55 +36,30 @@ export function Composer({
 
   const isDisabled = disabled || isStreaming;
 
-  const resizeTextarea = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
-  }, []);
-
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
     if (!trimmed || isDisabled) return;
     onSend(trimmed);
     setValue("");
     setInterimTranscript("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
   }, [value, isDisabled, onSend]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSubmit();
-      }
-    },
-    [handleSubmit],
-  );
+  // Return inserts a new line (the textarea's default). Sending is only
+  // through the Send button — on phones Return is the only way to start a
+  // new line, so it must never submit.
 
   const { isSupported, isRecording, startRecording, stopRecording } =
     useVoiceInput({
-      onInterimResult: useCallback(
-        (transcript: string) => {
-          setInterimTranscript(transcript);
-          resizeTextarea();
-        },
-        [resizeTextarea],
-      ),
-      onFinalResult: useCallback(
-        (transcript: string) => {
-          setInterimTranscript("");
-          setValue((prev) => {
-            const base = prev.trimEnd();
-            return base ? `${base} ${transcript}` : transcript;
-          });
-          // Let React flush the new value before resizing.
-          setTimeout(resizeTextarea, 0);
-        },
-        [resizeTextarea],
-      ),
+      onInterimResult: useCallback((transcript: string) => {
+        setInterimTranscript(transcript);
+      }, []),
+      onFinalResult: useCallback((transcript: string) => {
+        setInterimTranscript("");
+        setValue((prev) => {
+          const base = prev.trimEnd();
+          return base ? `${base} ${transcript}` : transcript;
+        });
+      }, []),
     });
 
   // What the textarea renders: committed text + live interim voice text.
@@ -90,6 +68,17 @@ export function Composer({
       ? `${value.trimEnd()} ${interimTranscript}`
       : interimTranscript
     : value;
+
+  // Fit the height to the content after every change, whatever caused it
+  // (typing, paste, autocorrect, voice, clearing after send), before paint.
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const max = (window.innerHeight * MAX_TEXTAREA_VH) / 100;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  }, [displayValue]);
 
   return (
     <div className="flex-shrink-0 border-t border-zinc-200 bg-[var(--surface-base)] px-4 py-3 dark:border-zinc-700">
@@ -101,9 +90,8 @@ export function Composer({
             // Block edits while voice is actively streaming interim text.
             if (isRecording) return;
             setValue(e.target.value);
-            resizeTextarea();
           }}
-          onKeyDown={handleKeyDown}
+          enterKeyHint="enter"
           placeholder={isStreaming ? waitingPlaceholder : placeholder}
           disabled={isDisabled}
           rows={1}
@@ -113,7 +101,7 @@ export function Composer({
               : "border-zinc-300 focus:border-blue-500 focus:bg-[var(--surface-base)] focus:ring-blue-500"
           }`}
           aria-label="Message input"
-          style={{ maxHeight: MAX_TEXTAREA_HEIGHT }}
+          style={{ maxHeight: `${MAX_TEXTAREA_VH}vh` }}
         />
 
         {/* Microphone button — hidden when browser doesn't support it */}
