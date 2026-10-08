@@ -6,30 +6,31 @@ export interface WelcomeEmailTemplate {
 
 export const FALLBACK_WELCOME_EMAIL_TEMPLATE: WelcomeEmailTemplate = {
   language: "en",
-  subject: "Release Note Branham Sermons AI",
-  bodyMarkdown: `Release Note Branham Sermons AI
+  subject: "Introducing BranhamSermons.ai",
+  bodyMarkdown: `Release Note
+Introducing BranhamSermons.ai
 
-We’re glad to introduce Branham Sermons AI.
+We’re excited to introduce BranhamSermons.ai.
 
-The idea for this app came in a very simple way. One morning during prayer, a sermon came to mind and I wanted to search it out in the Table app using keywords. I tried every keyword idea I could think of, but I still could not find it. That was when the thought came: what if there were an AI-based system where people could find sermons, compare doctrines and concepts, and study the Message and Scripture using normal, story-like questions instead of only keywords?
+The idea began from a simple experience. One morning during prayer, a sermon came to mind that I wanted to find in the Table app. Even after trying different keywords, I couldn’t locate it. That led to a simple question: What if you could search the sermons by asking a question or describing what you remember, instead of relying only on exact keywords? From that question, BranhamSermons.ai was born.
 
-From that point, the burden grew into something more. In this AI age, there should be a tool that gives people faster access to information, especially people who are not yet familiar with Bro Branham, but want to learn about his life, the work of God in his ministry, and what he believed.
+Designed for both believers and those discovering Brother Branham’s ministry for the first time, the platform helps you search the original sermons using natural language, phrases, thoughts, Scriptures, or topics.
 
-Part of that burden also came from a real situation. Some time ago, my brother invited a friend to church. Because the young man still lived with his parents, his father searched online to understand the church and its beliefs. What he found was material about subjects like the Seven Thunders and the Seals, and he quickly concluded that the church was a cult. He then advised his son never to attend. It made me feel that if a platform like this had existed, he could have searched these same questions and received fuller, more scriptural, and better-grounded context.
+Features
+• Search using questions, phrases, or thoughts
+• AI-powered responses grounded in the original sermons
+• Sermon quotations and references
+• Popular Questions
+• Conversation history after signing in
+• Multiple language support
 
-That is one of the main reasons this app is especially designed for people outside the Message as well as those within it. Whether you come from another denomination, another religion, or are simply curious about Bro Branham for the first time, this platform was built to help you search, understand, and study more clearly. If this is your first time looking into Bro Branham, you have come to the right place.
+Every response includes sermon references, making it easy to verify quotations and continue your study in the Table app.
 
-Branham Sermons AI includes deep search capabilities that help you find quotes and sermons either by the exact wording or by describing the context in your own words. The search results appear in the Sources window, while the AI provides a clearer and more focused response in the chat. The app also includes a Popular Questions section for many of the doctrinal questions people commonly ask about Bro Branham.
+We sincerely appreciate your feedback and suggestions as we continue improving the platform.
 
-Each response includes explicit sermon references so that users can easily locate the original quotations and read the full sermon in the Table app.
+📧 info@branhamsermons.ai
 
-After logging in, users can view past conversations and continue their studies from where they left off.
+-
 
-A note on how to use this tool: Branham Sermons AI is built for three things — comparing sermon quotes, finding exact references, and learning general doctrine. It is not a substitute for your pastor, and the answers it gives cannot be trusted for personal or sensitive spiritual questions. If something like that is on your heart, please bring it to your pastor instead of this app.
-
-We sincerely appreciate feedback and recommendations from both people who are new to the Message and those whom God has graciously helped to study many of the sermons already. You can reach us at info@branhamsermons.ai
-.
-
-Admin
-Branham Sermons AI`,
+THE BRANHAM SERMONS.AI admin`,
 };
