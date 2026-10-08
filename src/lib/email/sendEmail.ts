@@ -35,11 +35,31 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function markdownToEmailHtml(markdown: string): string {
-  return markdown
+// Black text on white, set inline on every element: mail clients strip
+// <style> blocks, and without an explicit color some apps (dark-mode Gmail,
+// Apple Mail, Outlook) substitute their own text color. The color-scheme
+// metas ask clients that honor them not to recolor the message.
+const EMAIL_TEXT_COLOR = "#000000";
+const EMAIL_BACKGROUND = "#ffffff";
+
+export function markdownToEmailHtml(markdown: string): string {
+  const paragraphs = markdown
     .split(/\n{2,}/)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`)
+    .map(
+      (paragraph) =>
+        `<p style="margin:0 0 16px 0;color:${EMAIL_TEXT_COLOR};">${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`,
+    )
     .join("");
+
+  return (
+    `<!DOCTYPE html><html><head><meta charset="utf-8">` +
+    `<meta name="color-scheme" content="light only">` +
+    `<meta name="supported-color-schemes" content="light">` +
+    `</head><body style="margin:0;padding:0;background-color:${EMAIL_BACKGROUND};color:${EMAIL_TEXT_COLOR};">` +
+    `<div style="background-color:${EMAIL_BACKGROUND};color:${EMAIL_TEXT_COLOR};padding:16px;">` +
+    paragraphs +
+    `</div></body></html>`
+  );
 }
 
 /**
