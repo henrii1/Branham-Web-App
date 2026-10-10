@@ -134,7 +134,7 @@ export function AltarView({
               {cap(fmt(selected, s.locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}
             </p>
 
-            {isAdmin && <AltarAdmin day={selected} week={week} row={row} />}
+            {isAdmin && <AltarAdmin day={selected} week={week} row={row} today={today} />}
 
             {shown ? (
               <>

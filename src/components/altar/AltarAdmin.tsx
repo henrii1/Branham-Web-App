@@ -29,7 +29,19 @@ const STATUS_STYLE: Record<AltarStatus | "none", string> = {
  * Admin-only tools on /altar: week status, generate missing days (this week
  * and next), and for the selected day: edit text, regenerate, change verse.
  */
-export function AltarAdmin({ day, week, row }: { day: string; week: string[]; row: FamilyAltarDay | null }) {
+export function AltarAdmin({
+  day,
+  week,
+  row,
+  today,
+}: {
+  day: string;
+  week: string[];
+  row: FamilyAltarDay | null;
+  /** The admin's local date. Past days can be read and edited, not generated. */
+  today: string;
+}) {
+  const isPast = day < today;
   const router = useRouter();
   const [weeks, setWeeks] = useState<Record<string, WeekState>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -86,11 +98,11 @@ export function AltarAdmin({ day, week, row }: { day: string; week: string[]; ro
     router.refresh();
   }
 
-  const missing = (weekStart: string, onlyFromDay?: string) => {
+  const missing = (weekStart: string, onlyFromDay: string = today) => {
     const w = weeks[weekStart];
     if (!w) return [];
     const ready = new Set(w.rows.filter((r) => r.status === "ready").map((r) => r.day));
-    return Object.keys(w.defaults).filter((d) => !ready.has(d) && (!onlyFromDay || d >= onlyFromDay));
+    return Object.keys(w.defaults).filter((d) => !ready.has(d) && d >= onlyFromDay);
   };
 
   const renderWeekRow = (label: string, weekStart: string) => {
@@ -134,7 +146,7 @@ export function AltarAdmin({ day, week, row }: { day: string; week: string[]; ro
         <button type="button" disabled={!row || !!busy} onClick={() => setEditing(true)} className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium disabled:opacity-40 dark:border-zinc-700">
           Edit text
         </button>
-        <button type="button" disabled={!!busy} onClick={() => generateDays([day])} className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium disabled:opacity-40 dark:border-zinc-700">
+        <button type="button" disabled={!!busy || isPast} onClick={() => generateDays([day])} className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium disabled:opacity-40 dark:border-zinc-700">
           {row ? "Regenerate" : "Generate"}
         </button>
         <form
@@ -150,14 +162,18 @@ export function AltarAdmin({ day, week, row }: { day: string; week: string[]; ro
             value={verse}
             onChange={(e) => setVerse(e.target.value)}
             placeholder={row?.scripture_ref ?? weeks[thisWeek]?.defaults[day] ?? "e.g. Psalm 23:1"}
+            disabled={isPast}
             className="w-40 rounded-md border border-zinc-200 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
           />
-          <button type="submit" disabled={!!busy || !verse.trim()} className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium disabled:opacity-40 dark:border-zinc-700">
+          <button type="submit" disabled={!!busy || !verse.trim() || isPast} className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium disabled:opacity-40 dark:border-zinc-700">
             Change verse
           </button>
         </form>
       </div>
 
+      {isPast && (
+        <p className="text-[11px] text-zinc-500">This day has passed, so it can&apos;t be generated or given a new verse. You can still edit its text.</p>
+      )}
       {busy && <p className="text-xs text-blue-700 dark:text-blue-300" role="status">{busy} Keep this page open.</p>}
       {message && (
         <p role={message.kind === "error" ? "alert" : "status"} className={`text-xs ${message.kind === "error" ? "text-red-600 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>
