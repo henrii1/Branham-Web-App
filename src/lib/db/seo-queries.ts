@@ -16,6 +16,8 @@ export interface SeoCacheRow {
   updated_at: string;
 }
 
+export const FAQ_LIST_CACHE_TAG = "faq-list";
+
 const SEO_COLUMNS =
   "slug, question, robust_query, answer_markdown, rag_context, conversation_summary, language, published, meta_title, meta_description, created_at, updated_at" as const;
 
@@ -97,7 +99,8 @@ export const fetchFaqListItems = (language = "en") =>
       >[];
     },
     ["faq-list", language],
-    { revalidate: 3600 },
+    // Tagged so admin publish/edit routes can expire it immediately.
+    { revalidate: 3600, tags: [FAQ_LIST_CACHE_TAG] },
   )();
 
 export interface AdjacentSeoPage {

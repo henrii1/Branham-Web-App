@@ -39,6 +39,16 @@ import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
 import { isOfflineError } from "@/lib/utils/networkError";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { aboutHref } from "@/lib/about/content";
+import { isAdminEmail } from "@/lib/email/adminAllowlist";
+import dynamic from "next/dynamic";
+const FaqEditModal = dynamic(
+  () => import("@/components/admin/faq/FaqEditModal").then((m) => ({ default: m.FaqEditModal })),
+  { ssr: false },
+);
+const AddToFaqModal = dynamic(
+  () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
+  { ssr: false },
+);
 
 interface SeoShellProps {
   slug: string;
@@ -75,6 +85,10 @@ export function SeoShell({
   langHrefs,
 }: SeoShellProps) {
   const { user } = useAuth();
+  // Admin-only tools (Add to FAQ). The API routes re-check on the server.
+  const isAdmin = isAdminEmail(user?.email);
+  const [faqConversationId, setFaqConversationId] = useState<string | null>(null);
+  const [faqEditOpen, setFaqEditOpen] = useState(false);
   const router = useRouter();
   const isAnonymous = !user;
 
@@ -533,6 +547,7 @@ export function SeoShell({
             onRenameConversation={handleRenameConversation}
             onDeleteConversation={handleDeleteConversation}
             onShareConversation={handleShareConversation}
+            onAddToFaq={isAdmin ? setFaqConversationId : undefined}
             onCollapse={() => setSidebarCollapsed(true)}
             strings={strings}
             faqHref={faqHref}
@@ -581,6 +596,7 @@ export function SeoShell({
               onRenameConversation={handleRenameConversation}
               onDeleteConversation={handleDeleteConversation}
               onShareConversation={handleShareConversation}
+            onAddToFaq={isAdmin ? setFaqConversationId : undefined}
               onClose={closeMobileDrawer}
               strings={strings}
               faqHref={faqHref}
@@ -750,7 +766,19 @@ export function SeoShell({
                 <h1 className="font-display text-2xl text-foreground lg:text-3xl">
                   {question}
                 </h1>
-                <div className="shrink-0 pt-1">
+                <div className="flex shrink-0 items-center gap-2 pt-1">
+                  {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setFaqEditOpen(true)}
+                    className="flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" />
+                    </svg>
+                    Edit
+                  </button>
+                  )}
                   <LangSwitcher current={language as "en" | "es" | "fr"} hrefs={langHrefs} />
                 </div>
               </div>
@@ -792,6 +820,20 @@ export function SeoShell({
                         branch already carries the page's single semantic h1.
                         Both branches sit in the DOM simultaneously (the other
                         is CSS-hidden), so demoting this avoids two h1s. */}
+                    {isAdmin && (
+                      <div className="mb-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setFaqEditOpen(true)}
+                    className="flex h-8 items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" />
+                    </svg>
+                    Edit
+                  </button>
+                      </div>
+                    )}
                     <h2 className="font-display mb-4 text-2xl text-foreground">
                       {question}
                     </h2>
@@ -834,6 +876,25 @@ export function SeoShell({
         <LoginModal
           onClose={() => setShowLoginModal(false)}
           seoSlug={slug}
+        />
+      )}
+
+      {/* ── Edit this FAQ page (admin only) ── */}
+      {isAdmin && faqEditOpen && (
+        <FaqEditModal
+          slug={slug}
+          language={(language === "es" || language === "fr" ? language : "en")}
+          question={question}
+          answerMarkdown={answerMarkdown}
+          onClose={() => setFaqEditOpen(false)}
+        />
+      )}
+
+      {/* ── Add to FAQ (admin only) ── */}
+      {isAdmin && faqConversationId && (
+        <AddToFaqModal
+          conversationId={faqConversationId}
+          onClose={() => setFaqConversationId(null)}
         />
       )}
 

@@ -18,6 +18,8 @@ interface ConversationSidebarProps {
   onRenameConversation: (id: string, newTitle: string) => void;
   onDeleteConversation: (id: string) => void;
   onShareConversation: (id: string) => void;
+  /** Admin-only; the menu item is shown only when this is provided. */
+  onAddToFaq?: (id: string) => void;
   onClose?: () => void;
   onCollapse?: () => void;
   strings: ChatStrings;
@@ -73,6 +75,7 @@ interface ConversationItemProps {
   onRename: (newTitle: string) => void;
   onDelete: () => void;
   onShare: () => void;
+  onAddToFaq?: () => void;
   onClose?: () => void;
   strings: ChatStrings;
 }
@@ -84,6 +87,7 @@ function ConversationItem({
   onRename,
   onDelete,
   onShare,
+  onAddToFaq,
   onClose,
   strings,
 }: ConversationItemProps) {
@@ -275,6 +279,31 @@ function ConversationItem({
                   </svg>
                   {strings.conversationRename}
                 </button>
+                {onAddToFaq && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAddToFaq();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4.5v15m7.5-7.5h-15"
+                      />
+                    </svg>
+                    Add to FAQ
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={startDelete}
@@ -316,6 +345,7 @@ export function ConversationSidebar({
   onRenameConversation,
   onDeleteConversation,
   onShareConversation,
+  onAddToFaq,
   onClose,
   onCollapse,
   strings,
@@ -461,6 +491,7 @@ export function ConversationSidebar({
                       }
                       onDelete={() => onDeleteConversation(conv.id)}
                       onShare={() => onShareConversation(conv.id)}
+                      onAddToFaq={onAddToFaq ? () => onAddToFaq(conv.id) : undefined}
                       onClose={onClose}
                       strings={strings}
                     />

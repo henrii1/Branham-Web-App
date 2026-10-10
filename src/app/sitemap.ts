@@ -3,6 +3,12 @@ import { fetchAllPublishedSeoPages } from "@/lib/db/seo-queries";
 
 const SITE_URL = "https://branhamsermons.ai";
 
+// Rendered per request, not prerendered at build: FAQ entries are added
+// from the admin UI, and a build-time sitemap would leave them out until
+// the next deploy. (No persistent incremental cache is configured on
+// Cloudflare, so revalidate-based ISR wouldn't refresh it either.)
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [enPages, esPages, frPages] = await Promise.all([
     fetchAllPublishedSeoPages("en"),

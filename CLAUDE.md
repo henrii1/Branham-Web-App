@@ -331,6 +331,17 @@ Every user except the two admin accounts sees a low-key "Delete account" link un
 
 Share links die with the account: `get_conversation_share` and `get_shared_messages` (migration `011_account_archive.sql`) join `auth.users` and require `deleted_at is null`, so an archived owner's `/share/[hash]` links 404 immediately, with no window between steps. Bulk email already skips `deleted_at` users (`recipients.ts`).
 
+## Admin FAQ tools (add, edit, delete)
+
+For the two admin accounts only (`isAdminEmail()`, re-checked in every route under `src/app/api/admin/faq/`). Design: `docs/superpowers/specs/2026-10-09-add-to-faq-design.md`.
+
+- **Add to FAQ** — conversation three-dot menu (`ConversationSidebar` `onAddToFaq`, passed only for admins by `ChatShell`/`SeoShell`). `AddToFaqModal` (dynamic import) refuses conversations with more than one question, checks for duplicates on open (`/check`: same slug in any language, or same English question), calls the Model API's `POST /api/faq/translate` (`/prepare`: public title + `robust_query` in en/es/fr using the official corpora's terminology), generates each language with one `/api/chat` call (`/generate`, sequential, per-language retry), lets the admin review/edit, then `/publish` inserts all three rows in one statement.
+- **Edit / Delete** — `FaqEditModal` on every `/q` page: `/update` edits one language; `/delete` removes every row with the slug (all languages).
+- `src/lib/faq/entry.ts` holds the slug/meta/cleanup rules (same as `scripts/seed-seo.ts`); `src/lib/faq/modelApi.ts` is server-only (bearer key); `src/lib/faq/adminStore.ts` does all `seo_cache` writes with the service-role client.
+- **All text is passed through `sanitizeForPostgres`** before writing: sermon passages from the API can contain NUL bytes, which Postgres rejects (this broke the first publish in testing).
+- es/fr `meta_title` uses the localized question — the API's `query_summary` is English even for es/fr answers.
+- Publish/update/delete expire the FAQ list cache tag; `sitemap.xml` is `force-dynamic`. (On Cloudflare no persistent incremental cache is configured, so nothing is cached there anyway.)
+
 ## Admin bulk email
 
 An admin-only tool (`/admin/send-email`) that lets two hardcoded operator accounts compose one message and send it to every registered user whose saved `profiles.language` matches a selected language (en/es/fr), from a form that shows a live-recipient-count confirmation step before sending.

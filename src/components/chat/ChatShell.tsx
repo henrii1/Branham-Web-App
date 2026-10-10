@@ -58,6 +58,11 @@ import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { aboutHref } from "@/lib/about/content";
+import { isAdminEmail } from "@/lib/email/adminAllowlist";
+const AddToFaqModal = dynamic(
+  () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
+  { ssr: false },
+);
 
 const DEFAULT_PANEL_RATIO = 0.4;
 const MAX_TITLE_LENGTH = 50;
@@ -143,6 +148,9 @@ export function ChatShell({
   triggerWelcomeEmail = false,
 }: ChatShellProps) {
   const { user, isLoading: authLoading } = useAuth();
+  // Admin-only tools (Add to FAQ). The API routes re-check on the server.
+  const isAdmin = isAdminEmail(user?.email);
+  const [faqConversationId, setFaqConversationId] = useState<string | null>(null);
   const isAnonymous = !user;
   const [isMobileViewport, setIsMobileViewport] = useState(getIsMobileViewport);
 
@@ -1189,6 +1197,7 @@ export function ChatShell({
             onRenameConversation={handleRenameConversation}
             onDeleteConversation={handleDeleteConversation}
             onShareConversation={handleShareConversation}
+            onAddToFaq={isAdmin ? setFaqConversationId : undefined}
             onCollapse={() => setSidebarCollapsed(true)}
             strings={strings}
             faqHref={faqHref}
@@ -1239,6 +1248,7 @@ export function ChatShell({
               onRenameConversation={handleRenameConversation}
               onDeleteConversation={handleDeleteConversation}
               onShareConversation={handleShareConversation}
+            onAddToFaq={isAdmin ? setFaqConversationId : undefined}
               onClose={closeMobileDrawer}
               strings={strings}
               faqHref={faqHref}
@@ -1461,6 +1471,14 @@ export function ChatShell({
       {/* ── Login modal ── */}
       {showLoginModal && (
         <LoginModal onClose={() => setShowLoginModal(false)} />
+      )}
+
+      {/* ── Add to FAQ (admin only) ── */}
+      {isAdmin && faqConversationId && (
+        <AddToFaqModal
+          conversationId={faqConversationId}
+          onClose={() => setFaqConversationId(null)}
+        />
       )}
 
       {/* ── Share modal ── */}
