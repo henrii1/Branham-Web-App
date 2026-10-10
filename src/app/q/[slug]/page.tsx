@@ -192,7 +192,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
         ragContext={page.rag_context}
         retrievalQuery={page.robust_query}
         conversationSummary={page.conversation_summary}
-        nextPage={adjacent.next}
+        nextPage={adjacent.nextWrapped}
         language={page.language ?? "en"}
         langHrefs={{
           en: `/q/${slug}`,

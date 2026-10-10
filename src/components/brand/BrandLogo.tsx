@@ -39,8 +39,11 @@ export function BrandLogo({
     </>
   );
 
+  // No prefetch: the logo sits on every chat/FAQ screen, and prefetching its
+  // (dynamic) target re-renders a whole page on the server for each visit.
   return (
     <Link
+      prefetch={false}
       href={href}
       className={`inline-flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-90 ${className}`.trim()}
       aria-label="Branham Sermons Assistant home"

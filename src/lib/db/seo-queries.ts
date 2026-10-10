@@ -118,6 +118,10 @@ export interface AdjacentSeoPage {
 export async function fetchAdjacentSeoPages(slug: string, language = "en"): Promise<{
   prev: AdjacentSeoPage | null;
   next: AdjacentSeoPage | null;
+  /** The visible "Next" link: like `next`, but the newest page wraps around
+   * to the first, so FAQs added from the admin tools (always last) still
+   * lead somewhere. `prev`/`next` stay linear for rel="prev"/"next". */
+  nextWrapped: AdjacentSeoPage | null;
 }> {
   const supabase = getPublicClient();
   const { data, error } = await supabase
@@ -130,9 +134,11 @@ export async function fetchAdjacentSeoPages(slug: string, language = "en"): Prom
   if (error) throw error;
   const pages = (data ?? []) as AdjacentSeoPage[];
   const idx = pages.findIndex((p) => p.slug === slug);
-  if (idx === -1) return { prev: null, next: null };
+  if (idx === -1) return { prev: null, next: null, nextWrapped: null };
+  const next = idx < pages.length - 1 ? pages[idx + 1] : null;
   return {
     prev: idx > 0 ? pages[idx - 1] : null,
-    next: idx < pages.length - 1 ? pages[idx + 1] : null,
+    next,
+    nextWrapped: next ?? (pages.length > 1 ? pages[0] : null),
   };
 }

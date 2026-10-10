@@ -75,6 +75,7 @@ export function SidebarRail({
 
       <div className="flex w-full flex-col items-center gap-3">
         <Link
+          prefetch={false}
           href={aboutHref}
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-[var(--surface-base)] text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           aria-label={aboutLabel}
@@ -96,6 +97,7 @@ export function SidebarRail({
         </Link>
 
         <Link
+          prefetch={false}
           href="/faq"
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-[var(--surface-base)] text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           aria-label="Popular Questions"
@@ -118,6 +120,7 @@ export function SidebarRail({
 
         {user ? (
           <Link
+            prefetch={false}
             href="/profile"
             className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white transition-opacity hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
             aria-label="Profile"
@@ -127,6 +130,7 @@ export function SidebarRail({
           </Link>
         ) : (
           <Link
+            prefetch={false}
             href="/signup"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-[var(--surface-base)] text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
             aria-label="Sign up"

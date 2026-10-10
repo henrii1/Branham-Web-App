@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -29,14 +30,23 @@ export function AuthProvider({
 }) {
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [isLoading, setIsLoading] = useState(initialUser === undefined);
+  // Read once, at mount: whether the server verified the user for us.
+  const serverVerified = useRef(initialUser !== undefined);
 
   useEffect(() => {
     const supabase = createClient();
 
-    void supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user ?? null);
-      setIsLoading(false);
-    });
+    // When the server already verified the user (the root layout passes
+    // `initialUser`), skip this network round trip: supabase-js holds its
+    // auth lock during getUser(), so every data query on the page (messages,
+    // passages, history) would queue behind it. onAuthStateChange below
+    // still delivers sign-in/out and token refreshes.
+    if (!serverVerified.current) {
+      void supabase.auth.getUser().then(({ data }) => {
+        setUser(data.user ?? null);
+        setIsLoading(false);
+      });
+    }
 
     const {
       data: { subscription },

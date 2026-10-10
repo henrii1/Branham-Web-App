@@ -1682,6 +1682,7 @@ function MobileHeader({
 
         <div className="flex items-center gap-2">
           <Link
+            prefetch={false}
             href={faqHref}
             className="hidden text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-700 sm:inline dark:hover:text-zinc-200"
           >

@@ -505,26 +505,23 @@ export function ConversationSidebar({
 
       <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
         <Link
+          prefetch={false}
           href={faqHref}
           className="mb-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         >
           {strings.popularQuestions}
         </Link>
         <Link
+          prefetch={false}
           href={aboutHref}
           className="mb-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         >
           {strings.aboutLink}
         </Link>
-        <a
-          href="mailto:info@branhamsermons.ai"
-          className="mb-3 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-        >
-          info@branhamsermons.ai
-        </a>
         {user ? (
           <>
             <Link
+              prefetch={false}
               href="/profile"
               className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-800"
             >
@@ -547,12 +544,14 @@ export function ConversationSidebar({
         ) : (
           <div className="flex flex-col gap-1">
             <Link
+              prefetch={false}
               href="/signup"
               className="rounded-lg px-2 py-2 text-center text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-800"
             >
               {strings.signUp}
             </Link>
             <Link
+              prefetch={false}
               href="/login"
               className="rounded-lg px-2 py-1.5 text-center text-xs text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             >

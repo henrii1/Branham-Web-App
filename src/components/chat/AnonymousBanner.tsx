@@ -40,12 +40,14 @@ export function AnonymousBanner({ strings, faqHref }: AnonymousBannerProps) {
 
         <div className="flex items-center gap-2">
           <Link
+            prefetch={false}
             href={faqHref}
             className="rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-3 py-2 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             {strings.popularQuestions}
           </Link>
           <Link
+            prefetch={false}
             href="/signup"
             className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
