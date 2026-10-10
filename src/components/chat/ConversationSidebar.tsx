@@ -25,6 +25,7 @@ interface ConversationSidebarProps {
   strings: ChatStrings;
   faqHref: string;
   aboutHref: string;
+  altarHref: string;
 }
 
 interface ConversationGroup {
@@ -351,6 +352,7 @@ export function ConversationSidebar({
   strings,
   faqHref,
   aboutHref,
+  altarHref,
 }: ConversationSidebarProps) {
   const [signingOut, setSigningOut] = useState(false);
   const groups = groupConversations(conversations, {
@@ -444,6 +446,21 @@ export function ConversationSidebar({
           </svg>
           {strings.newChat}
         </button>
+        <Link
+          prefetch={false}
+          href={altarHref}
+          onClick={() => onClose?.()}
+          className="mt-2 flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2 transition-colors hover:bg-amber-100 dark:bg-amber-900/15 dark:hover:bg-amber-900/25"
+        >
+          <svg className="h-[18px] w-[18px] shrink-0 text-amber-700 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1.2-.5-2-1-2.8 2.3 1 4 3.3 4 6.3a5.5 5.5 0 0 1-11 0C6.5 9.5 10 7.5 12 3Z" />
+              <path d="M5 21h14" />
+            </svg>
+          <span className="flex flex-col leading-tight">
+            <span className="text-sm font-medium text-foreground">{strings.altarLink}</span>
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">{strings.altarSubtitle}</span>
+          </span>
+        </Link>
       </div>
 
       <nav

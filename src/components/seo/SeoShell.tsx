@@ -39,6 +39,7 @@ import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
 import { isOfflineError } from "@/lib/utils/networkError";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { aboutHref } from "@/lib/about/content";
+import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import dynamic from "next/dynamic";
 const FaqEditModal = dynamic(
@@ -519,6 +520,7 @@ export function SeoShell({
   const strings = getChatStrings(language);
   const faqHref = language === "en" ? "/faq" : `/${language}/faq`;
   const aboutPageHref = aboutHref(language);
+  const altarPageHref = altarHref(language);
 
   return (
     <div className="flex h-dvh bg-background">
@@ -534,7 +536,9 @@ export function SeoShell({
             onExpand={() => setSidebarCollapsed(false)}
             onNewChat={handleNewChat}
             aboutHref={aboutPageHref}
+            altarHref={altarPageHref}
             aboutLabel={strings.aboutLink}
+            altarLabel={strings.altarLink}
           />
         ) : (
           <ConversationSidebar
@@ -552,6 +556,7 @@ export function SeoShell({
             strings={strings}
             faqHref={faqHref}
             aboutHref={aboutPageHref}
+            altarHref={altarPageHref}
           />
         )}
       </aside>
@@ -601,6 +606,7 @@ export function SeoShell({
               strings={strings}
               faqHref={faqHref}
               aboutHref={aboutPageHref}
+            altarHref={altarPageHref}
             />
           </div>
         </div>

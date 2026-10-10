@@ -1,6 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
+  "main": "custom-worker.ts",
+  // Family Altar generation, daily 12:00 UTC (custom-worker.ts → /api/altar/cron).
+  // Each run only generates missing days, so retries after a failure are automatic.
+  "triggers": { "crons": ["0 12 * * *"] },
   "name": "branham-web-app",
   "compatibility_date": "2025-03-01",
   "compatibility_flags": [

@@ -10,6 +10,8 @@ interface SidebarRailProps {
   onNewChat: () => void;
   aboutHref: string;
   aboutLabel: string;
+  altarHref: string;
+  altarLabel: string;
 }
 
 export function SidebarRail({
@@ -18,6 +20,8 @@ export function SidebarRail({
   onNewChat,
   aboutHref,
   aboutLabel,
+  altarHref,
+  altarLabel,
 }: SidebarRailProps) {
   return (
     <div className="flex h-full flex-col items-center justify-between bg-[var(--surface-sidebar)] px-3 py-4">
@@ -71,6 +75,19 @@ export function SidebarRail({
             />
           </svg>
         </button>
+
+        <Link
+          prefetch={false}
+          href={altarHref}
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
+          aria-label={altarLabel}
+          title={altarLabel}
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1.2-.5-2-1-2.8 2.3 1 4 3.3 4 6.3a5.5 5.5 0 0 1-11 0C6.5 9.5 10 7.5 12 3Z" />
+              <path d="M5 21h14" />
+            </svg>
+        </Link>
       </div>
 
       <div className="flex w-full flex-col items-center gap-3">

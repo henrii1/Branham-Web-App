@@ -56,8 +56,10 @@ import { SwipeAffordance } from "./SwipeAffordance";
 import { ReferencePopover } from "./ReferencePopover";
 import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
+import { TodayAltarCard } from "@/components/altar/TodayAltarCard";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { aboutHref } from "@/lib/about/content";
+import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 const AddToFaqModal = dynamic(
   () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
@@ -1166,6 +1168,7 @@ export function ChatShell({
   const strings = getChatStrings(chatLanguage);
   const faqHref = chatLanguage === "en" ? "/faq" : `/${chatLanguage}/faq`;
   const aboutPageHref = aboutHref(chatLanguage);
+  const altarPageHref = altarHref(chatLanguage);
 
   return (
     <div className="flex h-dvh bg-background">
@@ -1184,7 +1187,9 @@ export function ChatShell({
             onExpand={() => setSidebarCollapsed(false)}
             onNewChat={handleNewConversation}
             aboutHref={aboutPageHref}
+            altarHref={altarPageHref}
             aboutLabel={strings.aboutLink}
+            altarLabel={strings.altarLink}
           />
         ) : (
           <ConversationSidebar
@@ -1202,6 +1207,7 @@ export function ChatShell({
             strings={strings}
             faqHref={faqHref}
             aboutHref={aboutPageHref}
+            altarHref={altarPageHref}
           />
         )}
       </aside>
@@ -1253,6 +1259,7 @@ export function ChatShell({
               strings={strings}
               faqHref={faqHref}
               aboutHref={aboutPageHref}
+            altarHref={altarPageHref}
             />
           </div>
         </div>
@@ -1273,6 +1280,7 @@ export function ChatShell({
           sourcesReady={sourcesReady}
           strings={strings}
           faqHref={faqHref}
+          altarHref={altarPageHref}
         />
 
         {/* ── Sensitive-inquiry disclaimer (all users, always visible) ── */}
@@ -1348,6 +1356,7 @@ export function ChatShell({
               answerViewFullLabel={strings.answerViewFullLabel}
               answerViewQuotesLabel={strings.answerViewQuotesLabel}
               answerViewQuotesEmpty={strings.answerViewQuotesEmpty}
+                  welcomeExtra={<TodayAltarCard language={chatLanguage} />}
             />
           </div>
         </div>
@@ -1388,6 +1397,7 @@ export function ChatShell({
                   answerViewFullLabel={strings.answerViewFullLabel}
                   answerViewQuotesLabel={strings.answerViewQuotesLabel}
                   answerViewQuotesEmpty={strings.answerViewQuotesEmpty}
+                  welcomeExtra={<TodayAltarCard language={chatLanguage} />}
                 />
               </div>
               {/* Sources — 50% of 200% inner = 100% of viewport */}
@@ -1634,6 +1644,7 @@ interface MobileHeaderProps {
   sourcesReady: boolean;
   strings: ReturnType<typeof getChatStrings>;
   faqHref: string;
+  altarHref: string;
 }
 
 function MobileHeader({
@@ -1648,6 +1659,7 @@ function MobileHeader({
   sourcesReady,
   strings,
   faqHref,
+  altarHref,
 }: MobileHeaderProps) {
   // Show notification for the tab that has new content but is not currently active.
   const sourcesNotif = activeTab !== "sources" && sourcesReady;
@@ -1687,6 +1699,18 @@ function MobileHeader({
             className="hidden text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-700 sm:inline dark:hover:text-zinc-200"
           >
             {strings.popularQuestions}
+          </Link>
+          <Link
+            prefetch={false}
+            href={altarHref}
+            className="flex h-8 w-8 items-center justify-center rounded-md bg-amber-50 text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
+            aria-label={strings.altarLink}
+            title={strings.altarLink}
+          >
+            <svg className="h-[19px] w-[19px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1.2-.5-2-1-2.8 2.3 1 4 3.3 4 6.3a5.5 5.5 0 0 1-11 0C6.5 9.5 10 7.5 12 3Z" />
+              <path d="M5 21h14" />
+            </svg>
           </Link>
           <button
             type="button"

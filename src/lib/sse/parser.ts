@@ -20,6 +20,9 @@ export type ChatSSEEvent =
       externalInfo: unknown;
       conversationSummary: string | null;
       querySummary: string | null;
+      /** Devotional mode only (response_mode: "devotional"); raw API object. */
+      devotional?: unknown;
+      parseError?: string | null;
     }
   | { type: "done"; ok: boolean }
   | { type: "error"; mode: string; answer: string };
@@ -52,6 +55,8 @@ function parseChatEvent(raw: SSEEvent): ChatSSEEvent | null {
           externalInfo: data.external_info ?? null,
           conversationSummary: data.conversation_summary ?? null,
           querySummary: data.query_summary ?? null,
+          devotional: data.devotional ?? null,
+          parseError: data.parse_error ?? null,
         };
       case "done":
         return { type: "done", ok: data.ok };

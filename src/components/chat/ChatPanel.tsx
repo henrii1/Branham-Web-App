@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import Image from "next/image";
 import type { Message, StreamingStatus, AnswerViewMode } from "@/lib/chat/types";
 import { MessageList } from "./MessageList";
@@ -19,9 +21,11 @@ interface ChatPanelProps {
   answerViewFullLabel: string;
   answerViewQuotesLabel: string;
   answerViewQuotesEmpty: string;
+  /** Shown under the welcome card on an empty chat (e.g. today's Family Altar). */
+  welcomeExtra?: ReactNode;
 }
 
-function WelcomeState({ description }: { description: string }) {
+function WelcomeState({ description, extra }: { description: string; extra?: ReactNode }) {
   return (
     <div className="flex h-full flex-col items-center justify-center px-4">
       <div className="max-w-lg rounded-[28px] border border-zinc-200 bg-[var(--surface-base)] px-8 py-10 text-center shadow-sm dark:border-zinc-700">
@@ -40,6 +44,7 @@ function WelcomeState({ description }: { description: string }) {
           {description}
         </p>
       </div>
+      {extra}
     </div>
   );
 }
@@ -78,6 +83,7 @@ export function ChatPanel({
   answerViewFullLabel,
   answerViewQuotesLabel,
   answerViewQuotesEmpty,
+  welcomeExtra,
 }: ChatPanelProps) {
   const isEmpty =
     messages.length === 0 && streamingStatus === "idle" && !isLoading;
@@ -102,7 +108,7 @@ export function ChatPanel({
         {isLoading ? (
           <LoadingState />
         ) : isEmpty ? (
-          <WelcomeState description={welcomeDescription} />
+          <WelcomeState description={welcomeDescription} extra={welcomeExtra} />
         ) : (
           <MessageList
             messages={messages}

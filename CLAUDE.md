@@ -342,6 +342,17 @@ For the two admin accounts only (`isAdminEmail()`, re-checked in every route und
 - es/fr `meta_title` uses the localized question — the API's `query_summary` is English even for es/fr answers.
 - Publish/update/delete expire the FAQ list cache tag; `sitemap.xml` is `force-dynamic`. (On Cloudflare no persistent incremental cache is configured, so nothing is cached there anyway.)
 
+## Family Altar (daily devotional)
+
+`/altar` (+ `/es/altar`, `/fr/altar`) shows the current Monday–Sunday week of devotionals, today open (today = the reader's local date, read via `useSyncExternalStore` so SSR never guesses it). English is generated today; `ALTAR_GENERATED_LANGUAGES` in `src/lib/altar/types.ts` turns other languages on, and es/fr pages show an "available in English" fallback until then. Entry points: amber row under New chat (sidebar + drawer), flame icon in the rail and the phone header, and `TodayAltarCard` on the empty chat (`ChatPanel` `welcomeExtra`).
+
+- **Table** `family_altar_days` (migration `014_family_altar.sql`), PK `(day, language)`: public read only for `status = 'ready'`; writes only via the service-role client. Holds the current week + next week; older days are pruned on each run.
+- **Verses**: `src/lib/altar/verses.ts` — 365 curated KJV references (all validated against bible-api.com). `defaultVerseFor(day)` walks the list with stride 97 (coprime with 365), so every verse is used once per 365 days and neighbouring days come from different books. Text comes from bible-api.com at generation time (`kjv.ts` normalizes its stray line breaks).
+- **Generation**: `generate.ts` calls the Model API's devotional mode (`/api/chat`, `response_mode: "devotional"`, query `"<ref> (KJV): <text>"`) and reads the structured `final.devotional` (the SSE parser maps `devotional`/`parse_error`). `store.ts` `generateAndStoreDay` — **a day that is already published keeps its content if a regeneration fails** (only brand-new days are marked `failed`).
+- **Cron**: `wrangler.jsonc` `main` is `custom-worker.ts` (OpenNext's generated worker + a `scheduled()` handler), `triggers.crons = ["0 12 * * *"]`. Each daily run calls `/api/altar/cron` in-process with the `CRON_SECRET` secret: prune old days, fill missing days of the current week from today, generate next week's missing days. Published days are skipped, so most runs make no API calls; a failed day is retried the next day. Next week is generated in full on the first run of the current week.
+- **Admin** (`isAdminEmail`, re-checked in `/api/admin/altar/*`): `AltarAdmin` on the page shows both weeks' status, "Generate N missing", and for the selected day Edit text / Regenerate / Change verse.
+- `custom-worker.ts` is excluded from `tsconfig.json` (it imports `.open-next/worker.js`, which only exists after `opennextjs-cloudflare build`). Verify config changes with `npx wrangler deploy --dry-run`.
+
 ## Admin bulk email
 
 An admin-only tool (`/admin/send-email`) that lets two hardcoded operator accounts compose one message and send it to every registered user whose saved `profiles.language` matches a selected language (en/es/fr), from a form that shows a live-recipient-count confirmation step before sending.
@@ -423,6 +434,7 @@ Wrangler config (`wrangler.jsonc`):
 |---|---|---|
 | `MODEL_API_BASE_URL` | wrangler vars / `.dev.vars` | Cloud Run URL of the Branham LLM API |
 | `CHAT_API_BEARER_KEY` | **secret** (`wrangler secret put`) | Bearer for the API proxy. Server-only — never `NEXT_PUBLIC_*`. |
+| `CRON_SECRET` | **secret** | Authorizes the scheduled Family Altar run (`custom-worker.ts` → `/api/altar/cron`). |
 | `NEXT_PUBLIC_SUPABASE_URL` | wrangler vars | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | wrangler vars | Supabase anon key (RLS-safe) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **secret** | Server-side admin (welcome email trigger, cron tasks) |
