@@ -142,6 +142,19 @@ export function ProfileContent({
           >
             Send bulk email
           </Link>
+          {/* The admin tools (week status, generate, edit, change verse)
+              appear on /altar itself for these accounts. */}
+          <Link
+            href="/altar"
+            prefetch={false}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-center text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-200 dark:hover:bg-amber-900/30"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1.2-.5-2-1-2.8 2.3 1 4 3.3 4 6.3a5.5 5.5 0 0 1-11 0C6.5 9.5 10 7.5 12 3Z" />
+              <path d="M5 21h14" />
+            </svg>
+            Manage Family Altar
+          </Link>
         </div>
       )}
 
