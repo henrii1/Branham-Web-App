@@ -42,24 +42,89 @@ function escapeHtml(value: string): string {
 const EMAIL_TEXT_COLOR = "#000000";
 const EMAIL_BACKGROUND = "#ffffff";
 
+const EMAIL_LINK_COLOR = "#1d4ed8";
+const BULLET_RE = /^\s*(?:•|-)\s+/;
+
+/**
+ * Inline formatting on already-escaped text: **bold**, [label](https://url),
+ * and bare https:// URLs. Only http(s) links are produced.
+ */
+function formatInline(escaped: string): string {
+  const link = (href: string, label: string) =>
+    `<a href="${href}" style="color:${EMAIL_LINK_COLOR};text-decoration:underline;">${label}</a>`;
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, `<strong style="color:${EMAIL_TEXT_COLOR};">$1</strong>`)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, href: string) => link(href, label))
+    .replace(/(^|[\s(])(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, (_m, pre: string, href: string) => `${pre}${link(href, href)}`);
+}
+
+/**
+ * A small, safe markdown subset for email bodies: blank-line paragraphs,
+ * kept line breaks, `# ` / `## ` headings, `•` or `-` bullet lists, bold
+ * and http(s) links. Everything is HTML-escaped before formatting.
+ */
 export function markdownToEmailHtml(markdown: string): string {
-  const paragraphs = markdown
-    .split(/\n{2,}/)
-    .map(
-      (paragraph) =>
-        `<p style="margin:0 0 16px 0;color:${EMAIL_TEXT_COLOR};">${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`,
-    )
-    .join("");
+  const blocks = markdown.split(/\n{2,}/).map((block) => {
+    const trimmed = block.trim();
+    const h = /^(#{1,2})\s+(.+)$/.exec(trimmed);
+    if (h && !trimmed.includes("\n")) {
+      const size = h[1].length === 1 ? "24px" : "19px";
+      const tag = h[1].length === 1 ? "h1" : "h2";
+      return `<${tag} style="margin:8px 0 14px 0;font-size:${size};line-height:1.3;font-weight:700;color:${EMAIL_TEXT_COLOR};">${formatInline(escapeHtml(h[2]))}</${tag}>`;
+    }
+
+    // Group consecutive bullet lines into a list; other lines stay a paragraph.
+    const parts: string[] = [];
+    let text: string[] = [];
+    let items: string[] = [];
+    const flushText = () => {
+      if (text.length) parts.push(`<p style="margin:0 0 16px 0;color:${EMAIL_TEXT_COLOR};">${text.join("<br />")}</p>`);
+      text = [];
+    };
+    const flushItems = () => {
+      if (items.length) {
+        parts.push(
+          `<ul style="margin:0 0 16px 0;padding-left:22px;color:${EMAIL_TEXT_COLOR};">${items
+            .map((i) => `<li style="margin:0 0 6px 0;color:${EMAIL_TEXT_COLOR};">${i}</li>`)
+            .join("")}</ul>`,
+        );
+      }
+      items = [];
+    };
+    for (const line of block.split("\n")) {
+      if (BULLET_RE.test(line)) {
+        flushText();
+        items.push(formatInline(escapeHtml(line.replace(BULLET_RE, ""))));
+      } else {
+        flushItems();
+        text.push(formatInline(escapeHtml(line)));
+      }
+    }
+    flushText();
+    flushItems();
+    return parts.join("");
+  });
+  const paragraphs = blocks.join("");
 
   return (
     `<!DOCTYPE html><html><head><meta charset="utf-8">` +
     `<meta name="color-scheme" content="light only">` +
     `<meta name="supported-color-schemes" content="light">` +
     `</head><body style="margin:0;padding:0;background-color:${EMAIL_BACKGROUND};color:${EMAIL_TEXT_COLOR};">` +
-    `<div style="background-color:${EMAIL_BACKGROUND};color:${EMAIL_TEXT_COLOR};padding:16px;">` +
+    `<div style="background-color:${EMAIL_BACKGROUND};color:${EMAIL_TEXT_COLOR};padding:16px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;">` +
     paragraphs +
     `</div></body></html>`
   );
+}
+
+/** Plain-text part: the same body with the formatting marks removed. */
+export function markdownToEmailText(markdown: string): string {
+  return markdown
+    .replace(/^#{1,2}\s+/gm, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, href: string) =>
+      label === href ? href : `${label} (${href})`,
+    );
 }
 
 /**
@@ -94,7 +159,7 @@ export async function sendEmail({
       From: from,
       To: to,
       Subject: subject,
-      TextBody: bodyMarkdown,
+      TextBody: markdownToEmailText(bodyMarkdown),
       HtmlBody: markdownToEmailHtml(bodyMarkdown),
       MessageStream: "outbound",
     }),
@@ -196,7 +261,7 @@ export async function sendBulkEmail(
             From: from,
             To: m.to,
             Subject: m.subject,
-            TextBody: m.bodyMarkdown,
+            TextBody: markdownToEmailText(m.bodyMarkdown),
             HtmlBody: markdownToEmailHtml(m.bodyMarkdown),
             MessageStream: BULK_MESSAGE_STREAM,
           })),
