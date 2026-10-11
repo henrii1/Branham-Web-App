@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/components/auth/AuthGate";
@@ -10,7 +10,8 @@ import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { applyCitations } from "@/lib/markdown/citations";
 import { ALTAR_STRINGS, altarHref, type AltarStrings } from "@/lib/altar/strings";
-import { localTodayIso, mondayOf, weekDays } from "@/lib/altar/week";
+import { addDays, localTodayIso, mondayOf, weekDays } from "@/lib/altar/week";
+import { postJson } from "@/components/admin/faq/AdminDialog";
 import type { AltarLanguage, FamilyAltarDay } from "@/lib/altar/types";
 
 const AltarAdmin = dynamic(() => import("./AltarAdmin").then((m) => ({ default: m.AltarAdmin })), { ssr: false });
@@ -50,16 +51,39 @@ export function AltarView({
   const today = useLocalToday();
   const [picked, setPicked] = useState<string | null>(null);
   const [showEnglish, setShowEnglish] = useState(false);
+  // Admin-only preview of next week. Readers never see it: it isn't in the
+  // public data until its Monday begins somewhere (migration 015), so the
+  // admin rows come from the admin route, in any status.
+  const [viewNext, setViewNext] = useState(false);
+  const [nextRows, setNextRows] = useState<FamilyAltarDay[] | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const nextWeekStart = today ? addDays(mondayOf(today), 7) : null;
 
-  const byDay = useMemo(() => new Map(rows.map((r) => [r.day, r])), [rows]);
+  useEffect(() => {
+    if (!isAdmin || !viewNext || !nextWeekStart) return;
+    let cancelled = false;
+    postJson<{ ok: boolean; rows: FamilyAltarDay[] }>("/api/admin/altar/week", { week_start: nextWeekStart }).then(({ data }) => {
+      if (!cancelled && data?.ok) setNextRows(data.rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, viewNext, nextWeekStart, reloadKey]);
+
+  const byDay = useMemo(() => {
+    const m = new Map(rows.map((r) => [r.day, r]));
+    for (const r of nextRows ?? []) if (r.status === "ready") m.set(r.day, r);
+    return m;
+  }, [rows, nextRows]);
   const enByDay = useMemo(() => new Map(englishRows.map((r) => [r.day, r])), [englishRows]);
 
   if (!today) {
     return <div className="flex h-dvh items-center justify-center bg-background" aria-busy="true" />;
   }
 
-  const week = weekDays(mondayOf(today));
-  const selected = picked && week.includes(picked) ? picked : today;
+  const previewing = isAdmin && viewNext;
+  const week = weekDays(previewing ? nextWeekStart! : mondayOf(today));
+  const selected = picked && week.includes(picked) ? picked : previewing ? week[0] : today;
   const idx = week.indexOf(selected);
   const row = byDay.get(selected) ?? null;
   const fallback = !row && language !== "en" ? (enByDay.get(selected) ?? null) : null;
@@ -83,11 +107,32 @@ export function AltarView({
         {/* Week: strip on phones, list on desktop */}
         <nav aria-label={s.thisWeek} className="shrink-0 border-b border-zinc-200 bg-[var(--surface-base)] px-3 py-2.5 lg:w-64 lg:overflow-y-auto lg:border-r lg:border-b-0 lg:bg-[var(--surface-sidebar)] lg:px-3 lg:py-5 dark:border-zinc-800">
           <div className="mb-2 flex items-baseline justify-between px-1 lg:mb-3 lg:flex-col lg:gap-0.5 lg:px-2">
-            <h2 className="text-xs font-medium text-zinc-500 lg:text-sm lg:text-foreground dark:text-zinc-400">{s.thisWeek}</h2>
+            <h2 className="text-xs font-medium text-zinc-500 lg:text-sm lg:text-foreground dark:text-zinc-400">{previewing ? "Next week (preview)" : s.thisWeek}</h2>
             <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
               {cap(fmt(week[0], s.locale, { month: "short", day: "numeric" }))} – {fmt(week[6], s.locale, { month: "short", day: "numeric" })}
             </span>
           </div>
+          {isAdmin && (
+            <div className="mb-2 flex gap-1 rounded-lg bg-zinc-100 p-0.5 text-xs lg:mx-2 lg:mb-3 dark:bg-zinc-800" role="group" aria-label="Admin: which week">
+              {[
+                ["This week", false],
+                ["Next week", true],
+              ].map(([label, next]) => (
+                <button
+                  key={String(label)}
+                  type="button"
+                  aria-pressed={viewNext === next}
+                  onClick={() => {
+                    setViewNext(next as boolean);
+                    setPicked(null);
+                  }}
+                  className={`flex-1 rounded-md px-2 py-1 font-medium ${viewNext === next ? "bg-[var(--surface-base)] text-foreground shadow-sm" : "text-zinc-500 dark:text-zinc-400"}`}
+                >
+                  {label as string}
+                </button>
+              ))}
+            </div>
+          )}
           <ol className="grid grid-cols-7 gap-1 lg:grid-cols-1 lg:gap-0.5">
             {week.map((d) => {
               const r = byDay.get(d) ?? (language !== "en" ? enByDay.get(d) : undefined);
@@ -134,7 +179,12 @@ export function AltarView({
               {cap(fmt(selected, s.locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}
             </p>
 
-            {isAdmin && <AltarAdmin day={selected} week={week} row={row} today={today} />}
+            {previewing && (
+              <p className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-900/60 dark:bg-blue-900/20 dark:text-blue-200">
+                Preview: readers can&apos;t see next week yet. It goes live on Monday at each reader&apos;s own midnight (from Sunday 10:00 UTC for the earliest time zones).
+              </p>
+            )}
+            {isAdmin && <AltarAdmin day={selected} row={row} today={today} onChanged={() => setReloadKey((k) => k + 1)} />}
 
             {shown ? (
               <>

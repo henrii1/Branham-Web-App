@@ -95,6 +95,8 @@ export async function generateFaqAnswer(
       conversation_id: `faq-${crypto.randomUUID()}`,
       query: robustQuery,
       user_language: language,
+      // FAQ answers use the API's FAQ model profile (same SSE shape as chat).
+      response_mode: "faq",
     }),
   });
   if (!res.ok || !res.body) {

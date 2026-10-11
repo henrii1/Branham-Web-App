@@ -9,7 +9,7 @@ import {
   adminSecondaryButtonClass,
   postJson,
 } from "@/components/admin/faq/AdminDialog";
-import { addDays } from "@/lib/altar/week";
+import { addDays, mondayOf } from "@/lib/altar/week";
 import type { AltarStatus, FamilyAltarDay } from "@/lib/altar/types";
 
 interface WeekState {
@@ -31,13 +31,14 @@ const STATUS_STYLE: Record<AltarStatus | "none", string> = {
  */
 export function AltarAdmin({
   day,
-  week,
   row,
   today,
+  onChanged,
 }: {
   day: string;
-  week: string[];
   row: FamilyAltarDay | null;
+  /** Called after a generate or an edit, so the page reloads what it shows. */
+  onChanged?: () => void;
   /** The admin's local date. Past days can be read and edited, not generated. */
   today: string;
 }) {
@@ -49,7 +50,8 @@ export function AltarAdmin({
   const [editing, setEditing] = useState(false);
   const [verse, setVerse] = useState("");
 
-  const thisWeek = week[0];
+  // Always the real this/next week, whichever week the page is showing.
+  const thisWeek = mondayOf(today);
   const nextWeek = addDays(thisWeek, 7);
 
   const fetchWeek = useCallback(
@@ -95,6 +97,7 @@ export function AltarAdmin({
     setBusy(null);
     setMessage(failures.length ? { kind: "error", text: `${ok} generated. ${failures.join(" · ")}` } : { kind: "ok", text: `${ok} day${ok === 1 ? "" : "s"} generated.` });
     await Promise.all([loadWeek(thisWeek), loadWeek(nextWeek)]);
+    onChanged?.();
     router.refresh();
   }
 
@@ -181,7 +184,7 @@ export function AltarAdmin({
         </p>
       )}
 
-      {editing && row && <AltarEditModal row={row} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); router.refresh(); }} />}
+      {editing && row && <AltarEditModal row={row} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged?.(); router.refresh(); }} />}
     </div>
   );
 }
