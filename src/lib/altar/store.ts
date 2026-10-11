@@ -154,13 +154,6 @@ export async function updateDayText(
   return (data?.length ?? 0) > 0;
 }
 
-/** Remove days before the current week (UTC), keeping current + next week. */
-export async function pruneOldDays(now: Date = new Date()): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin.from(TABLE).delete().lt("day", mondayOf(utcTodayIso(now)));
-  if (error) throw error;
-}
-
 /** The Monday of the week after the one containing `now` (UTC). */
 export function nextWeekStart(now: Date = new Date()): string {
   return addDays(mondayOf(utcTodayIso(now)), 7);

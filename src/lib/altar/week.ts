@@ -20,7 +20,10 @@ const EPOCH_MONDAY = "2026-01-05";
 const VERSE_STRIDE = 97;
 
 export function isIsoDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const ms = Date.parse(`${value}T00:00:00Z`);
+  // Round-trip so impossible dates (2026-02-31) are rejected, not rolled over.
+  return !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === value;
 }
 
 function toUtcMs(iso: string): number {

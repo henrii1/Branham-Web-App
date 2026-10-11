@@ -29,6 +29,13 @@ export const ALTAR_STRINGS = {
     hide: "",
     chatCardLabel: "Today's Family Altar",
     chatCardLink: "Read today's devotion",
+    share: "Share",
+    shareTitle: "Share this day",
+    copyLink: "Copy link",
+    linkCopied: "Link copied",
+    moreApps: "More apps",
+    email: "Email",
+    goToToday: "Go to today",
   },
   es: {
     locale: "es-ES",
@@ -57,6 +64,13 @@ export const ALTAR_STRINGS = {
     hide: "Ocultar",
     chatCardLabel: "Altar Familiar de hoy",
     chatCardLink: "Leer el devocional de hoy",
+    share: "Compartir",
+    shareTitle: "Compartir este día",
+    copyLink: "Copiar enlace",
+    linkCopied: "Enlace copiado",
+    moreApps: "Más aplicaciones",
+    email: "Correo",
+    goToToday: "Ir a hoy",
   },
   fr: {
     locale: "fr-FR",
@@ -85,6 +99,13 @@ export const ALTAR_STRINGS = {
     hide: "Masquer",
     chatCardLabel: "Autel familial du jour",
     chatCardLink: "Lire la dévotion du jour",
+    share: "Partager",
+    shareTitle: "Partager ce jour",
+    copyLink: "Copier le lien",
+    linkCopied: "Lien copié",
+    moreApps: "Autres applications",
+    email: "E-mail",
+    goToToday: "Aller à aujourd’hui",
   },
 } satisfies Record<AltarLanguage, Record<string, string>>;
 
@@ -92,4 +113,9 @@ export type AltarStrings = (typeof ALTAR_STRINGS)[AltarLanguage];
 
 export function altarHref(language: string): string {
   return language === "es" || language === "fr" ? `/${language}/altar` : "/altar";
+}
+
+/** One day's page, e.g. /altar/2026-10-12 — the link people share. */
+export function altarDayHref(language: string, day: string): string {
+  return `${altarHref(language)}/${day}`;
 }

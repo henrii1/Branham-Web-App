@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { generateAndStoreDay, generateWeek, nextWeekStart, pruneOldDays } from "@/lib/altar/store";
+import { generateAndStoreDay, generateWeek, nextWeekStart } from "@/lib/altar/store";
 import { mondayOf, utcTodayIso, weekDays } from "@/lib/altar/week";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ALTAR_GENERATED_LANGUAGES } from "@/lib/altar/types";
@@ -7,9 +7,9 @@ import { ALTAR_GENERATED_LANGUAGES } from "@/lib/altar/types";
 /**
  * Family Altar run, called by the Worker's scheduled() handler
  * (custom-worker.ts) every day at 12:00 UTC with the CRON_SECRET header.
- *   1. delete days before the current week,
- *   2. fill any missing days of the current week from today on,
- *   3. generate next week's missing days.
+ *   1. fill any missing days of the current week from today on,
+ *   2. generate next week's missing days.
+ * Past days are never deleted: every day keeps its own shareable link.
  * Published days are always skipped, so a run with nothing missing makes no
  * Model API calls, and a day that failed is retried by the next day's run.
  */
@@ -28,7 +28,6 @@ export async function POST(request: Request) {
   }
 
   const started = Date.now();
-  await pruneOldDays();
 
   // Fill gaps in the current week (today onward), e.g. after a failed run.
   const today = utcTodayIso();

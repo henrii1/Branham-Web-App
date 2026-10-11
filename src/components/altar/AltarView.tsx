@@ -9,7 +9,8 @@ import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { applyCitations } from "@/lib/markdown/citations";
-import { ALTAR_STRINGS, altarHref, type AltarStrings } from "@/lib/altar/strings";
+import { ALTAR_STRINGS, altarDayHref, altarHref, type AltarStrings } from "@/lib/altar/strings";
+import { AltarShareButton } from "./AltarShareButton";
 import { addDays, localTodayIso, mondayOf, weekDays } from "@/lib/altar/week";
 import { postJson } from "@/components/admin/faq/AdminDialog";
 import type { AltarLanguage, FamilyAltarDay } from "@/lib/altar/types";
@@ -38,8 +39,11 @@ export function AltarView({
   language,
   rows,
   englishRows,
+  focusDay,
 }: {
   language: AltarLanguage;
+  /** From a day link (/altar/2026-10-12): open that day and its week. */
+  focusDay?: string;
   /** Ready rows in this page's language (current + next week). */
   rows: FamilyAltarDay[];
   /** English rows, for the "read in English" fallback on es/fr pages. */
@@ -82,8 +86,10 @@ export function AltarView({
   }
 
   const previewing = isAdmin && viewNext;
-  const week = weekDays(previewing ? nextWeekStart! : mondayOf(today));
-  const selected = picked && week.includes(picked) ? picked : previewing ? week[0] : today;
+  const thisMonday = mondayOf(today);
+  const week = weekDays(previewing ? nextWeekStart! : mondayOf(focusDay ?? today));
+  const isThisWeek = week[0] === thisMonday;
+  const selected = picked && week.includes(picked) ? picked : previewing ? week[0] : focusDay && week.includes(focusDay) ? focusDay : today;
   const idx = week.indexOf(selected);
   const row = byDay.get(selected) ?? null;
   const fallback = !row && language !== "en" ? (enByDay.get(selected) ?? null) : null;
@@ -107,12 +113,18 @@ export function AltarView({
         {/* Week: strip on phones, list on desktop */}
         <nav aria-label={s.thisWeek} className="shrink-0 border-b border-zinc-200 bg-[var(--surface-base)] px-3 py-2.5 lg:w-64 lg:overflow-y-auto lg:border-r lg:border-b-0 lg:bg-[var(--surface-sidebar)] lg:px-3 lg:py-5 dark:border-zinc-800">
           <div className="mb-2 flex items-baseline justify-between px-1 lg:mb-3 lg:flex-col lg:gap-0.5 lg:px-2">
-            <h2 className="text-xs font-medium text-zinc-500 lg:text-sm lg:text-foreground dark:text-zinc-400">{previewing ? "Next week (preview)" : s.thisWeek}</h2>
+            {previewing || isThisWeek ? (
+              <h2 className="text-xs font-medium text-zinc-500 lg:text-sm lg:text-foreground dark:text-zinc-400">{previewing ? "Next week (preview)" : s.thisWeek}</h2>
+            ) : (
+              <Link prefetch={false} href={altarHref(language)} className="text-xs font-medium text-amber-800 underline-offset-2 hover:underline lg:text-sm dark:text-amber-300">
+                {s.goToToday}
+              </Link>
+            )}
             <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
               {cap(fmt(week[0], s.locale, { month: "short", day: "numeric" }))} – {fmt(week[6], s.locale, { month: "short", day: "numeric" })}
             </span>
           </div>
-          {isAdmin && (
+          {isAdmin && (previewing || isThisWeek) && (
             <div className="mb-2 flex gap-1 rounded-lg bg-zinc-100 p-0.5 text-xs lg:mx-2 lg:mb-3 dark:bg-zinc-800" role="group" aria-label="Admin: which week">
               {[
                 ["This week", false],
@@ -177,6 +189,15 @@ export function AltarView({
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">{s.today}</span>
               )}
               {cap(fmt(selected, s.locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}
+              {shown && !previewing && (
+                <AltarShareButton
+                  url={`${window.location.origin}${altarDayHref(language, selected)}`}
+                  title={shown.title ? `${s.pageTitle}: ${shown.title}` : s.pageTitle}
+                  verse={shown.scripture_text}
+                  reference={shown.scripture_ref}
+                  s={s}
+                />
+              )}
             </p>
 
             {previewing && (
