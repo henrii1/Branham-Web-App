@@ -37,7 +37,6 @@ export function AltarShareButton({
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [busy, setBusy] = useState<ImageSize | null>(null);
   const [imageError, setImageError] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
   // Finished images, so a tap shares at once (see below).
   const [ready, setReady] = useState<Partial<Record<ImageSize, File>>>({});
   const rootRef = useRef<HTMLDivElement>(null);
@@ -90,7 +89,6 @@ export function AltarShareButton({
     const next = !open;
     setOpen(next);
     setImageError(false);
-    setNote(null);
     if (next) {
       loadImage("story").catch(() => {});
       loadImage("post").catch(() => {});
@@ -126,22 +124,15 @@ export function AltarShareButton({
 
   async function shareImage(size: ImageSize) {
     setImageError(false);
-    setNote(null);
     const file = ready[size];
     if (canShareFiles && file) {
-      const caption = `${message}\n\n${url}`;
-      // Post: image + caption, ready to send. Status/Story: the image alone,
-      // with the caption copied to paste — WhatsApp's iPhone share extension
-      // hangs on "Preparing…" when a Status is given an image plus text.
-      // share() is called straight from the tap, nothing awaited first: iOS
-      // refuses a share once the tap's activation has passed.
-      if (size === "story") {
-        navigator.clipboard?.writeText(caption).then(
-          () => setNote(s.captionCopied),
-          () => {},
-        );
-      }
-      navigator.share(size === "post" ? { files: [file], text: caption } : { files: [file] }).then(
+      // Image + caption (title, verse, link). The link goes in `text`, not
+      // `url`: with a file attached, apps use the text as the caption and
+      // some drop the file when `url` is set. share() is called straight
+      // from the tap, nothing awaited first: iOS refuses a share once the
+      // tap's activation has passed. (WhatsApp's Status can sit on
+      // "Preparing…" for a while; it does post.)
+      navigator.share({ files: [file], text: `${message}\n\n${url}` }).then(
         () => {},
         (err: Error) => {
           // AbortError: the reader closed the share sheet.
@@ -223,7 +214,6 @@ export function AltarShareButton({
             ))}
           </div>
           {imageError && <p role="alert" className="px-3 pb-1.5 text-xs text-red-600 dark:text-red-400">{s.imageFailed}</p>}
-          {note && <p aria-live="polite" className="px-3 pb-1.5 text-xs text-zinc-600 dark:text-zinc-300">{note}</p>}
           <div className="my-1 border-t border-zinc-200 dark:border-zinc-700" />
           <p className="px-3 pt-1 pb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">{s.shareLinkOnly}</p>
           {targets.map((t) => (
