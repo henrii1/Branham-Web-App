@@ -26,25 +26,55 @@ interface ChatPanelProps {
 }
 
 function WelcomeState({ description, extra }: { description: string; extra?: ReactNode }) {
+  if (!extra) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center px-4">
+        <div className="max-w-lg rounded-[28px] border border-zinc-200 bg-[var(--surface-base)] px-8 py-10 text-center shadow-sm dark:border-zinc-700">
+          <Image
+            src={logo}
+            alt="Branham Sermons Assistant logo"
+            width={76}
+            height={76}
+            priority
+            className="mx-auto mb-5 rounded-2xl object-cover shadow-sm"
+          />
+          <h2 className="font-display mb-3 text-3xl text-foreground">
+            Branham Sermons Assistant
+          </h2>
+          <p className="text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
+            {description}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // With a featured card (today's Family Altar): on phones the feature comes
+  // first and fills the top of the screen, with a compact welcome below it;
+  // on desktop the welcome card and the feature sit side by side.
+  // overflow-anchor: none — the card grows when today's devotion loads, and
+  // browser scroll anchoring would otherwise scroll its top out of view.
   return (
-    <div className="flex h-full flex-col items-center justify-center px-4">
-      <div className="max-w-lg rounded-[28px] border border-zinc-200 bg-[var(--surface-base)] px-8 py-10 text-center shadow-sm dark:border-zinc-700">
+    <div className="flex min-h-full flex-col gap-4 px-4 pt-4 pb-6 [overflow-anchor:none] lg:flex-row lg:items-center lg:justify-center lg:gap-5 lg:px-6 lg:py-4">
+      <div className="order-1 w-full lg:order-2 lg:w-auto lg:max-w-md lg:flex-1">{extra}</div>
+      <div className="order-2 flex items-center gap-3 px-1 lg:order-1 lg:max-w-sm lg:flex-col lg:items-stretch lg:gap-0 lg:rounded-[24px] lg:border lg:border-zinc-200 lg:bg-[var(--surface-base)] lg:px-6 lg:py-6 lg:text-center lg:shadow-sm dark:lg:border-zinc-700">
         <Image
           src={logo}
           alt="Branham Sermons Assistant logo"
           width={76}
           height={76}
           priority
-          className="mx-auto mb-5 rounded-2xl object-cover shadow-sm"
+          className="h-11 w-11 shrink-0 rounded-xl object-cover shadow-sm lg:mx-auto lg:mb-3 lg:h-14 lg:w-14 lg:rounded-2xl"
         />
-        <h2 className="font-display mb-3 text-3xl text-foreground">
-          Branham Sermons Assistant
-        </h2>
-        <p className="text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
-          {description}
-        </p>
+        <div className="min-w-0">
+          <h2 className="font-display text-lg leading-tight text-foreground lg:mb-2 lg:text-2xl">
+            Branham Sermons Assistant
+          </h2>
+          <p className="text-[13px] leading-snug text-zinc-500 lg:text-sm lg:leading-relaxed dark:text-zinc-400">
+            {description}
+          </p>
+        </div>
       </div>
-      {extra}
     </div>
   );
 }
@@ -104,7 +134,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto [overflow-anchor:none]">
         {isLoading ? (
           <LoadingState />
         ) : isEmpty ? (
