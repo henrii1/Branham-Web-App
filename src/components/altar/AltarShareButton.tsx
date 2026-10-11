@@ -37,6 +37,9 @@ export function AltarShareButton({
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [busy, setBusy] = useState<ImageSize | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  // Finished images, so a tap shares at once (see below).
+  const [ready, setReady] = useState<Partial<Record<ImageSize, File>>>({});
   const rootRef = useRef<HTMLDivElement>(null);
   // Images are fetched when the menu opens, so a tap can open the share
   // sheet at once: Safari refuses navigator.share once the tap is a few
@@ -61,6 +64,7 @@ export function AltarShareButton({
   // A new day means new images.
   useEffect(() => {
     images.current = {};
+    Promise.resolve().then(() => setReady({}));
   }, [day, language]);
 
   function loadImage(size: ImageSize): Promise<File> {
@@ -71,9 +75,12 @@ export function AltarShareButton({
           return r.blob();
         })
         .then((b) => new File([b], `family-altar-${day}-${size}.png`, { type: "image/png" }));
-      p.catch(() => {
-        delete images.current[size];
-      });
+      p.then(
+        (file) => setReady((r) => ({ ...r, [size]: file })),
+        () => {
+          delete images.current[size];
+        },
+      );
       images.current[size] = p;
     }
     return images.current[size]!;
@@ -83,6 +90,7 @@ export function AltarShareButton({
     const next = !open;
     setOpen(next);
     setImageError(false);
+    setNote(null);
     if (next) {
       loadImage("story").catch(() => {});
       loadImage("post").catch(() => {});
@@ -117,28 +125,44 @@ export function AltarShareButton({
   ];
 
   async function shareImage(size: ImageSize) {
-    setBusy(size);
     setImageError(false);
-    try {
-      const file = await loadImage(size);
-      if (canShareFiles && navigator.canShare({ files: [file] })) {
-        try {
-          // Link in the text, not `url`: with a file attached, apps use the
-          // text as the caption, and some drop the file when `url` is set.
-          await navigator.share({ files: [file], text: `${message}\n\n${url}` });
-          setOpen(false);
-        } catch (err) {
+    setNote(null);
+    const file = ready[size];
+    if (canShareFiles && file) {
+      // The image alone, with the link copied for the caption. WhatsApp's
+      // iPhone share extension hangs on "Preparing…" when given an image
+      // and text together (a Status takes one item), so no `text` here.
+      // Called straight from the tap, with nothing awaited first: iOS
+      // refuses a share once the tap's activation has passed.
+      navigator.clipboard?.writeText(url).then(
+        () => setNote(s.linkCopiedForCaption),
+        () => {},
+      );
+      // Files only (no title either); the menu stays open so the
+      // "link copied" note is seen when the reader comes back.
+      navigator.share({ files: [file] }).then(
+        () => {},
+        (err: Error) => {
           // AbortError: the reader closed the share sheet.
-          if ((err as Error)?.name !== "AbortError") setImageError(true);
-        }
-      } else {
-        const href = URL.createObjectURL(file);
-        const a = document.createElement("a");
-        a.href = href;
-        a.download = file.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(href), 10_000);
+          if (err?.name !== "AbortError") setImageError(true);
+        },
+      );
+      return;
+    }
+    setBusy(size);
+    try {
+      const loaded = await loadImage(size);
+      if (canShareFiles) {
+        // Image just finished: the tap is too old to share now; the button
+        // is ready for a second tap.
+        return;
       }
+      const href = URL.createObjectURL(loaded);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = loaded.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(href), 10_000);
     } catch {
       setImageError(true);
     } finally {
@@ -188,16 +212,17 @@ export function AltarShareButton({
                 key={size}
                 type="button"
                 role="menuitem"
-                disabled={busy !== null}
+                disabled={busy !== null || (canShareFiles && !ready[size] && !imageError)}
                 onClick={() => shareImage(size)}
                 className="flex flex-col items-center gap-1.5 rounded-lg border border-zinc-200 px-2 py-2.5 text-xs font-medium text-foreground hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
               >
                 <span aria-hidden="true" className={`rounded-[3px] border-2 border-current opacity-70 ${size === "story" ? "h-7 w-4" : "h-6 w-5"}`} />
-                {busy === size ? s.preparingImage : size === "story" ? s.storySize : s.postSize}
+                {busy === size || (canShareFiles && !ready[size] && !imageError) ? s.preparingImage : size === "story" ? s.storySize : s.postSize}
               </button>
             ))}
           </div>
           {imageError && <p role="alert" className="px-3 pb-1.5 text-xs text-red-600 dark:text-red-400">{s.imageFailed}</p>}
+          {note && <p aria-live="polite" className="px-3 pb-1.5 text-xs text-zinc-600 dark:text-zinc-300">{note}</p>}
           <div className="my-1 border-t border-zinc-200 dark:border-zinc-700" />
           <p className="px-3 pt-1 pb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">{s.shareLinkOnly}</p>
           {targets.map((t) => (
