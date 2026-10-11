@@ -43,7 +43,7 @@ export const ALTAR_STRINGS = {
     shareLinkOnly: "Share link only",
     preparingImage: "Preparing image…",
     imageFailed: "Couldn't prepare the image. Try again.",
-    linkCopiedForCaption: "Link copied. Paste it as your caption if you like.",
+    captionCopied: "Caption copied. Paste it on your Status.",
   },
   es: {
     locale: "es-ES",
@@ -86,7 +86,7 @@ export const ALTAR_STRINGS = {
     shareLinkOnly: "Compartir solo el enlace",
     preparingImage: "Preparando la imagen…",
     imageFailed: "No se pudo preparar la imagen. Inténtelo de nuevo.",
-    linkCopiedForCaption: "Enlace copiado. Péguelo como texto de la publicación si lo desea.",
+    captionCopied: "Texto copiado. Péguelo en su estado.",
   },
   fr: {
     locale: "fr-FR",
@@ -129,7 +129,7 @@ export const ALTAR_STRINGS = {
     shareLinkOnly: "Partager le lien seulement",
     preparingImage: "Préparation de l’image…",
     imageFailed: "Impossible de préparer l’image. Réessayez.",
-    linkCopiedForCaption: "Lien copié. Collez-le en légende si vous le souhaitez.",
+    captionCopied: "Légende copiée. Collez-la sur votre statut.",
   },
 } satisfies Record<AltarLanguage, Record<string, string>>;
 

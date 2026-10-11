@@ -129,18 +129,19 @@ export function AltarShareButton({
     setNote(null);
     const file = ready[size];
     if (canShareFiles && file) {
-      // The image alone, with the link copied for the caption. WhatsApp's
-      // iPhone share extension hangs on "Preparing…" when given an image
-      // and text together (a Status takes one item), so no `text` here.
-      // Called straight from the tap, with nothing awaited first: iOS
+      const caption = `${message}\n\n${url}`;
+      // Post: image + caption, ready to send. Status/Story: the image alone,
+      // with the caption copied to paste — WhatsApp's iPhone share extension
+      // hangs on "Preparing…" when a Status is given an image plus text.
+      // share() is called straight from the tap, nothing awaited first: iOS
       // refuses a share once the tap's activation has passed.
-      navigator.clipboard?.writeText(url).then(
-        () => setNote(s.linkCopiedForCaption),
-        () => {},
-      );
-      // Files only (no title either); the menu stays open so the
-      // "link copied" note is seen when the reader comes back.
-      navigator.share({ files: [file] }).then(
+      if (size === "story") {
+        navigator.clipboard?.writeText(caption).then(
+          () => setNote(s.captionCopied),
+          () => {},
+        );
+      }
+      navigator.share(size === "post" ? { files: [file], text: caption } : { files: [file] }).then(
         () => {},
         (err: Error) => {
           // AbortError: the reader closed the share sheet.
