@@ -113,31 +113,23 @@ export function TodayAltarCard({ language }: { language: string }) {
             <span className="h-[18px] w-11/12 animate-pulse rounded bg-amber-100 dark:bg-amber-900/30" />
             <span className="h-[18px] w-10/12 animate-pulse rounded bg-amber-100 dark:bg-amber-900/30" />
             <span className="h-[18px] w-7/12 animate-pulse rounded bg-amber-100 dark:bg-amber-900/30" />
-            <span className="mt-2 h-8 w-9/12 animate-pulse rounded bg-amber-100 dark:bg-amber-900/30" />
+            <span className="h-6 w-full animate-pulse rounded bg-amber-100 dark:bg-amber-900/30" />
           </span>
         )}
 
         {row && (
-          <>
-            <span className="flex flex-col gap-1">
-              <span className="font-display line-clamp-3 text-[1.05rem] leading-[1.35] text-pretty text-foreground">“{row.scripture_text}”</span>
-              <span className="text-xs text-zinc-600 dark:text-zinc-400">
+          <span className="flex flex-col gap-1.5">
+            <span className="font-display line-clamp-3 text-[1.05rem] leading-[1.35] text-pretty text-foreground">“{row.scripture_text}”</span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="truncate text-xs text-zinc-600 dark:text-zinc-400">
                 {row.scripture_ref} <span className="text-zinc-400 dark:text-zinc-500">· KJV</span>
               </span>
-            </span>
-            <span className="flex items-end justify-between gap-3 border-t border-amber-200/80 pt-2.5 dark:border-amber-800/40">
-              <span className="flex min-w-0 flex-col gap-0.5">
-                {row.title && <span className="truncate text-sm font-semibold text-foreground">{row.title}</span>}
-                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  {c.questions(row.discussion_questions.length)} · {c.prayer(row.prayer_points.length)}
-                </span>
-              </span>
-              <span className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs font-medium text-amber-900 transition-colors group-hover:bg-amber-100 dark:border-amber-700/60 dark:text-amber-200 dark:group-hover:bg-amber-900/30">
+              <span className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-900 transition-colors group-hover:bg-amber-100 dark:border-amber-700/60 dark:text-amber-200 dark:group-hover:bg-amber-900/30">
                 {c.openShort}
                 {arrow}
               </span>
             </span>
-          </>
+          </span>
         )}
 
         {state.status === "none" && (

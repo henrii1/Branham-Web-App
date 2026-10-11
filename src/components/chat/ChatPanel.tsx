@@ -58,17 +58,17 @@ function WelcomeState({ description, extra }: { description: string; extra?: Rea
   return (
     <div className="flex min-h-full flex-col gap-4 px-4 pt-4 pb-6 [overflow-anchor:none] lg:items-center lg:justify-center lg:gap-3 lg:px-6 lg:py-4">
       <div className="order-1 w-full lg:order-2 lg:flex lg:justify-center">{extra}</div>
-      <div className="order-2 flex items-center gap-3 px-1 lg:order-1 lg:w-full lg:max-w-lg lg:flex-col lg:items-stretch lg:gap-0 lg:rounded-[24px] lg:border lg:border-zinc-200 lg:bg-[var(--surface-base)] lg:px-6 lg:py-6 lg:text-center lg:shadow-sm dark:lg:border-zinc-700">
+      <div className="order-2 flex w-full flex-col rounded-[24px] border border-zinc-200 bg-[var(--surface-base)] px-5 py-4 text-center shadow-sm lg:order-1 lg:max-w-lg lg:px-6 lg:py-6 dark:border-zinc-700">
         <Image
           src={logo}
           alt="Branham Sermons Assistant logo"
           width={76}
           height={76}
           priority
-          className="h-12 w-12 shrink-0 rounded-xl object-cover shadow-sm lg:mx-auto lg:mb-3 lg:h-14 lg:w-14 lg:rounded-2xl"
+          className="mx-auto mb-2 h-11 w-11 rounded-xl object-cover shadow-sm lg:mb-3 lg:h-14 lg:w-14 lg:rounded-2xl"
         />
         <div className="min-w-0">
-          <h2 className="font-display text-xl leading-tight text-foreground lg:mb-2 lg:text-2xl">
+          <h2 className="font-display mb-1.5 text-[1.4rem] leading-tight text-foreground lg:mb-2 lg:text-2xl">
             Branham Sermons Assistant
           </h2>
           <p className="text-sm leading-snug text-zinc-500 lg:leading-relaxed dark:text-zinc-400">
