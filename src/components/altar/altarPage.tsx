@@ -3,7 +3,7 @@ import { AltarView } from "./AltarView";
 import { ImageResponse } from "next/og";
 import { fetchPublishedAltarDay, fetchPublishedAltarDays } from "@/lib/altar/queries";
 import { ALTAR_STRINGS, altarDayHref, altarHref } from "@/lib/altar/strings";
-import { ALTAR_OG_BRAND, ALTAR_OG_SIZE, loadNewsreader, renderAltarOgImage } from "@/lib/altar/renderAltarOgImage";
+import { ALTAR_IMAGE_DOMAIN, ALTAR_IMAGE_SIZES, ALTAR_OG_BRAND, loadNewsreader, renderAltarImage, type AltarImageFormat } from "@/lib/altar/renderAltarOgImage";
 import type { AltarLanguage, FamilyAltarDay } from "@/lib/altar/types";
 
 const SITE_URL = "https://branhamsermons.ai";
@@ -53,8 +53,11 @@ export async function buildAltarDayMetadata(language: AltarLanguage, day: string
   };
 }
 
-/** The link-preview image for one day (opengraph-image.tsx in both day routes). */
-export async function renderAltarDayOgImage(language: AltarLanguage, day: string): Promise<ImageResponse> {
+/**
+ * One day's image: the link preview (opengraph-image.tsx in both day routes,
+ * format "og") or the shareable post/story image (/api/altar/image).
+ */
+export async function renderAltarDayImage(language: AltarLanguage, day: string, format: AltarImageFormat = "og", init?: ResponseInit): Promise<ImageResponse> {
   const s = ALTAR_STRINGS[language];
   const row = await fetchPublishedAltarDay(day, dayLanguages(language)).catch(() => null);
   const content = {
@@ -64,13 +67,13 @@ export async function renderAltarDayOgImage(language: AltarLanguage, day: string
     reference: row?.scripture_ref ?? null,
     title: row?.title ?? null,
   };
-  const drawn = Object.values(content).join("") + ALTAR_OG_BRAND + "“”…KJV";
+  const drawn = Object.values(content).join("") + ALTAR_OG_BRAND + ALTAR_IMAGE_DOMAIN + "“”…KJV";
   const [regular, medium] = await Promise.all([loadNewsreader(drawn, 400), loadNewsreader(drawn, 500)]);
   const fonts = [
     ...(regular ? [{ name: "Newsreader", data: regular, weight: 400 as const, style: "normal" as const }] : []),
     ...(medium ? [{ name: "Newsreader", data: medium, weight: 500 as const, style: "normal" as const }] : []),
   ];
-  return new ImageResponse(renderAltarOgImage(content), { ...ALTAR_OG_SIZE, ...(fonts.length ? { fonts } : {}) });
+  return new ImageResponse(renderAltarImage(content, day, format), { ...ALTAR_IMAGE_SIZES[format], ...(fonts.length ? { fonts } : {}), ...init });
 }
 
 export async function AltarPage({ language, focusDay }: { language: AltarLanguage; focusDay?: string }) {

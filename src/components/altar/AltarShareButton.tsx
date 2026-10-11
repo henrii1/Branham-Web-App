@@ -3,24 +3,91 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AltarStrings } from "@/lib/altar/strings";
 
+type ImageSize = "story" | "post";
+
 /**
- * Share one Family Altar day. Opens a small menu of direct share links
- * (WhatsApp, Facebook, X, Telegram, email), copy link, and — where the
- * browser has a share sheet (phones) — "More apps" for everything else
- * (Instagram, Messages, …). Only the day's link is shared: each app builds
- * its own preview card from the page's Open Graph image and metadata.
+ * Share one Family Altar day. First: share it as an image (the day's
+ * graphic from /api/altar/image, Status/Story 9:16 or Post 4:5) through the
+ * phone's share sheet, with the link in the caption — so it shows as a
+ * picture on a Status, in a channel, on Instagram or Facebook, not only
+ * where an app happens to build a link preview. Without file sharing
+ * (most desktops) the same buttons download the image. Below: link-only
+ * shares (WhatsApp, Facebook, X, Telegram, email), copy link, More apps.
  */
-export function AltarShareButton({ url, title, verse, reference, s }: { url: string; title: string; verse: string | null; reference: string | null; s: AltarStrings }) {
+export function AltarShareButton({
+  url,
+  title,
+  verse,
+  reference,
+  day,
+  language,
+  s,
+}: {
+  url: string;
+  title: string;
+  verse: string | null;
+  reference: string | null;
+  day: string;
+  language: string;
+  s: AltarStrings;
+}) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
+  const [canShareFiles, setCanShareFiles] = useState(false);
+  const [busy, setBusy] = useState<ImageSize | null>(null);
+  const [imageError, setImageError] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  // Images are fetched when the menu opens, so a tap can open the share
+  // sheet at once: Safari refuses navigator.share once the tap is a few
+  // seconds old, and drawing an image takes ~2s.
+  const images = useRef<Partial<Record<ImageSize, Promise<File>>>>({});
 
   useEffect(() => {
     // Client-only: starts false so the server and first render match.
     const supported = typeof navigator !== "undefined" && typeof navigator.share === "function";
-    Promise.resolve().then(() => setCanNativeShare(supported));
+    let files = false;
+    try {
+      files = supported && typeof navigator.canShare === "function" && navigator.canShare({ files: [new File([""], "t.png", { type: "image/png" })] });
+    } catch {
+      files = false;
+    }
+    Promise.resolve().then(() => {
+      setCanNativeShare(supported);
+      setCanShareFiles(files);
+    });
   }, []);
+
+  // A new day means new images.
+  useEffect(() => {
+    images.current = {};
+  }, [day, language]);
+
+  function loadImage(size: ImageSize): Promise<File> {
+    if (!images.current[size]) {
+      const p = fetch(`/api/altar/image?day=${day}&lang=${language}&format=${size}`)
+        .then((r) => {
+          if (!r.ok) throw new Error(`image ${r.status}`);
+          return r.blob();
+        })
+        .then((b) => new File([b], `family-altar-${day}-${size}.png`, { type: "image/png" }));
+      p.catch(() => {
+        delete images.current[size];
+      });
+      images.current[size] = p;
+    }
+    return images.current[size]!;
+  }
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    setImageError(false);
+    if (next) {
+      loadImage("story").catch(() => {});
+      loadImage("post").catch(() => {});
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -49,6 +116,36 @@ export function AltarShareButton({ url, title, verse, reference, s }: { url: str
     { label: s.email, href: `mailto:?subject=${enc(title)}&body=${enc(`${message}\n\n${url}`)}`, icon: <MailIcon /> },
   ];
 
+  async function shareImage(size: ImageSize) {
+    setBusy(size);
+    setImageError(false);
+    try {
+      const file = await loadImage(size);
+      if (canShareFiles && navigator.canShare({ files: [file] })) {
+        try {
+          // Link in the text, not `url`: with a file attached, apps use the
+          // text as the caption, and some drop the file when `url` is set.
+          await navigator.share({ files: [file], text: `${message}\n\n${url}` });
+          setOpen(false);
+        } catch (err) {
+          // AbortError: the reader closed the share sheet.
+          if ((err as Error)?.name !== "AbortError") setImageError(true);
+        }
+      } else {
+        const href = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(href), 10_000);
+      }
+    } catch {
+      setImageError(true);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(url);
@@ -74,7 +171,7 @@ export function AltarShareButton({ url, title, verse, reference, s }: { url: str
     <div ref={rootRef} className="relative ml-auto">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -83,7 +180,26 @@ export function AltarShareButton({ url, title, verse, reference, s }: { url: str
         {s.share}
       </button>
       {open && (
-        <div role="menu" aria-label={s.shareTitle} className="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-zinc-200 bg-[var(--surface-base)] p-1.5 shadow-lg dark:border-zinc-700">
+        <div role="menu" aria-label={s.shareTitle} className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-zinc-200 bg-[var(--surface-base)] p-1.5 shadow-lg dark:border-zinc-700">
+          <p className="px-3 pt-1.5 pb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">{canShareFiles ? s.shareImage : s.downloadImage}</p>
+          <div className="grid grid-cols-2 gap-1.5 px-1.5 pb-1.5">
+            {(["story", "post"] as const).map((size) => (
+              <button
+                key={size}
+                type="button"
+                role="menuitem"
+                disabled={busy !== null}
+                onClick={() => shareImage(size)}
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-zinc-200 px-2 py-2.5 text-xs font-medium text-foreground hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                <span aria-hidden="true" className={`rounded-[3px] border-2 border-current opacity-70 ${size === "story" ? "h-7 w-4" : "h-6 w-5"}`} />
+                {busy === size ? s.preparingImage : size === "story" ? s.storySize : s.postSize}
+              </button>
+            ))}
+          </div>
+          {imageError && <p role="alert" className="px-3 pb-1.5 text-xs text-red-600 dark:text-red-400">{s.imageFailed}</p>}
+          <div className="my-1 border-t border-zinc-200 dark:border-zinc-700" />
+          <p className="px-3 pt-1 pb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">{s.shareLinkOnly}</p>
           {targets.map((t) => (
             <a key={t.label} role="menuitem" href={t.href} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className={item}>
               <span className="grid h-5 w-5 place-items-center text-zinc-500 dark:text-zinc-400">{t.icon}</span>

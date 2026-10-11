@@ -195,6 +195,8 @@ export function AltarView({
                   title={shown.title ? `${s.pageTitle}: ${shown.title}` : s.pageTitle}
                   verse={shown.scripture_text}
                   reference={shown.scripture_ref}
+                  day={selected}
+                  language={language}
                   s={s}
                 />
               )}
