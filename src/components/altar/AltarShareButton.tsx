@@ -4,6 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AltarStrings } from "@/lib/altar/strings";
 
 type ImageSize = "story" | "post";
+/** The image buttons: TikTok shares the 9:16 story image, without a caption. */
+type ImageTarget = ImageSize | "tiktok";
+const TARGET_SIZE: Record<ImageTarget, ImageSize> = { story: "story", post: "post", tiktok: "story" };
 
 /**
  * Share one Family Altar day. First: share it as an image (the day's
@@ -35,8 +38,9 @@ export function AltarShareButton({
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [canShareFiles, setCanShareFiles] = useState(false);
-  const [busy, setBusy] = useState<ImageSize | null>(null);
+  const [busy, setBusy] = useState<ImageTarget | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   // Finished images, so a tap shares at once (see below).
   const [ready, setReady] = useState<Partial<Record<ImageSize, File>>>({});
   const rootRef = useRef<HTMLDivElement>(null);
@@ -89,6 +93,7 @@ export function AltarShareButton({
     const next = !open;
     setOpen(next);
     setImageError(false);
+    setNote(null);
     if (next) {
       loadImage("story").catch(() => {});
       loadImage("post").catch(() => {});
@@ -122,9 +127,27 @@ export function AltarShareButton({
     { label: s.email, href: `mailto:?subject=${enc(title)}&body=${enc(`${message}\n\n${url}`)}`, icon: <MailIcon /> },
   ];
 
-  async function shareImage(size: ImageSize) {
+  async function shareImage(target: ImageTarget) {
+    const size = TARGET_SIZE[target];
     setImageError(false);
+    setNote(null);
     const file = ready[size];
+    if (canShareFiles && file && target === "tiktok") {
+      // The image alone: the share sheet only lists apps that accept every
+      // item shared, and TikTok takes images/video but not text — so with a
+      // caption attached it never appears. The caption is copied to paste.
+      navigator.clipboard?.writeText(`${message}\n\n${url}`).then(
+        () => setNote(s.captionCopiedTikTok),
+        () => {},
+      );
+      navigator.share({ files: [file] }).then(
+        () => {},
+        (err: Error) => {
+          if (err?.name !== "AbortError") setImageError(true);
+        },
+      );
+      return;
+    }
     if (canShareFiles && file) {
       // Image + caption (title, verse, link). The link goes in `text`, not
       // `url`: with a file attached, apps use the text as the caption and
@@ -141,7 +164,7 @@ export function AltarShareButton({
       );
       return;
     }
-    setBusy(size);
+    setBusy(target);
     try {
       const loaded = await loadImage(size);
       if (canShareFiles) {
@@ -196,24 +219,32 @@ export function AltarShareButton({
         {s.share}
       </button>
       {open && (
-        <div role="menu" aria-label={s.shareTitle} className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-zinc-200 bg-[var(--surface-base)] p-1.5 shadow-lg dark:border-zinc-700">
+        <div role="menu" aria-label={s.shareTitle} className="absolute right-0 z-20 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-zinc-200 bg-[var(--surface-base)] p-1.5 shadow-lg dark:border-zinc-700">
           <p className="px-3 pt-1.5 pb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">{canShareFiles ? s.shareImage : s.downloadImage}</p>
-          <div className="grid grid-cols-2 gap-1.5 px-1.5 pb-1.5">
-            {(["story", "post"] as const).map((size) => (
-              <button
-                key={size}
-                type="button"
-                role="menuitem"
-                disabled={busy !== null || (canShareFiles && !ready[size] && !imageError)}
-                onClick={() => shareImage(size)}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-zinc-200 px-2 py-2.5 text-xs font-medium text-foreground hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                <span aria-hidden="true" className={`rounded-[3px] border-2 border-current opacity-70 ${size === "story" ? "h-7 w-4" : "h-6 w-5"}`} />
-                {busy === size || (canShareFiles && !ready[size] && !imageError) ? s.preparingImage : size === "story" ? s.storySize : s.postSize}
-              </button>
-            ))}
+          <div className="grid grid-cols-3 gap-1.5 px-1.5 pb-1.5">
+            {(["story", "post", "tiktok"] as const).map((target) => {
+              const preparing = busy === target || (canShareFiles && !ready[TARGET_SIZE[target]] && !imageError);
+              return (
+                <button
+                  key={target}
+                  type="button"
+                  role="menuitem"
+                  disabled={busy !== null || (canShareFiles && !ready[TARGET_SIZE[target]] && !imageError)}
+                  onClick={() => shareImage(target)}
+                  className="flex flex-col items-center gap-1.5 rounded-lg border border-zinc-200 px-1.5 py-2.5 text-center text-xs leading-tight font-medium text-foreground hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                >
+                  {target === "tiktok" ? (
+                    <span aria-hidden="true" className="grid h-7 place-items-center opacity-80"><TikTokIcon /></span>
+                  ) : (
+                    <span aria-hidden="true" className={`rounded-[3px] border-2 border-current opacity-70 ${target === "story" ? "h-7 w-4" : "h-6 w-5"}`} />
+                  )}
+                  {preparing ? s.preparingImage : target === "story" ? s.storySize : target === "post" ? s.postSize : "TikTok"}
+                </button>
+              );
+            })}
           </div>
           {imageError && <p role="alert" className="px-3 pb-1.5 text-xs text-red-600 dark:text-red-400">{s.imageFailed}</p>}
+          {note && <p aria-live="polite" className="px-3 pb-1.5 text-xs text-zinc-600 dark:text-zinc-300">{note}</p>}
           <div className="my-1 border-t border-zinc-200 dark:border-zinc-700" />
           <p className="px-3 pt-1 pb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">{s.shareLinkOnly}</p>
           {targets.map((t) => (
@@ -287,6 +318,13 @@ function XIcon() {
   return (
     <svg className={svg} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L2 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z" />
+    </svg>
+  );
+}
+function TikTokIcon() {
+  return (
+    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M16.6 2h-3.3v13.3a2.9 2.9 0 1 1-2.9-2.9c.3 0 .6 0 .9.1V9.1a6.3 6.3 0 1 0 5.3 6.2V8.6a7.9 7.9 0 0 0 4.4 1.4V6.7a4.5 4.5 0 0 1-4.4-4.7Z" />
     </svg>
   );
 }
