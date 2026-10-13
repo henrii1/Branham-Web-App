@@ -263,9 +263,6 @@ export function AltarView({
 function Devotional({ row, s }: { row: FamilyAltarDay; s: AltarStrings }) {
   const [copied, setCopied] = useState(false);
   const html = (md: string | null) => (md ? applyCitations(renderMarkdown(md)) : "");
-  const refsHtml = row.sermon_references.length
-    ? applyCitations(renderMarkdown(row.sermon_references.map((r) => `- [${r}]`).join("\n")))
-    : "";
   const prose = "chat-markdown prose prose-zinc max-w-none break-words dark:prose-invert prose-p:leading-relaxed";
 
   async function copyPrayer() {
@@ -332,15 +329,12 @@ function Devotional({ row, s }: { row: FamilyAltarDay; s: AltarStrings }) {
         </ul>
       </section>
 
-      {refsHtml && (
-        <section className="flex flex-col gap-2">
-          <h2 className="font-display text-xl text-foreground">{s.references}</h2>
-          <div className={prose} dangerouslySetInnerHTML={{ __html: refsHtml }} />
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {s.readerNote}{" "}
-            <a href="https://table.branham.org/" target="_blank" rel="noopener noreferrer" className="underline">The Table</a>.
-          </p>
-        </section>
+      {/* Sermons are cited inline; a References list repeated them at length, so only the reader note remains. */}
+      {row.sermon_references.length > 0 && (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          {s.readerNote}{" "}
+          <a href="https://table.branham.org/" target="_blank" rel="noopener noreferrer" className="underline">The Table</a>.
+        </p>
       )}
     </article>
   );
