@@ -71,8 +71,13 @@ const CHAT_STRINGS = {
     shareReadMore: "Read more",
     shareDownloadError: "Couldn't generate the image — please try again.",
     shareCreateError: "Couldn't create this share — please close and try again.",
-    shareNativeButton: "Share directly",
+    shareNativeButton: "Share link",
     shareNativeError: "Couldn't open the share sheet — please try again.",
+    shareImageButton: "Share image",
+    shareImageOnlyButton: "Image only",
+    shareImageOnlyHint: "For Instagram and TikTok. The caption is copied for you to paste.",
+    shareImagePreparing: "Preparing image…",
+    shareCaptionCopied: "Caption copied. Paste it in your post.",
     // Language feature modal
     featureHeading: "Spanish & French are now available",
     featureBody:
@@ -163,8 +168,13 @@ const CHAT_STRINGS = {
     shareReadMore: "Leer más",
     shareDownloadError: "No se pudo generar la imagen — inténtalo de nuevo.",
     shareCreateError: "No se pudo crear este enlace — cierra e inténtalo de nuevo.",
-    shareNativeButton: "Compartir directamente",
+    shareNativeButton: "Compartir enlace",
     shareNativeError: "No se pudo abrir el panel de compartir — inténtalo de nuevo.",
+    shareImageButton: "Compartir imagen",
+    shareImageOnlyButton: "Solo la imagen",
+    shareImageOnlyHint: "Para Instagram y TikTok. El texto se copia para que lo pegues.",
+    shareImagePreparing: "Preparando la imagen…",
+    shareCaptionCopied: "Texto copiado. Pégalo en tu publicación.",
     // Language feature modal
     featureHeading: "Inglés, Español y Francés ahora disponibles",
     featureBody:
@@ -255,8 +265,13 @@ const CHAT_STRINGS = {
     shareReadMore: "Lire la suite",
     shareDownloadError: "Impossible de générer l'image — veuillez réessayer.",
     shareCreateError: "Impossible de créer ce lien — fermez et réessayez.",
-    shareNativeButton: "Partager directement",
+    shareNativeButton: "Partager le lien",
     shareNativeError: "Impossible d'ouvrir le panneau de partage — veuillez réessayer.",
+    shareImageButton: "Partager l'image",
+    shareImageOnlyButton: "Image seule",
+    shareImageOnlyHint: "Pour Instagram et TikTok. La légende est copiée pour que vous la colliez.",
+    shareImagePreparing: "Préparation de l'image…",
+    shareCaptionCopied: "Légende copiée. Collez-la dans votre publication.",
     // Language feature modal
     featureHeading: "Anglais, Espagnol et Français maintenant disponibles",
     featureBody:

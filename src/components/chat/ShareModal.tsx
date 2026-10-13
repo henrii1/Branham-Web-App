@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatStrings } from "@/lib/i18n/chatStrings";
 import { SHARE_CARD_BACKGROUNDS, SHARE_CARD_TEXT_SHADES } from "@/lib/share/cardBackgrounds";
-import { renderCardToPng } from "@/lib/share/generateShareCard";
+import { renderCardToJpeg, renderCardToPng } from "@/lib/share/generateShareCard";
 import { generateQrMatrix } from "@/lib/share/generateQrMatrix";
 import { CARD_DIMENSIONS, ShareCardTemplate, type ShareCardFormat } from "./ShareCardTemplate";
 
@@ -73,9 +73,57 @@ export function ShareModal({
   // Download, so it's generated eagerly on mount rather than on click.
   const [qrMatrix, setQrMatrix] = useState<boolean[][] | null>(null);
 
+  // Phones that can share files get "Share image" / "Image only" (the
+  // chosen card, handed to the share sheet); everything else downloads it.
+  const [canShareFiles, setCanShareFiles] = useState(false);
+  // The current card, drawn ahead of the tap (see the effect below), keyed
+  // by the choices it was drawn with.
+  const [prepared, setPrepared] = useState<{ key: string; file: File } | null>(null);
+  const [captionCopied, setCaptionCopied] = useState(false);
+  const cardKey = `${format}|${backgroundIndex}|${textShadeIndex}|${shareUrl}`;
+  const preparedFile = prepared?.key === cardKey ? prepared.file : null;
+  const caption = `${latestQuestion}\n\n${shareUrl}`;
+
   useEffect(() => {
-    setNativeShareSupported(typeof navigator !== "undefined" && typeof navigator.share === "function");
+    const supported = typeof navigator !== "undefined" && typeof navigator.share === "function";
+    setNativeShareSupported(supported);
+    try {
+      setCanShareFiles(
+        supported &&
+          typeof navigator.canShare === "function" &&
+          navigator.canShare({ files: [new File([""], "t.png", { type: "image/png" })] }),
+      );
+    } catch {
+      setCanShareFiles(false);
+    }
   }, []);
+
+  // Draw the card as soon as it's ready and whenever a choice changes
+  // (debounced), so a tap can open the share sheet at once: iOS refuses
+  // navigator.share once the tap's activation has passed, and drawing a
+  // card takes a second or more.
+  useEffect(() => {
+    if (!canShareFiles || !cardReady || shareError || !qrMatrix) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      const node = cardRef.current;
+      if (!node) return;
+      renderCardToJpeg(node, { width: cardWidth, height: cardHeight })
+        .then((blob) => {
+          if (cancelled) return;
+          const file = new File([blob], `branham-sermons-${shareHash.slice(0, 8)}-${format}.jpg`, { type: "image/jpeg" });
+          setPrepared({ key: cardKey, file });
+        })
+        .catch((err) => {
+          console.error("Failed to prepare share card image:", err);
+          if (!cancelled) setDownloadError(true);
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [canShareFiles, cardReady, shareError, qrMatrix, cardKey, cardWidth, cardHeight, format, shareHash]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,6 +204,28 @@ export function ShareModal({
     } finally {
       setGenerating(false);
     }
+  }
+
+  // Share the chosen card. `withCaption`: the question and link go along as
+  // text (WhatsApp, X, Facebook…). Without it the image goes alone — the
+  // share sheet only lists apps that accept every item, and Instagram and
+  // TikTok don't take text — and the caption is copied to paste instead.
+  // Called straight from the tap with nothing awaited first (see above).
+  function handleShareImage(withCaption: boolean) {
+    if (!preparedFile) return;
+    setDownloadError(false);
+    setCaptionCopied(false);
+    if (!withCaption) {
+      navigator.clipboard?.writeText(caption).then(
+        () => setCaptionCopied(true),
+        () => {},
+      );
+    }
+    navigator.share(withCaption ? { files: [preparedFile], text: caption } : { files: [preparedFile] }).catch((err) => {
+      if (err instanceof Error && err.name === "AbortError") return;
+      console.error("Image share failed:", err);
+      setNativeShareError(true);
+    });
   }
 
   async function handleNativeShare() {
@@ -323,14 +393,38 @@ export function ShareModal({
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={generating || !cardReady || shareError}
-          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-        >
-          {generating || !cardReady ? strings.shareGenerating : strings.shareDownloadCard}
-        </button>
+        {canShareFiles ? (
+          <>
+            <button
+              type="button"
+              onClick={() => handleShareImage(true)}
+              disabled={!preparedFile || shareError}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            >
+              {preparedFile || shareError ? strings.shareImageButton : strings.shareImagePreparing}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleShareImage(false)}
+              disabled={!preparedFile || shareError}
+              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              {strings.shareImageOnlyButton}
+            </button>
+            <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400" aria-live="polite">
+              {captionCopied ? strings.shareCaptionCopied : strings.shareImageOnlyHint}
+            </p>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={generating || !cardReady || shareError}
+            className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            {generating || !cardReady ? strings.shareGenerating : strings.shareDownloadCard}
+          </button>
+        )}
         {downloadError && (
           <p className="mt-2 text-sm text-red-600 dark:text-red-400">{strings.shareDownloadError}</p>
         )}
