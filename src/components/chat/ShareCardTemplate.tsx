@@ -204,10 +204,11 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
               optimization proxy) — html-to-image rasterizes the live DOM,
               and a stable, directly-fetchable URL avoids any risk of the
               logo being blank in the exported PNG because an optimization
-              request hadn't resolved yet. */}
+              request hadn't resolved yet. logo-card.png is a 128px copy:
+              the 1.4 MB original got embedded whole into every snapshot. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo.png"
+            src="/logo-card.png"
             alt=""
             width={brandMarkIconSize}
             height={brandMarkIconSize}

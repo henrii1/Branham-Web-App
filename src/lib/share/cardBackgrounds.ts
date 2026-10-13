@@ -27,15 +27,15 @@ export const SHARE_CARD_BACKGROUNDS: ShareCardBackground[] = [
   {
     id: "light",
     label: "Light",
-    css: "url('/share-backgrounds/light.png') center / cover no-repeat",
-    src: "/share-backgrounds/light.png",
+    css: "url('/share-backgrounds/light.jpg') center / cover no-repeat",
+    src: "/share-backgrounds/light.jpg",
     defaultTextShadeId: "dark",
   },
   {
     id: "dark",
     label: "Dark",
-    css: "url('/share-backgrounds/dark.png') center / cover no-repeat",
-    src: "/share-backgrounds/dark.png",
+    css: "url('/share-backgrounds/dark.jpg') center / cover no-repeat",
+    src: "/share-backgrounds/dark.jpg",
     defaultTextShadeId: "light",
   },
   {
