@@ -136,9 +136,8 @@ export async function renderCardToPng(node: HTMLElement, dimensions: { width: nu
 
 // For sharing (rather than downloading): a JPEG at the platform's own size.
 // The PNG at pixelRatio 2 is 3–7 MB, past X's 5 MB photo limit and slow to
-// hand to any app; this is a few hundred KB. Portrait cards are already
-// full-screen story size (1080×1920), so they render at 1×; the smaller
-// landscape card keeps 2× for sharpness.
+// hand to any app; this is a few hundred KB. The cards are already at
+// their platforms' full size (1080 wide), so they render at 1×.
 export async function renderCardToJpeg(node: HTMLElement, dimensions: { width: number; height: number }): Promise<Blob> {
   return canvasToBlob(await drawCard(node, dimensions, dimensions.height > dimensions.width ? 1 : 2), "image/jpeg", 0.9);
 }

@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 import type { ShareCardTextShade } from "@/lib/share/cardBackgrounds";
 
-export type ShareCardFormat = "landscape" | "post" | "portrait";
+export type ShareCardFormat = "portrait" | "post" | "tiktok";
 
 export interface ShareCardTemplateProps {
   firstQuestion: string | null;
@@ -20,37 +20,40 @@ export interface ShareCardTemplateProps {
   qrMatrix: boolean[][] | null;
 }
 
-// Landscape (1200x630) matches the Open Graph / Facebook link-preview
-// convention. Portrait (1080x1920, 9:16) matches WhatsApp/Instagram Story
-// dimensions. Both share the same three background tile patterns — they're
-// seamless repeating tiles (not photos with an off-center subject), so
-// `background-size: cover` recrops losslessly to either aspect ratio with
-// no separate portrait-specific image assets needed.
+// Portrait (1080x1920, 9:16) is WhatsApp Status / Stories. Post (1080x1350,
+// 4:5, labelled Instagram) is the tallest shape Instagram's feed shows
+// uncropped — 9:16 gets cut top and bottom there. TikTok is 9:16 too, laid
+// out clear of TikTok's own overlay: its buttons run down the right edge and
+// the caption across the bottom. All use the same background photos via
+// object-fit: cover.
 export const CARD_DIMENSIONS: Record<ShareCardFormat, { width: number; height: number }> = {
-  landscape: { width: 1200, height: 630 },
-  // 4:5, the tallest shape Instagram's feed shows uncropped (9:16 gets cut
-  // top and bottom, 1.91:1 at the sides in its default square crop).
-  post: { width: 1080, height: 1350 },
   portrait: { width: 1080, height: 1920 },
+  post: { width: 1080, height: 1350 },
+  tiktok: { width: 1080, height: 1920 },
 };
 
-// WhatsApp-Status-style dynamic sizing: less text fills the card at a
-// bigger, more confident size; more text steps down through these tiers
-// so a long answer still fits without visually overflowing or looking
-// crammed. Tiers are on the COMBINED length of context + question +
-// answer, since all three scale together as one centered block.
-function getLandscapeSizing(totalChars: number) {
-  if (totalChars < 120) return { questionSize: 46, answerSize: 25, gap: 32 };
-  if (totalChars < 280) return { questionSize: 38, answerSize: 22, gap: 28 };
-  if (totalChars < 480) return { questionSize: 32, answerSize: 19, gap: 24 };
-  if (totalChars < 700) return { questionSize: 27, answerSize: 17, gap: 20 };
-  return { questionSize: 23, answerSize: 15.5, gap: 16 };
-}
+// Where things sit on each format. `pad*` bound the centered text block;
+// the brand mark (bottom-left) and QR code (bottom-right) sit `footerBottom`
+// up from the bottom edge, at `padLeft` / `padRight` in from the sides.
+const LAYOUT: Record<
+  ShareCardFormat,
+  { padTop: number; padBottom: number; padLeft: number; padRight: number; footerBottom: number; answerMaxWidth: number; brandIcon: number; brandText: number; qr: number }
+> = {
+  portrait: { padTop: 160, padBottom: 160, padLeft: 80, padRight: 80, footerBottom: 160, answerMaxWidth: 840, brandIcon: 40, brandText: 20, qr: 96 },
+  post: { padTop: 96, padBottom: 96, padLeft: 80, padRight: 80, footerBottom: 96, answerMaxWidth: 880, brandIcon: 36, brandText: 18, qr: 88 },
+  // TikTok's caption covers roughly the bottom 380px and its button column
+  // the right ~170px, so the text block and footer stay above and left of them.
+  tiktok: { padTop: 200, padBottom: 540, padLeft: 80, padRight: 190, footerBottom: 400, answerMaxWidth: 780, brandIcon: 40, brandText: 20, qr: 96 },
+};
+
+// Dynamic sizing: less text fills the card at a bigger, more confident
+// size; more text steps down through these tiers so a long answer still
+// fits without overflowing. Tiers are on the COMBINED length of context +
+// question + answer, since all three scale together as one centered block.
 
 // Portrait is viewed full-screen, close-up, scrolling past in a Story feed
-// — it earns noticeably larger type than the landscape link-preview card,
-// and the extra vertical canvas (1920 vs 630) wants bigger gaps to avoid
-// the centered block reading as a small island in empty space.
+// — it earns the largest type, and the tall canvas wants bigger gaps to
+// avoid the centered block reading as a small island in empty space.
 function getPortraitSizing(totalChars: number) {
   if (totalChars < 120) return { questionSize: 72, answerSize: 40, gap: 56 };
   if (totalChars < 280) return { questionSize: 60, answerSize: 34, gap: 48 };
@@ -94,22 +97,20 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
     const { width: cardWidth, height: cardHeight } = CARD_DIMENSIONS[format];
     const plainAnswerLength = answerExcerptHtml.replace(/<[^>]*>/g, "").length;
     const totalChars = (firstQuestion?.length ?? 0) + latestQuestion.length + plainAnswerLength;
-    const { questionSize, answerSize, gap } =
-      format === "portrait" ? getPortraitSizing(totalChars) : format === "post" ? getPostSizing(totalChars) : getLandscapeSizing(totalChars);
-    const paddingY = format === "portrait" ? 160 : format === "post" ? 96 : 48;
-    const paddingX = format === "landscape" ? 88 : 80;
-    const answerMaxWidth = format === "portrait" ? 840 : 880;
+    const layout = LAYOUT[format];
+    // TikTok's text area is about the size of the Instagram card's, so it
+    // shares that sizing.
+    const { questionSize, answerSize, gap } = format === "portrait" ? getPortraitSizing(totalChars) : getPostSizing(totalChars);
+    const answerMaxWidth = layout.answerMaxWidth;
     const titleCasedQuestion = toTitleCase(latestQuestion);
-    // Corner brand mark scales up a little for portrait, matching the
-    // pattern the rest of the card's type already follows.
-    const brandMarkIconSize = format === "portrait" ? 40 : format === "post" ? 36 : 32;
-    const brandMarkTextSize = format === "portrait" ? 20 : format === "post" ? 18 : 16;
+    const brandMarkIconSize = layout.brandIcon;
+    const brandMarkTextSize = layout.brandText;
     // Bare domain, not the full URL — a long share URL is impractical to
     // read or type by hand. Parsed rather than hardcoded so it stays
     // correct on preview/staging domains. The QR code (bottom-right)
     // carries the exact deep link instead.
     const shortReadMoreUrl = new URL(readMoreUrl).host;
-    const qrSize = format === "portrait" ? 96 : format === "post" ? 88 : 76;
+    const qrSize = layout.qr;
 
     return (
       <div
@@ -138,7 +139,7 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
           style={{
             position: "absolute",
             inset: 0,
-            padding: `${paddingY}px ${paddingX}px`,
+            padding: `${layout.padTop}px ${layout.padRight}px ${layout.padBottom}px ${layout.padLeft}px`,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -206,8 +207,8 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
         <div
           style={{
             position: "absolute",
-            left: paddingX,
-            bottom: paddingY,
+            left: layout.padLeft,
+            bottom: layout.footerBottom,
             display: "flex",
             alignItems: "center",
             gap: brandMarkIconSize * 0.22,
@@ -253,8 +254,8 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
           <div
             style={{
               position: "absolute",
-              right: paddingX,
-              bottom: paddingY,
+              right: layout.padRight,
+              bottom: layout.footerBottom,
               display: "grid",
               gridTemplateColumns: `repeat(${qrMatrix.length}, 1fr)`,
               gridTemplateRows: `repeat(${qrMatrix.length}, 1fr)`,

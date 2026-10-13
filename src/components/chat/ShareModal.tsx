@@ -7,9 +7,8 @@ import { renderCardToJpeg, renderCardToPng } from "@/lib/share/generateShareCard
 import { generateQrMatrix } from "@/lib/share/generateQrMatrix";
 import { CARD_DIMENSIONS, ShareCardTemplate, type ShareCardFormat } from "./ShareCardTemplate";
 
-// Fixed preview letterbox height — both landscape (wide, short) and
-// portrait (narrow, tall) cards scale-to-fit inside this same box instead
-// of the modal growing to whatever height a 9:16 card would need.
+// Fixed preview letterbox height — 4:5 and 9:16 cards scale-to-fit inside
+// this same box instead of the modal growing to a full card's height.
 const PREVIEW_BOX_HEIGHT = 360;
 
 interface ShareModalProps {
@@ -42,7 +41,7 @@ export function ShareModal({
   answerExcerptHtml,
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
-  const [format, setFormat] = useState<ShareCardFormat>("landscape");
+  const [format, setFormat] = useState<ShareCardFormat>("portrait");
   const [backgroundIndex, setBackgroundIndex] = useState(0);
   const [textShadeIndex, setTextShadeIndex] = useState(0);
   // Once the user manually picks a text shade, background changes stop
@@ -143,8 +142,7 @@ export function ShareModal({
     const el = previewWrapperRef.current;
     if (!el) return;
     // Fit within both the wrapper's width AND the fixed preview-box
-    // height — portrait cards are 3x taller per unit width than
-    // landscape, so scaling by width alone would blow past the box.
+    // height — tall cards scaled by width alone would blow past the box.
     const updateScale = () => {
       const scaleByWidth = el.offsetWidth / cardWidth;
       const scaleByHeight = PREVIEW_BOX_HEIGHT / cardHeight;
@@ -326,7 +324,7 @@ export function ShareModal({
           {strings.shareFormatLabel}
         </label>
         <div className="mb-4 flex gap-2">
-          {(["landscape", "post", "portrait"] as const).map((f) => (
+          {(["portrait", "post", "tiktok"] as const).map((f) => (
             <button
               key={f}
               type="button"
@@ -338,7 +336,7 @@ export function ShareModal({
                   : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
               }`}
             >
-              {f === "landscape" ? strings.shareFormatFacebook : f === "post" ? strings.shareFormatInstagram : strings.shareFormatWhatsapp}
+              {f === "portrait" ? strings.shareFormatWhatsapp : f === "post" ? strings.shareFormatInstagram : strings.shareFormatTiktok}
             </button>
           ))}
         </div>
