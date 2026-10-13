@@ -38,14 +38,9 @@ export function renderOgImage({ question, excerptText }: RenderOgImageProps) {
         fontFamily: "sans-serif",
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="https://branhamsermons.ai/share-backgrounds/light.jpg"
-        alt=""
-        width={1200}
-        height={630}
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
-      />
+      {/* A smooth light gradient, not the patterned photo: the photo's fine
+          grain made this PNG ~460 KB, and WhatsApp drops link-preview
+          images over ~300 KB (same fix as the Family Altar previews). */}
       <div
         style={{
           position: "absolute",
@@ -53,7 +48,7 @@ export function renderOgImage({ question, excerptText }: RenderOgImageProps) {
           left: 0,
           width: "100%",
           height: "100%",
-          background: "rgba(255,255,255,0.8)",
+          background: "linear-gradient(160deg, #fbfaf7 0%, #f3f1ea 60%, #e9ece6 100%)",
         }}
       />
       <div
