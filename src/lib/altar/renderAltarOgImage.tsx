@@ -50,7 +50,7 @@ const DAY_PALETTES: Palette[] = [
   { stops: ["#0b1611", "#132f21", "#1e4a33"], glow: "120,212,152", accent: "#aae7bf" }, // forest
 ];
 
-export function paletteFor(day: string): Palette {
+function paletteFor(day: string): Palette {
   // Days since a fixed Monday, so each weekday keeps its colour.
   const n = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse("2026-01-05T00:00:00Z")) / 86_400_000);
   return DAY_PALETTES[((n % 7) + 7) % 7];

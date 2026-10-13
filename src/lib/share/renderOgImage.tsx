@@ -40,7 +40,7 @@ export function renderOgImage({ question, excerptText }: RenderOgImageProps) {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="https://branhamsermons.ai/share-backgrounds/light.png"
+        src="https://branhamsermons.ai/share-backgrounds/light.jpg"
         alt=""
         width={1200}
         height={630}

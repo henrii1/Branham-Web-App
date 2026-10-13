@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AltarStrings } from "@/lib/altar/strings";
+import { detectWebShare, shareImageFile } from "@/lib/share/webShare";
 
 type ImageSize = "story" | "post";
 /** The image buttons: TikTok shares the 9:16 story image, without a caption. */
@@ -10,12 +11,12 @@ const TARGET_SIZE: Record<ImageTarget, ImageSize> = { story: "story", post: "pos
 
 /**
  * Share one Family Altar day. First: share it as an image (the day's
- * graphic from /api/altar/image, Status/Story 9:16 or Post 4:5) through the
- * phone's share sheet, with the link in the caption — so it shows as a
- * picture on a Status, in a channel, on Instagram or Facebook, not only
- * where an app happens to build a link preview. Without file sharing
- * (most desktops) the same buttons download the image. Below: link-only
- * shares (WhatsApp, Facebook, X, Telegram, email), copy link, More apps.
+ * graphic from /api/altar/image: Status/Story 9:16, Post 4:5, or TikTok)
+ * through the phone's share sheet — so it shows as a picture on a Status,
+ * in a channel, on Instagram or TikTok, not only where an app happens to
+ * build a link preview. Without file sharing (most desktops) the same
+ * buttons download the image. Below: link-only shares (WhatsApp, Facebook,
+ * X, Telegram, email), copy link, More apps.
  */
 export function AltarShareButton({
   url,
@@ -51,16 +52,10 @@ export function AltarShareButton({
 
   useEffect(() => {
     // Client-only: starts false so the server and first render match.
-    const supported = typeof navigator !== "undefined" && typeof navigator.share === "function";
-    let files = false;
-    try {
-      files = supported && typeof navigator.canShare === "function" && navigator.canShare({ files: [new File([""], "t.png", { type: "image/png" })] });
-    } catch {
-      files = false;
-    }
+    const support = detectWebShare();
     Promise.resolve().then(() => {
-      setCanNativeShare(supported);
-      setCanShareFiles(files);
+      setCanNativeShare(support.share);
+      setCanShareFiles(support.files);
     });
   }, []);
 
@@ -132,36 +127,12 @@ export function AltarShareButton({
     setImageError(false);
     setNote(null);
     const file = ready[size];
-    if (canShareFiles && file && target === "tiktok") {
-      // The image alone: the share sheet only lists apps that accept every
-      // item shared, and TikTok takes images/video but not text — so with a
-      // caption attached it never appears. The caption is copied to paste.
-      navigator.clipboard?.writeText(`${message}\n\n${url}`).then(
-        () => setNote(s.captionCopiedTikTok),
-        () => {},
-      );
-      navigator.share({ files: [file] }).then(
-        () => {},
-        (err: Error) => {
-          if (err?.name !== "AbortError") setImageError(true);
-        },
-      );
-      return;
-    }
     if (canShareFiles && file) {
-      // Image + caption (title, verse, link). The link goes in `text`, not
-      // `url`: with a file attached, apps use the text as the caption and
-      // some drop the file when `url` is set. share() is called straight
-      // from the tap, nothing awaited first: iOS refuses a share once the
-      // tap's activation has passed. (WhatsApp's Status can sit on
-      // "Preparing…" for a while; it does post.)
-      navigator.share({ files: [file], text: `${message}\n\n${url}` }).then(
-        () => {},
-        (err: Error) => {
-          // AbortError: the reader closed the share sheet.
-          if (err?.name !== "AbortError") setImageError(true);
-        },
-      );
+      // Story/Post: image + caption (title, verse, link). TikTok: the image
+      // alone with the caption copied (see shareImageFile). WhatsApp's
+      // Status can sit on "Preparing…" for a while with image + text; it
+      // does post.
+      shareImageFile(file, `${message}\n\n${url}`, target !== "tiktok", () => setNote(s.captionCopiedTikTok)).catch(() => setImageError(true));
       return;
     }
     setBusy(target);

@@ -5,6 +5,7 @@ import type { ChatStrings } from "@/lib/i18n/chatStrings";
 import { SHARE_CARD_BACKGROUNDS, SHARE_CARD_TEXT_SHADES } from "@/lib/share/cardBackgrounds";
 import { renderCardToJpeg, renderCardToPng } from "@/lib/share/generateShareCard";
 import { generateQrMatrix } from "@/lib/share/generateQrMatrix";
+import { detectWebShare, shareImageFile } from "@/lib/share/webShare";
 import { CARD_DIMENSIONS, ShareCardTemplate, type ShareCardFormat } from "./ShareCardTemplate";
 
 // Fixed preview letterbox height — 4:5 and 9:16 cards scale-to-fit inside
@@ -56,13 +57,10 @@ export function ShareModal({
   const cardWidth = CARD_DIMENSIONS[format].width;
   const cardHeight = CARD_DIMENSIONS[format].height;
 
-  // Web Share API, text/url only (no files) — "Share directly" hands off
-  // just the link so the destination app renders its own rich link
-  // preview (see docs/superpowers/specs/2026-08-03-share-card-qr-and-og-preview-design.md
-  // for why a combined file+url share never actually produces both a
-  // picture and a clickable preview). Detected client-only (starts false
-  // to match SSR) so desktop browsers without support never render a
-  // dead button.
+  // "Share link": Web Share with text/url only (no file), so the
+  // destination app renders its own rich link preview. Detected
+  // client-only (starts false to match SSR) so desktop browsers without
+  // support never render a dead button.
   const [nativeShareSupported, setNativeShareSupported] = useState(false);
   const [nativeSharing, setNativeSharing] = useState(false);
   const [nativeShareError, setNativeShareError] = useState(false);
@@ -72,8 +70,8 @@ export function ShareModal({
   // Download, so it's generated eagerly on mount rather than on click.
   const [qrMatrix, setQrMatrix] = useState<boolean[][] | null>(null);
 
-  // Phones that can share files get "Share image" / "Image only" (the
-  // chosen card, handed to the share sheet); everything else downloads it.
+  // Phones that can share files get "Share image" (the chosen card, handed
+  // to the share sheet); everything else gets "Download image".
   const [canShareFiles, setCanShareFiles] = useState(false);
   // The current card, drawn ahead of the tap (see the effect below), keyed
   // by the choices it was drawn with.
@@ -82,24 +80,14 @@ export function ShareModal({
   const cardKey = `${format}|${backgroundIndex}|${textShadeIndex}|${shareUrl}`;
   const preparedFile = prepared?.key === cardKey ? prepared.file : null;
   const caption = `${latestQuestion}\n\n${shareUrl}`;
-  // Instagram and TikTok get the picture alone (caption copied to paste):
-  // the share sheet only lists apps that accept every item shared, and
-  // they don't take text — with a caption attached they never appear.
-  // Same rule as the Family Altar's Post/TikTok buttons.
+  // Instagram and TikTok get the picture alone with the caption copied
+  // (see shareImageFile for why); WhatsApp gets picture + caption.
   const imageOnly = format !== "portrait";
 
   useEffect(() => {
-    const supported = typeof navigator !== "undefined" && typeof navigator.share === "function";
-    setNativeShareSupported(supported);
-    try {
-      setCanShareFiles(
-        supported &&
-          typeof navigator.canShare === "function" &&
-          navigator.canShare({ files: [new File([""], "t.png", { type: "image/png" })] }),
-      );
-    } catch {
-      setCanShareFiles(false);
-    }
+    const support = detectWebShare();
+    setNativeShareSupported(support.share);
+    setCanShareFiles(support.files);
   }, []);
 
   // Draw the card as soon as it's ready and whenever a choice changes
@@ -213,23 +201,12 @@ export function ShareModal({
     }
   }
 
-  // Share the chosen card. `withCaption`: the question and link go along as
-  // text (WhatsApp, X, Facebook…). Without it the image goes alone — the
-  // share sheet only lists apps that accept every item, and Instagram and
-  // TikTok don't take text — and the caption is copied to paste instead.
-  // Called straight from the tap with nothing awaited first (see above).
-  function handleShareImage(withCaption: boolean) {
+  // Share the chosen card, straight from the tap (see shareImageFile).
+  function handleShareImage() {
     if (!preparedFile) return;
     setDownloadError(false);
     setCaptionCopied(false);
-    if (!withCaption) {
-      navigator.clipboard?.writeText(caption).then(
-        () => setCaptionCopied(true),
-        () => {},
-      );
-    }
-    navigator.share(withCaption ? { files: [preparedFile], text: caption } : { files: [preparedFile] }).catch((err) => {
-      if (err instanceof Error && err.name === "AbortError") return;
+    shareImageFile(preparedFile, caption, !imageOnly, () => setCaptionCopied(true)).catch((err) => {
       console.error("Image share failed:", err);
       setNativeShareError(true);
     });
@@ -404,7 +381,7 @@ export function ShareModal({
           <>
             <button
               type="button"
-              onClick={() => handleShareImage(!imageOnly)}
+              onClick={handleShareImage}
               disabled={!preparedFile || shareError}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
