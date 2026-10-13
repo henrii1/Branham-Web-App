@@ -75,8 +75,7 @@ const CHAT_STRINGS = {
     shareNativeButton: "Share link",
     shareNativeError: "Couldn't open the share sheet — please try again.",
     shareImageButton: "Share image",
-    shareImageOnlyButton: "Image only",
-    shareImageOnlyHint: "For Instagram and TikTok. The caption is copied for you to paste.",
+    shareImageOnlyHint: "Shares the picture on its own, so Instagram and TikTok appear in the list. The caption is copied for you to paste.",
     shareImagePreparing: "Preparing image…",
     shareCaptionCopied: "Caption copied. Paste it in your post.",
     // Language feature modal
@@ -173,8 +172,7 @@ const CHAT_STRINGS = {
     shareNativeButton: "Compartir enlace",
     shareNativeError: "No se pudo abrir el panel de compartir — inténtalo de nuevo.",
     shareImageButton: "Compartir imagen",
-    shareImageOnlyButton: "Solo la imagen",
-    shareImageOnlyHint: "Para Instagram y TikTok. El texto se copia para que lo pegues.",
+    shareImageOnlyHint: "Comparte solo la imagen, para que Instagram y TikTok aparezcan en la lista. El texto se copia para que lo pegues.",
     shareImagePreparing: "Preparando la imagen…",
     shareCaptionCopied: "Texto copiado. Pégalo en tu publicación.",
     // Language feature modal
@@ -271,8 +269,7 @@ const CHAT_STRINGS = {
     shareNativeButton: "Partager le lien",
     shareNativeError: "Impossible d'ouvrir le panneau de partage — veuillez réessayer.",
     shareImageButton: "Partager l'image",
-    shareImageOnlyButton: "Image seule",
-    shareImageOnlyHint: "Pour Instagram et TikTok. La légende est copiée pour que vous la colliez.",
+    shareImageOnlyHint: "Partage l'image seule, pour qu'Instagram et TikTok apparaissent dans la liste. La légende est copiée pour que vous la colliez.",
     shareImagePreparing: "Préparation de l'image…",
     shareCaptionCopied: "Légende copiée. Collez-la dans votre publication.",
     // Language feature modal

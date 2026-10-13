@@ -130,8 +130,8 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number)
 }
 
 /** Download image (desktops): a PNG at 2×. */
-export async function renderCardToPng(node: HTMLElement, dimensions: { width: number; height: number }): Promise<Blob> {
-  return canvasToBlob(await drawCard(node, dimensions, 2), "image/png");
+export async function renderCardToPng(node: HTMLElement, dimensions: { width: number; height: number }, pixelRatio = 2): Promise<Blob> {
+  return canvasToBlob(await drawCard(node, dimensions, pixelRatio), "image/png");
 }
 
 // For sharing (rather than downloading): a JPEG at the platform's own size.

@@ -82,6 +82,11 @@ export function ShareModal({
   const cardKey = `${format}|${backgroundIndex}|${textShadeIndex}|${shareUrl}`;
   const preparedFile = prepared?.key === cardKey ? prepared.file : null;
   const caption = `${latestQuestion}\n\n${shareUrl}`;
+  // Instagram and TikTok get the picture alone (caption copied to paste):
+  // the share sheet only lists apps that accept every item shared, and
+  // they don't take text — with a caption attached they never appear.
+  // Same rule as the Family Altar's Post/TikTok buttons.
+  const imageOnly = format !== "portrait";
 
   useEffect(() => {
     const supported = typeof navigator !== "undefined" && typeof navigator.share === "function";
@@ -107,10 +112,14 @@ export function ShareModal({
     const timer = setTimeout(() => {
       const node = cardRef.current;
       if (!node) return;
-      renderCardToJpeg(node, { width: cardWidth, height: cardHeight })
+      // TikTok gets a PNG, the same file type as the Family Altar image that
+      // TikTok accepts from the share sheet; the others a smaller JPEG.
+      const png = format === "tiktok";
+      (png ? renderCardToPng(node, { width: cardWidth, height: cardHeight }, 1) : renderCardToJpeg(node, { width: cardWidth, height: cardHeight }))
         .then((blob) => {
           if (cancelled) return;
-          const file = new File([blob], `branham-sermons-${shareHash.slice(0, 8)}-${format}.jpg`, { type: "image/jpeg" });
+          const name = `branham-sermons-${shareHash.slice(0, 8)}-${format}.${png ? "png" : "jpg"}`;
+          const file = new File([blob], name, { type: png ? "image/png" : "image/jpeg" });
           setPrepared({ key: cardKey, file });
         })
         .catch((err) => {
@@ -395,23 +404,17 @@ export function ShareModal({
           <>
             <button
               type="button"
-              onClick={() => handleShareImage(true)}
+              onClick={() => handleShareImage(!imageOnly)}
               disabled={!preparedFile || shareError}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
               {preparedFile || shareError ? strings.shareImageButton : strings.shareImagePreparing}
             </button>
-            <button
-              type="button"
-              onClick={() => handleShareImage(false)}
-              disabled={!preparedFile || shareError}
-              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-            >
-              {strings.shareImageOnlyButton}
-            </button>
-            <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400" aria-live="polite">
-              {captionCopied ? strings.shareCaptionCopied : strings.shareImageOnlyHint}
-            </p>
+            {imageOnly && (
+              <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400" aria-live="polite">
+                {captionCopied ? strings.shareCaptionCopied : strings.shareImageOnlyHint}
+              </p>
+            )}
           </>
         ) : (
           <button
