@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 import type { ShareCardTextShade } from "@/lib/share/cardBackgrounds";
 
-export type ShareCardFormat = "landscape" | "portrait";
+export type ShareCardFormat = "landscape" | "post" | "portrait";
 
 export interface ShareCardTemplateProps {
   firstQuestion: string | null;
@@ -28,6 +28,9 @@ export interface ShareCardTemplateProps {
 // no separate portrait-specific image assets needed.
 export const CARD_DIMENSIONS: Record<ShareCardFormat, { width: number; height: number }> = {
   landscape: { width: 1200, height: 630 },
+  // 4:5, the tallest shape Instagram's feed shows uncropped (9:16 gets cut
+  // top and bottom, 1.91:1 at the sides in its default square crop).
+  post: { width: 1080, height: 1350 },
   portrait: { width: 1080, height: 1920 },
 };
 
@@ -56,6 +59,16 @@ function getPortraitSizing(totalChars: number) {
   return { questionSize: 33, answerSize: 21, gap: 26 };
 }
 
+// Post (4:5, Instagram feed): between the two — viewed in a feed at near
+// full width, with less height to fill than a story.
+function getPostSizing(totalChars: number) {
+  if (totalChars < 120) return { questionSize: 62, answerSize: 35, gap: 44 };
+  if (totalChars < 280) return { questionSize: 52, answerSize: 30, gap: 38 };
+  if (totalChars < 480) return { questionSize: 43, answerSize: 25, gap: 32 };
+  if (totalChars < 700) return { questionSize: 36, answerSize: 22, gap: 26 };
+  return { questionSize: 30, answerSize: 19, gap: 22 };
+}
+
 // Capitalizes the first letter of every word, leaving the rest of each
 // word's casing untouched — fixes an all-lowercase question without
 // clobbering proper nouns/acronyms that are already correctly cased.
@@ -82,21 +95,21 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
     const plainAnswerLength = answerExcerptHtml.replace(/<[^>]*>/g, "").length;
     const totalChars = (firstQuestion?.length ?? 0) + latestQuestion.length + plainAnswerLength;
     const { questionSize, answerSize, gap } =
-      format === "portrait" ? getPortraitSizing(totalChars) : getLandscapeSizing(totalChars);
-    const paddingY = format === "portrait" ? 160 : 48;
-    const paddingX = format === "portrait" ? 80 : 88;
+      format === "portrait" ? getPortraitSizing(totalChars) : format === "post" ? getPostSizing(totalChars) : getLandscapeSizing(totalChars);
+    const paddingY = format === "portrait" ? 160 : format === "post" ? 96 : 48;
+    const paddingX = format === "landscape" ? 88 : 80;
     const answerMaxWidth = format === "portrait" ? 840 : 880;
     const titleCasedQuestion = toTitleCase(latestQuestion);
     // Corner brand mark scales up a little for portrait, matching the
     // pattern the rest of the card's type already follows.
-    const brandMarkIconSize = format === "portrait" ? 40 : 32;
-    const brandMarkTextSize = format === "portrait" ? 20 : 16;
+    const brandMarkIconSize = format === "portrait" ? 40 : format === "post" ? 36 : 32;
+    const brandMarkTextSize = format === "portrait" ? 20 : format === "post" ? 18 : 16;
     // Bare domain, not the full URL — a long share URL is impractical to
     // read or type by hand. Parsed rather than hardcoded so it stays
     // correct on preview/staging domains. The QR code (bottom-right)
     // carries the exact deep link instead.
     const shortReadMoreUrl = new URL(readMoreUrl).host;
-    const qrSize = format === "portrait" ? 96 : 76;
+    const qrSize = format === "portrait" ? 96 : format === "post" ? 88 : 76;
 
     return (
       <div

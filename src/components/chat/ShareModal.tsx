@@ -326,19 +326,19 @@ export function ShareModal({
           {strings.shareFormatLabel}
         </label>
         <div className="mb-4 flex gap-2">
-          {(["landscape", "portrait"] as const).map((f) => (
+          {(["landscape", "post", "portrait"] as const).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setFormat(f)}
               aria-pressed={format === f}
-              className={`flex-1 rounded-lg border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-lg border-2 px-2 py-1.5 text-sm font-medium transition-colors ${
                 format === f
                   ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
                   : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
               }`}
             >
-              {f === "landscape" ? strings.shareFormatFacebook : strings.shareFormatWhatsapp}
+              {f === "landscape" ? strings.shareFormatFacebook : f === "post" ? strings.shareFormatInstagram : strings.shareFormatWhatsapp}
             </button>
           ))}
         </div>
