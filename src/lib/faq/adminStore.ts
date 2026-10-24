@@ -109,11 +109,21 @@ export async function deleteEmptyFaqGroup(id: string): Promise<void> {
   if (count === 0) await admin.from("faq_groups").delete().eq("id", id).eq("kind", "bible");
 }
 
-/** Move an FAQ (every language row of the slug) to another group. */
+/**
+ * Move an FAQ (every language row of the slug) to another group. A Bible
+ * group left without questions is removed, as when its last FAQ is deleted.
+ */
 export async function moveFaqToGroup(slug: string, groupId: string): Promise<boolean> {
-  const { data, error } = await createAdminClient().from("seo_cache").update({ group_id: groupId }).eq("slug", slug).select("language");
+  const admin = createAdminClient();
+  const before = await admin.from("seo_cache").select("group_id").eq("slug", slug).limit(1).maybeSingle();
+  if (before.error) throw before.error;
+  const { data, error } = await admin.from("seo_cache").update({ group_id: groupId }).eq("slug", slug).select("language");
   if (error) throw error;
   if (!data?.length) return false;
+  const oldGroupId = (before.data?.group_id as string | null) ?? null;
+  if (oldGroupId && oldGroupId !== groupId) {
+    await deleteEmptyFaqGroup(oldGroupId).catch((err) => console.error("Empty group cleanup failed:", err));
+  }
   revalidateTag(FAQ_LIST_CACHE_TAG, { expire: 0 });
   return true;
 }
