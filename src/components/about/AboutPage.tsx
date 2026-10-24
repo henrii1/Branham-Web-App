@@ -272,20 +272,28 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
               </a>
             </section>
 
-            <div className="flex flex-wrap items-center gap-2.5 border-t border-zinc-200 pt-8 dark:border-zinc-700">
+            {/* Closing call to action: a search-style bar with a real example
+                question (it opens the chat), and the FAQ as a quieter link. */}
+            <section className="flex flex-col gap-4 rounded-[20px] bg-[var(--surface-soft)] p-5 sm:p-6">
+              <h2 className="font-display text-[1.5rem] leading-tight text-balance text-foreground">{c.ctaChat}</h2>
               <Link
                 href="/chat"
-                className="rounded-xl bg-zinc-900 px-[18px] py-[11px] text-[14.5px] font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="group flex min-w-0 items-center gap-3 rounded-2xl border border-zinc-300 bg-[var(--surface-base)] py-2 pr-2 pl-4 shadow-sm transition-colors hover:border-zinc-400 dark:border-zinc-600 dark:hover:border-zinc-500"
               >
-                {c.ctaChat}
+                <span className="line-clamp-2 min-w-0 flex-1 py-1 text-[15px] leading-snug text-zinc-500 dark:text-zinc-400">{c.ctaExample}</span>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-zinc-900 text-white transition-colors group-hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:group-hover:bg-zinc-300">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0-6 6m6-6 6 6" />
+                  </svg>
+                </span>
               </Link>
               <Link
                 href={faqHref}
-                className="rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-[18px] py-[11px] text-[14.5px] font-medium text-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                className="flex w-fit items-center gap-1 text-[14.5px] font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-[5px] hover:text-foreground hover:decoration-zinc-500 dark:text-zinc-300 dark:decoration-zinc-600"
               >
                 {c.ctaFaq}
               </Link>
-            </div>
+            </section>
           </article>
           <SiteFooter language={lang} />
         </main>

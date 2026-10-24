@@ -49,6 +49,8 @@ export interface AboutContent {
   contactBody: string;
   ctaChat: string;
   ctaFaq: string;
+  /** Example question shown in the closing search-style link. */
+  ctaExample: string;
 }
 
 export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
@@ -142,6 +144,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       "We welcome feedback and recommendations from those new to the Message and those who have long studied the sermons.",
     ctaChat: "Ask your first question",
     ctaFaq: "Browse popular questions",
+    ctaExample: "What did Brother Branham teach about the Seven Seals?",
   },
 
   es: {
@@ -246,6 +249,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       "Agradecemos los comentarios y sugerencias tanto de quienes son nuevos en el Mensaje como de quienes han estudiado los sermones por mucho tiempo.",
     ctaChat: "Haga su primera pregunta",
     ctaFaq: "Ver preguntas populares",
+    ctaExample: "¿Qué enseñó el Hno. Branham sobre los Siete Sellos?",
   },
 
   fr: {
@@ -350,6 +354,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       "Nous accueillons les remarques et suggestions de ceux qui découvrent le Message comme de ceux qui étudient les sermons depuis longtemps.",
     ctaChat: "Posez votre première question",
     ctaFaq: "Voir les questions populaires",
+    ctaExample: "Qu’a enseigné Frère Branham sur les Sept Sceaux ?",
   },
 };
 
