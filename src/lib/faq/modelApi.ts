@@ -13,10 +13,13 @@ import {
   FAQ_LANGUAGES,
   type FaqLanguage,
 } from "./entry";
+import type { FaqKind } from "./groups";
 
 export interface FaqPreparedQuestion {
   question: string;
   robust_query: string;
+  /** Translated name of a new group; only when one was sent. */
+  group_name?: string;
 }
 
 export interface FaqGeneratedAnswer {
@@ -46,16 +49,20 @@ function apiConfig() {
 /**
  * POST /api/faq/translate — shapes the admin's question into a public FAQ
  * title + robust_query in English, and translates both into es/fr using the
- * official translations' terminology.
+ * official translations' terminology. `kind` "bible" shapes a question about
+ * the Bible rather than about Brother Branham; `groupName` (a new group's
+ * English name) comes back translated as results[lang].group_name.
  */
 export async function prepareFaqQuestion(
   question: string,
+  kind: FaqKind = "doctrinal",
+  groupName?: string,
 ): Promise<Record<FaqLanguage, FaqPreparedQuestion>> {
   const { base, key } = apiConfig();
   const res = await fetch(`${base}/api/faq/translate`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, faq_kind: kind, ...(groupName ? { group_name: groupName } : {}) }),
   });
   const data = (await res.json().catch(() => null)) as {
     ok?: boolean;
@@ -71,7 +78,7 @@ export async function prepareFaqQuestion(
   }
   for (const lang of FAQ_LANGUAGES) {
     const r = data.results[lang];
-    if (!r?.question?.trim() || !r?.robust_query?.trim()) {
+    if (!r?.question?.trim() || !r?.robust_query?.trim() || (groupName && !r.group_name?.trim())) {
       throw new ModelApiError("Couldn't prepare the question. Try again.");
     }
   }
@@ -86,6 +93,7 @@ export async function generateFaqAnswer(
   robustQuery: string,
   question: string,
   language: FaqLanguage,
+  kind: FaqKind = "doctrinal",
 ): Promise<FaqGeneratedAnswer> {
   const { base, key } = apiConfig();
   const res = await fetch(`${base}/api/chat`, {
@@ -95,8 +103,11 @@ export async function generateFaqAnswer(
       conversation_id: `faq-${crypto.randomUUID()}`,
       query: robustQuery,
       user_language: language,
-      // FAQ answers use the API's FAQ model profile (same SSE shape as chat).
+      // FAQ answers use the API's FAQ path (same SSE shape as chat):
+      // doctrinal → the FAQ model profile; bible → the Scripture-first
+      // Bible FAQ format, ending with sermon References.
       response_mode: "faq",
+      faq_kind: kind,
     }),
   });
   if (!res.ok || !res.body) {

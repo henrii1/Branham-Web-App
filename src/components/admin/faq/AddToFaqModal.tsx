@@ -17,6 +17,7 @@ import {
   FaqAnswerPreview,
   postJson,
 } from "./AdminDialog";
+import { MAX_GROUP_NAME_CHARS, type FaqGroup, type FaqKind } from "@/lib/faq/groups";
 
 const LANG_LABEL: Record<FaqLanguage, string> = { en: "English", es: "Spanish", fr: "French" };
 
@@ -27,7 +28,9 @@ interface Duplicate {
 interface Prepared {
   question: string;
   robust_query: string;
+  group_name?: string;
 }
+const NEW_GROUP = "__new__";
 interface Generated {
   answer_markdown: string;
   rag_context: string;
@@ -66,6 +69,15 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
   const [editingAnswer, setEditingAnswer] = useState(false);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  // Group: an existing group's id, NEW_GROUP, or "" (not chosen yet).
+  const [groups, setGroups] = useState<FaqGroup[] | null>(null);
+  const [groupsError, setGroupsError] = useState(false);
+  const [groupChoice, setGroupChoice] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  // Decided by the server from the group (prepare response).
+  const [kind, setKind] = useState<FaqKind>("doctrinal");
+  // A new group's names, translated by prepare and editable in review.
+  const [groupNames, setGroupNames] = useState<Record<FaqLanguage, string> | null>(null);
   const checkSeq = useRef(0);
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Results of finished languages, kept across a retry of a later language.
@@ -91,6 +103,19 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
 
   useEffect(() => () => {
     if (checkTimer.current) clearTimeout(checkTimer.current);
+  }, []);
+
+  // ── Groups for the picker ──
+  useEffect(() => {
+    let cancelled = false;
+    postJson<{ ok: boolean; groups?: FaqGroup[] }>("/api/admin/faq/groups", {}).then(({ status, data }) => {
+      if (cancelled) return;
+      if (status !== 200 || !data?.ok || !data.groups) setGroupsError(true);
+      else setGroups(data.groups);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ── Eligibility: exactly one question and one answer ──
@@ -132,7 +157,7 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
     return () => clearInterval(id);
   }, [phase]);
 
-  const runGeneration = useCallback(async (prep: Record<FaqLanguage, Prepared>, from: FaqLanguage) => {
+  const runGeneration = useCallback(async (prep: Record<FaqLanguage, Prepared>, from: FaqLanguage, faqKind: FaqKind) => {
     setPhase("generating");
     setError(null);
     const start = FAQ_LANGUAGES.indexOf(from);
@@ -142,6 +167,7 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
         language: lang,
         question: prep[lang].question,
         robust_query: prep[lang].robust_query,
+        faq_kind: faqKind,
       });
       if (status !== 200 || !data?.ok || !data.result) {
         setGen((g) => ({ ...g, [lang]: { status: "failed", error: data?.error ?? `Request failed (${status}).` } }));
@@ -168,7 +194,11 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
       error?: string;
       results?: Record<FaqLanguage, Prepared>;
       duplicate?: Duplicate | null;
-    }>("/api/admin/faq/prepare", { question: question.trim() });
+      kind?: FaqKind;
+    }>("/api/admin/faq/prepare", {
+      question: question.trim(),
+      ...(groupChoice === NEW_GROUP ? { new_group_name: newGroupName.trim() } : { group_id: groupChoice }),
+    });
     if (status !== 200 || !data?.ok || !data.results) {
       setError(data?.error ?? "Couldn't prepare the question. Try again.");
       setPhase("question");
@@ -180,10 +210,17 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
       setPhase("question");
       return;
     }
+    const faqKind = data.kind ?? "doctrinal";
+    setKind(faqKind);
+    setGroupNames(
+      groupChoice === NEW_GROUP
+        ? { en: data.results.en.group_name ?? newGroupName.trim(), es: data.results.es.group_name ?? "", fr: data.results.fr.group_name ?? "" }
+        : null,
+    );
     setPrepared(data.results);
     resultsRef.current = {};
     setGen(initialGen());
-    void runGeneration(data.results, "en");
+    void runGeneration(data.results, "en", faqKind);
   }
 
   async function handlePublish() {
@@ -201,7 +238,8 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
         answer_markdown: drafts[lang].answer,
       };
     }
-    const { status, data } = await postJson<{ ok: boolean; slug?: string; error?: string }>("/api/admin/faq/publish", { entries });
+    const group = groupChoice === NEW_GROUP ? { names: groupNames } : { id: groupChoice };
+    const { status, data } = await postJson<{ ok: boolean; slug?: string; error?: string }>("/api/admin/faq/publish", { entries, group });
     if (status !== 200 || !data?.ok || !data.slug) {
       setError(data?.error ?? "Couldn't publish. Nothing was saved. Try again.");
       setPhase("review");
@@ -212,6 +250,10 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
   }
 
   const busy = phase === "preparing" || phase === "generating" || phase === "publishing";
+  const chosenGroup = groups?.find((g) => g.id === groupChoice) ?? null;
+  const groupReady = groupChoice === NEW_GROUP ? newGroupName.trim().length > 0 && newGroupName.trim().length <= MAX_GROUP_NAME_CHARS : !!chosenGroup;
+  const groupLabel = groupChoice === NEW_GROUP ? (groupNames?.en ?? newGroupName.trim()) : (chosenGroup?.name_en ?? "");
+  const groupNamesReady = !groupNames || FAQ_LANGUAGES.every((l) => groupNames[l].trim() && groupNames[l].trim().length <= MAX_GROUP_NAME_CHARS);
   const currentSlug = drafts ? faqSlugify(drafts.en.question) : "";
 
   return (
@@ -249,6 +291,49 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
             </p>
           </div>
 
+          <div className="space-y-1.5">
+            <label htmlFor="faq-group" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Group
+            </label>
+            <select
+              id="faq-group"
+              value={groupChoice}
+              onChange={(e) => setGroupChoice(e.target.value)}
+              disabled={phase === "preparing" || !groups}
+              className={adminInputClass}
+            >
+              <option value="" disabled>
+                {groups ? "Choose a group…" : groupsError ? "Couldn't load the groups" : "Loading groups…"}
+              </option>
+              {groups?.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name_en}
+                </option>
+              ))}
+              <option value={NEW_GROUP}>New group…</option>
+            </select>
+            {groupChoice === NEW_GROUP && (
+              <input
+                aria-label="New group name (English)"
+                placeholder="New group name in English, e.g. Salvation"
+                value={newGroupName}
+                maxLength={MAX_GROUP_NAME_CHARS}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                disabled={phase === "preparing"}
+                className={adminInputClass}
+              />
+            )}
+            {groupChoice && (
+              <p className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
+                {chosenGroup?.kind === "doctrinal" ? (
+                  <><span className="font-semibold text-foreground">Doctrinal question.</span> Answered from Brother Branham&apos;s sermons, like the existing FAQs.</>
+                ) : (
+                  <><span className="font-semibold text-foreground">Bible question.</span> Answered from Scripture, following Brother Branham&apos;s explanation, with sermon references at the end.{groupChoice === NEW_GROUP && " The group name is translated with the question."}</>
+                )}
+              </p>
+            )}
+          </div>
+
           {check.status === "checking" && <p className="text-xs text-zinc-500">Checking for an existing FAQ…</p>}
           {check.status === "duplicate" && check.duplicate && (
             <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">
@@ -267,7 +352,7 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
             <button
               type="button"
               onClick={handlePrepare}
-              disabled={phase === "preparing" || check.status !== "ok"}
+              disabled={phase === "preparing" || check.status !== "ok" || !groupReady}
               className={adminPrimaryButtonClass}
             >
               {phase === "preparing" ? "Preparing…" : "Generate FAQ"}
@@ -294,7 +379,7 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
                     {g.status === "failed" && (
                       <span className="flex items-center gap-2">
                         <span className="text-red-600 dark:text-red-400">{g.error}</span>
-                        <button type="button" onClick={() => runGeneration(prepared, lang)} className="font-medium text-foreground underline">
+                        <button type="button" onClick={() => runGeneration(prepared, lang, kind)} className="font-medium text-foreground underline">
                           Retry
                         </button>
                       </span>
@@ -328,6 +413,26 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
               </button>
             ))}
           </div>
+
+          {groupNames ? (
+            <div className="space-y-1.5">
+              <label htmlFor="faq-review-group" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                New group name ({LANG_LABEL[tab]})
+              </label>
+              <input
+                id="faq-review-group"
+                value={groupNames[tab]}
+                maxLength={MAX_GROUP_NAME_CHARS}
+                onChange={(e) => setGroupNames({ ...groupNames, [tab]: e.target.value })}
+                disabled={phase === "publishing"}
+                className={adminInputClass}
+              />
+            </div>
+          ) : (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Group: <span className="font-medium text-foreground">{groupLabel}</span>
+            </p>
+          )}
 
           <div className="space-y-1.5">
             <label htmlFor="faq-review-question" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
@@ -374,7 +479,7 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
             <button
               type="button"
               onClick={handlePublish}
-              disabled={phase === "publishing" || FAQ_LANGUAGES.some((l) => !drafts[l].question.trim() || !drafts[l].answer.trim()) || !currentSlug}
+              disabled={phase === "publishing" || FAQ_LANGUAGES.some((l) => !drafts[l].question.trim() || !drafts[l].answer.trim()) || !currentSlug || !groupNamesReady}
               className={adminPrimaryButtonClass}
             >
               {phase === "publishing" ? "Publishing…" : "Publish"}
@@ -385,7 +490,9 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
 
       {phase === "done" && publishedSlug && drafts && (
         <div className="space-y-4">
-          <p className="text-sm text-zinc-600 dark:text-zinc-300">Published in all three languages.</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">
+            Published in all three languages, in <span className="font-medium text-foreground">{groupLabel}</span>.
+          </p>
           <ul className="space-y-1.5 text-sm">
             {FAQ_LANGUAGES.map((lang) => (
               <li key={lang}>

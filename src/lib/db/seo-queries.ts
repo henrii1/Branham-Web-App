@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { FAQ_GROUP_COLUMNS, type FaqGroup } from "@/lib/faq/groups";
 import { unstable_cache } from "next/cache";
 
 export interface SeoCacheRow {
@@ -82,24 +83,46 @@ export async function fetchAllPublishedSeoPages(language = "en"): Promise<SeoCac
   return data ?? [];
 }
 
+export type FaqListRow = Pick<SeoCacheRow, "slug" | "question" | "meta_description"> & { group_id: string | null };
+
 export const fetchFaqListItems = (language = "en") =>
   unstable_cache(
-    async () => {
+    async (): Promise<FaqListRow[]> => {
       const supabase = getPublicClient();
-      const { data, error } = await supabase
-        .from("seo_cache")
-        .select("slug, question, meta_description")
-        .eq("published", true)
-        .eq("language", language)
-        .order("created_at", { ascending: true });
+      const query = (columns: string) =>
+        supabase
+          .from("seo_cache")
+          .select(columns)
+          .eq("published", true)
+          .eq("language", language)
+          .order("created_at", { ascending: true });
+      let { data, error } = await query("slug, question, meta_description, group_id");
+      // 42703: group_id doesn't exist yet (migration 016 not run) — list
+      // without groups rather than breaking the FAQ page.
+      if (error?.code === "42703") ({ data, error } = await query("slug, question, meta_description"));
       if (error) throw error;
-      return (data ?? []) as Pick<
-        SeoCacheRow,
-        "slug" | "question" | "meta_description"
-      >[];
+      return ((data ?? []) as unknown as FaqListRow[]).map((r) => ({ ...r, group_id: r.group_id ?? null }));
     },
     ["faq-list", language],
     // Tagged so admin publish/edit routes can expire it immediately.
+    { revalidate: 3600, tags: [FAQ_LIST_CACHE_TAG] },
+  )();
+
+/** All FAQ groups ([] if the table doesn't exist yet). Same cache tag as the list. */
+export const fetchFaqGroups = () =>
+  unstable_cache(
+    async (): Promise<FaqGroup[]> => {
+      const { data, error } = await getPublicClient()
+        .from("faq_groups")
+        .select(FAQ_GROUP_COLUMNS)
+        .order("created_at", { ascending: true });
+      if (error) {
+        if (error.code === "42P01" || error.code === "PGRST205") return [];
+        throw error;
+      }
+      return (data ?? []) as FaqGroup[];
+    },
+    ["faq-groups"],
     { revalidate: 3600, tags: [FAQ_LIST_CACHE_TAG] },
   )();
 

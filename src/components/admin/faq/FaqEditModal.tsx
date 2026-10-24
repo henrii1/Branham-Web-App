@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FaqLanguage } from "@/lib/faq/entry";
 import {
@@ -11,6 +11,7 @@ import {
   FaqAnswerPreview,
   postJson,
 } from "./AdminDialog";
+import type { FaqGroup } from "@/lib/faq/groups";
 
 const LANG_LABEL: Record<FaqLanguage, string> = { en: "English", es: "Spanish", fr: "French" };
 
@@ -40,22 +41,52 @@ export function FaqEditModal({
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [groups, setGroups] = useState<FaqGroup[] | null>(null);
+  const [initialGroupId, setInitialGroupId] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState<string>("");
 
-  const changed = question.trim() !== initialQuestion.trim() || answer !== initialAnswer;
+  useEffect(() => {
+    let cancelled = false;
+    postJson<{ ok: boolean; groups?: FaqGroup[]; current_group_id?: string | null }>("/api/admin/faq/groups", { slug }).then(({ status, data }) => {
+      if (cancelled || status !== 200 || !data?.ok || !data.groups) return;
+      // No stored group counts as the doctrinal group.
+      const current = data.current_group_id ?? data.groups.find((g) => g.kind === "doctrinal")?.id ?? "";
+      setGroups(data.groups);
+      setInitialGroupId(current);
+      setGroupId(current);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const textChanged = question.trim() !== initialQuestion.trim() || answer !== initialAnswer;
+  const groupChanged = !!groupId && groupId !== initialGroupId;
+  const changed = textChanged || groupChanged;
 
   async function handleSave() {
     setSaving(true);
     setError(null);
-    const { status, data } = await postJson<{ ok: boolean; error?: string }>("/api/admin/faq/update", {
-      slug,
-      language,
-      question,
-      answer_markdown: answer,
-    });
-    if (status !== 200 || !data?.ok) {
-      setError(data?.error === "invalid_request" ? "The question and answer can't be empty." : (data?.error ?? "Couldn't save. Your edit was not applied."));
-      setSaving(false);
-      return;
+    if (textChanged) {
+      const { status, data } = await postJson<{ ok: boolean; error?: string }>("/api/admin/faq/update", {
+        slug,
+        language,
+        question,
+        answer_markdown: answer,
+      });
+      if (status !== 200 || !data?.ok) {
+        setError(data?.error === "invalid_request" ? "The question and answer can't be empty." : (data?.error ?? "Couldn't save. Your edit was not applied."));
+        setSaving(false);
+        return;
+      }
+    }
+    if (groupChanged) {
+      const { status, data } = await postJson<{ ok: boolean; error?: string }>("/api/admin/faq/move", { slug, group_id: groupId });
+      if (status !== 200 || !data?.ok) {
+        setError(`${textChanged ? "Your text was saved, but the" : "The"} group wasn't changed: ${data?.error ?? "try again."}`);
+        setSaving(false);
+        return;
+      }
     }
     router.refresh();
     onClose();
@@ -79,6 +110,29 @@ export function FaqEditModal({
   return (
     <AdminDialog title={`Edit FAQ (${LANG_LABEL[language]})`} onClose={onClose} closeDisabled={busy}>
       <div className="space-y-4">
+        <div className="space-y-1.5">
+          <label htmlFor="faq-edit-group" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Group
+          </label>
+          <select
+            id="faq-edit-group"
+            value={groupId}
+            onChange={(e) => setGroupId(e.target.value)}
+            disabled={saving || !groups}
+            className={adminInputClass}
+          >
+            {!groups && <option value="">Loading groups…</option>}
+            {groups?.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name_en}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Moves this FAQ in all three languages. The answer isn&apos;t rewritten; to change how it&apos;s answered, delete it and add it again in the new group.
+          </p>
+        </div>
+
         <div className="space-y-1.5">
           <label htmlFor="faq-edit-question" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
             Question

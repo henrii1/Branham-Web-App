@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { fetchFaqListItems } from "@/lib/db/seo-queries";
-import { FaqGrid } from "@/components/seo/FaqGrid";
+import { fetchFaqGroups, fetchFaqListItems } from "@/lib/db/seo-queries";
+import { groupFaqItems } from "@/lib/faq/groups";
+import { FaqGroups } from "@/components/seo/FaqGroups";
 import { createClient } from "@/lib/supabase/server";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -61,7 +62,8 @@ export default async function FaqPage() {
     if (lang === "fr") redirect("/fr/faq");
   }
 
-  const pages = await fetchFaqListItems("en");
+  const [pages, groups] = await Promise.all([fetchFaqListItems("en"), fetchFaqGroups()]);
+  const sections = groupFaqItems(pages, groups);
 
   const faqItems = pages.map((p) => ({
     slug: p.slug,
@@ -113,8 +115,9 @@ export default async function FaqPage() {
               Frequently Asked Questions
             </h1>
             <p className="mb-8 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-              Common questions about the sermons and teachings of William Marrion
-              Branham, answered from the original sermon texts.
+              {sections.bible.length > 0
+                ? "Common questions about the Bible and the sermons of William Marrion Branham, answered from the Scriptures and the original sermon texts."
+                : "Common questions about the sermons and teachings of William Marrion Branham, answered from the original sermon texts."}
             </p>
 
             <nav className="sr-only" aria-label="All questions">
@@ -125,7 +128,7 @@ export default async function FaqPage() {
               ))}
             </nav>
 
-            <FaqGrid items={faqItems} />
+            <FaqGroups bible={sections.bible} doctrinal={sections.doctrinal} language="en" />
 
           </div>
           <SiteFooter language={"en"} />

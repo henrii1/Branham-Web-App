@@ -17,6 +17,7 @@ import {
   type FaqEntryDraft,
   type FaqLanguage,
 } from "./entry";
+import { FAQ_GROUP_COLUMNS, type FaqGroup } from "./groups";
 
 /** The signed-in user if they're one of the two admin accounts, else null. */
 export async function getAdminUser(): Promise<User | null> {
@@ -65,10 +66,65 @@ export async function findFaqDuplicate(
 
 export class FaqSlugTakenError extends Error {}
 
-/** Insert all three language rows for a new FAQ entry, published. */
+// ── Groups ──────────────────────────────────────────────────────────────
+
+export async function listFaqGroups(): Promise<FaqGroup[]> {
+  const { data, error } = await createAdminClient()
+    .from("faq_groups")
+    .select(FAQ_GROUP_COLUMNS)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as FaqGroup[];
+}
+
+export async function getFaqGroup(id: string): Promise<FaqGroup | null> {
+  const { data, error } = await createAdminClient().from("faq_groups").select(FAQ_GROUP_COLUMNS).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data as FaqGroup | null) ?? null;
+}
+
+export class FaqGroupNameTakenError extends Error {}
+
+/**
+ * Create a Bible group (the only kind admins can create — there is exactly
+ * one doctrinal group). Names are already translated by the Model API.
+ */
+export async function createFaqGroup(names: Record<FaqLanguage, string>): Promise<FaqGroup> {
+  const { data, error } = await createAdminClient()
+    .from("faq_groups")
+    .insert({ kind: "bible", name_en: clean(names.en.trim()), name_es: clean(names.es.trim()), name_fr: clean(names.fr.trim()) })
+    .select(FAQ_GROUP_COLUMNS)
+    .single();
+  if (error) {
+    if (error.code === "23505") throw new FaqGroupNameTakenError(names.en);
+    throw error;
+  }
+  return data as FaqGroup;
+}
+
+/** Remove a group that has no questions (cleanup after a failed publish). */
+export async function deleteEmptyFaqGroup(id: string): Promise<void> {
+  const admin = createAdminClient();
+  const { count } = await admin.from("seo_cache").select("slug", { count: "exact", head: true }).eq("group_id", id);
+  if (count === 0) await admin.from("faq_groups").delete().eq("id", id).eq("kind", "bible");
+}
+
+/** Move an FAQ (every language row of the slug) to another group. */
+export async function moveFaqToGroup(slug: string, groupId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient().from("seo_cache").update({ group_id: groupId }).eq("slug", slug).select("language");
+  if (error) throw error;
+  if (!data?.length) return false;
+  revalidateTag(FAQ_LIST_CACHE_TAG, { expire: 0 });
+  return true;
+}
+
+// ── Entries ─────────────────────────────────────────────────────────────
+
+/** Insert all three language rows for a new FAQ entry, published, in a group. */
 export async function publishFaq(
   slug: string,
   entries: Record<FaqLanguage, FaqEntryDraft>,
+  groupId: string,
 ): Promise<void> {
   const admin = createAdminClient();
   const rows = FAQ_LANGUAGES.map((language) => ({
@@ -83,6 +139,7 @@ export async function publishFaq(
     meta_title: clean(entries[language].meta_title),
     meta_description: clean(entries[language].meta_description),
     published: true,
+    group_id: groupId,
   }));
 
   // One insert statement, so all three rows land or none do. The
@@ -127,8 +184,14 @@ export async function updateFaq(
  */
 export async function deleteFaq(slug: string): Promise<number> {
   const admin = createAdminClient();
-  const { data, error } = await admin.from("seo_cache").delete().eq("slug", slug).select("language");
+  const { data, error } = await admin.from("seo_cache").delete().eq("slug", slug).select("language, group_id");
   if (error) throw error;
-  if (data?.length) revalidateTag(FAQ_LIST_CACHE_TAG, { expire: 0 });
+  if (data?.length) {
+    // A Bible group left without questions goes too, so pickers stay clean
+    // (deleteEmptyFaqGroup never removes the doctrinal group).
+    const groupId = (data[0] as { group_id?: string | null }).group_id;
+    if (groupId) await deleteEmptyFaqGroup(groupId).catch((err) => console.error("Empty group cleanup failed:", err));
+    revalidateTag(FAQ_LIST_CACHE_TAG, { expire: 0 });
+  }
   return data?.length ?? 0;
 }

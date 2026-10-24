@@ -16,16 +16,18 @@ export async function POST(request: Request) {
     language?: string;
     question?: string;
     robust_query?: string;
+    faq_kind?: string;
   } | null;
   const language = body?.language as FaqLanguage;
   const question = body?.question?.trim() ?? "";
   const robustQuery = body?.robust_query?.trim() ?? "";
-  if (!FAQ_LANGUAGES.includes(language) || !question || !robustQuery || robustQuery.length > 4000) {
+  const kind = body?.faq_kind;
+  if (!FAQ_LANGUAGES.includes(language) || !question || !robustQuery || robustQuery.length > 4000 || (kind !== "doctrinal" && kind !== "bible")) {
     return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
   }
 
   try {
-    const result = await generateFaqAnswer(robustQuery, question, language);
+    const result = await generateFaqAnswer(robustQuery, question, language, kind);
     return Response.json({ ok: true, result });
   } catch (err) {
     if (err instanceof ModelApiError) {

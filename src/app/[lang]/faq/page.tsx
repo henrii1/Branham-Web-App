@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { fetchFaqListItems } from "@/lib/db/seo-queries";
-import { FaqGrid } from "@/components/seo/FaqGrid";
+import { fetchFaqGroups, fetchFaqListItems } from "@/lib/db/seo-queries";
+import { groupFaqItems } from "@/lib/faq/groups";
+import { FaqGroups } from "@/components/seo/FaqGroups";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
@@ -15,7 +16,7 @@ type SupportedLang = (typeof SUPPORTED_LANGS)[number];
 
 const LANG_META: Record<
   SupportedLang,
-  { title: string; description: string; label: string; subtitle: string }
+  { title: string; description: string; label: string; subtitle: string; subtitleWithBible: string }
 > = {
   es: {
     title: "Preguntas frecuentes sobre el Hno. Branham | Branham Sermons Assistant",
@@ -24,6 +25,8 @@ const LANG_META: Record<
     label: "Preguntas frecuentes",
     subtitle:
       "Preguntas comunes sobre los sermones y enseñanzas de William Marrion Branham, respondidas desde los textos originales de los sermones.",
+    subtitleWithBible:
+      "Preguntas comunes sobre la Biblia y los sermones de William Marrion Branham, respondidas desde las Escrituras y los textos originales de los sermones.",
   },
   fr: {
     title: "Questions fréquentes sur Frère Branham | Branham Sermons Assistant",
@@ -32,6 +35,8 @@ const LANG_META: Record<
     label: "Questions fréquentes",
     subtitle:
       "Questions courantes sur les sermons et enseignements de William Marrion Branham, répondues à partir des textes originaux des sermons.",
+    subtitleWithBible:
+      "Questions courantes sur la Bible et les sermons de William Marrion Branham, répondues à partir des Écritures et des textes originaux des sermons.",
   },
 };
 
@@ -77,7 +82,8 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
   if (!SUPPORTED_LANGS.includes(lang as SupportedLang)) notFound();
   const l = lang as SupportedLang;
 
-  const pages = await fetchFaqListItems(l);
+  const [pages, groups] = await Promise.all([fetchFaqListItems(l), fetchFaqGroups()]);
+  const sections = groupFaqItems(pages, groups);
   const faqItems = pages.map((p) => ({
     slug: p.slug,
     question: p.question,
@@ -128,7 +134,7 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
               {LANG_META[l].label}
             </h1>
             <p className="mb-8 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-              {LANG_META[l].subtitle}
+              {sections.bible.length > 0 ? LANG_META[l].subtitleWithBible : LANG_META[l].subtitle}
             </p>
 
             <nav className="sr-only" aria-label="All questions">
@@ -139,7 +145,7 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
               ))}
             </nav>
 
-            <FaqGrid items={faqItems} slugPrefix={`/${l}/q`} />
+            <FaqGroups bible={sections.bible} doctrinal={sections.doctrinal} language={l} slugPrefix={`/${l}/q`} />
 
           </div>
           <SiteFooter language={l} />

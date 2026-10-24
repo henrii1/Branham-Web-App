@@ -5,11 +5,25 @@ import {
   type FaqEntryDraft,
   type FaqLanguage,
 } from "@/lib/faq/entry";
-import { FaqSlugTakenError, getAdminUser, publishFaq } from "@/lib/faq/adminStore";
+import {
+  createFaqGroup,
+  deleteEmptyFaqGroup,
+  FaqGroupNameTakenError,
+  FaqSlugTakenError,
+  getAdminUser,
+  getFaqGroup,
+  publishFaq,
+} from "@/lib/faq/adminStore";
+import { MAX_GROUP_NAME_CHARS } from "@/lib/faq/groups";
 
 const MAX_ANSWER_CHARS = 40_000;
 
-/** Writes all three language rows of a reviewed FAQ entry, published. */
+/**
+ * Writes all three language rows of a reviewed FAQ entry, published, into
+ * its group: an existing one (`group.id`) or a new Bible group created here
+ * from its reviewed names (`group.names`). If the entry can't be saved, a
+ * group created for it is removed again.
+ */
 export async function POST(request: Request) {
   if (!(await getAdminUser())) {
     return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
@@ -17,10 +31,16 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as {
     entries?: Partial<Record<FaqLanguage, FaqEntryDraft>>;
+    group?: { id?: string; names?: Partial<Record<FaqLanguage, string>> };
   } | null;
   const entries = body?.entries;
-  if (!entries) {
+  const groupId = body?.group?.id?.trim() || null;
+  const groupNames = body?.group?.names ?? null;
+  if (!entries || !groupId === !groupNames) {
     return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
+  }
+  if (groupNames && FAQ_LANGUAGES.some((l) => !groupNames[l]?.trim() || groupNames[l]!.trim().length > MAX_GROUP_NAME_CHARS)) {
+    return Response.json({ ok: false, error: "Each language needs a group name (up to 80 characters)." }, { status: 400 });
   }
 
   for (const lang of FAQ_LANGUAGES) {
@@ -46,10 +66,26 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "invalid_slug" }, { status: 400 });
   }
 
+  let createdGroupId: string | null = null;
   try {
-    await publishFaq(slug, entries as Record<FaqLanguage, FaqEntryDraft>);
-    return Response.json({ ok: true, slug });
+    let targetGroupId: string;
+    if (groupId) {
+      if (!(await getFaqGroup(groupId))) {
+        return Response.json({ ok: false, error: "That group no longer exists. Nothing was saved." }, { status: 404 });
+      }
+      targetGroupId = groupId;
+    } else {
+      const group = await createFaqGroup(groupNames as Record<FaqLanguage, string>);
+      createdGroupId = group.id;
+      targetGroupId = group.id;
+    }
+    await publishFaq(slug, entries as Record<FaqLanguage, FaqEntryDraft>, targetGroupId);
+    return Response.json({ ok: true, slug, group_id: targetGroupId });
   } catch (err) {
+    if (createdGroupId) await deleteEmptyFaqGroup(createdGroupId).catch(() => {});
+    if (err instanceof FaqGroupNameTakenError) {
+      return Response.json({ ok: false, error: "A group with this English name already exists. Nothing was saved." }, { status: 409 });
+    }
     if (err instanceof FaqSlugTakenError) {
       return Response.json(
         { ok: false, error: "An FAQ with this question already exists. Reword the English question.", slug },
