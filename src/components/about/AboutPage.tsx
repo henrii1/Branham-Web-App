@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
+import { SiteFooter } from "@/components/site/SiteFooter";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { applyCitations } from "@/lib/markdown/citations";
 import {
@@ -286,6 +287,7 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
               </Link>
             </div>
           </article>
+          <SiteFooter language={lang} />
         </main>
       </div>
 

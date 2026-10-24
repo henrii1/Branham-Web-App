@@ -5,6 +5,7 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { fetchFaqListItems } from "@/lib/db/seo-queries";
 import { FaqGrid } from "@/components/seo/FaqGrid";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
+import { SiteFooter } from "@/components/site/SiteFooter";
 
 const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
@@ -140,19 +141,8 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
 
             <FaqGrid items={faqItems} slugPrefix={`/${l}/q`} />
 
-            <div className="mt-10 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-5 py-4 shadow-sm dark:border-zinc-700">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Need help or want to share feedback? Email{" "}
-                <a
-                  href="mailto:info@branhamsermons.ai"
-                  className="font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-500 dark:text-zinc-100 dark:decoration-zinc-600"
-                >
-                  info@branhamsermons.ai
-                </a>
-                .
-              </p>
-            </div>
           </div>
+          <SiteFooter language={l} />
         </main>
       </div>
     </>

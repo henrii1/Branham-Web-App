@@ -11,6 +11,8 @@ import { renderMarkdown } from "@/lib/markdown/render";
 import { applyCitations } from "@/lib/markdown/citations";
 import { ALTAR_STRINGS, altarDayHref, altarHref, type AltarStrings } from "@/lib/altar/strings";
 import { AltarShareButton } from "./AltarShareButton";
+import { SiteFooter } from "@/components/site/SiteFooter";
+import { WHATSAPP_CHANNEL_URL } from "@/lib/site/social";
 import { addDays, localTodayIso, mondayOf, weekDays } from "@/lib/altar/week";
 import { postJson } from "@/components/admin/faq/AdminDialog";
 import type { AltarLanguage, FamilyAltarDay } from "@/lib/altar/types";
@@ -106,7 +108,17 @@ export function AltarView({
           <FlameIcon className="h-5 w-5 text-amber-700 dark:text-amber-400" />
           {s.pageTitle}
         </div>
-        <LangSwitcher current={language} hrefs={{ en: altarHref("en"), es: altarHref("es"), fr: altarHref("fr") }} />
+        <div className="flex items-center gap-2">
+          <LangSwitcher current={language} hrefs={{ en: altarHref("en"), es: altarHref("es"), fr: altarHref("fr") }} />
+          {/* Same button as the FAQ and About headers: the sermon search. */}
+          <Link
+            prefetch={false}
+            href="/chat"
+            className="hidden rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium whitespace-nowrap text-white transition-colors hover:bg-zinc-800 sm:inline-flex dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {s.askQuestion}
+          </Link>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -253,6 +265,7 @@ export function AltarView({
               )}
             </nav>
           </div>
+          <SiteFooter language={language} />
         </main>
       </div>
       <ReferencePopover />
@@ -327,6 +340,35 @@ function Devotional({ row, s }: { row: FamilyAltarDay; s: AltarStrings }) {
             <li key={i} dangerouslySetInnerHTML={{ __html: applyCitations(renderMarkdown(p)).replace(/^<p>|<\/p>\s*$/g, "") }} />
           ))}
         </ul>
+      </section>
+
+      {/* Call to action: the WhatsApp channel (daily devotion + feature news)
+          and the sermon search. */}
+      <section className="flex flex-col gap-4 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-display text-[1.35rem] leading-tight text-foreground">{s.ctaTitle}</h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{s.ctaBody}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={WHATSAPP_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-[var(--surface-base)] px-3.5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            <svg className="h-[18px] w-[18px] text-emerald-700 dark:text-emerald-400" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.5-.3Z" />
+            </svg>
+            {s.ctaButton}
+          </a>
+          <Link
+            prefetch={false}
+            href="/chat"
+            className="inline-flex items-center rounded-xl bg-zinc-900 px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 sm:hidden dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {s.askQuestion}
+          </Link>
+        </div>
       </section>
 
       {/* Sermons are cited inline; a References list repeated them at length, so only the reader note remains. */}
