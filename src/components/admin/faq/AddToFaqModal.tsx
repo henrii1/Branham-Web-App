@@ -53,11 +53,13 @@ const initialGen = (): Record<FaqLanguage, GenState> => ({
 });
 
 /**
- * Admin-only: turn a single-turn conversation into a published FAQ entry in
- * en/es/fr. See docs/superpowers/specs/2026-10-09-add-to-faq-design.md.
+ * Admin-only: publish an FAQ entry in en/es/fr, either from a single-turn
+ * conversation (`conversationId`, its question prefilled) or from scratch
+ * (no conversation: opened from the profile page with an empty question).
+ * See docs/superpowers/specs/2026-10-09-add-to-faq-design.md.
  */
-export function AddToFaqModal({ conversationId, onClose }: { conversationId: string; onClose: () => void }) {
-  const [phase, setPhase] = useState<Phase>("loading");
+export function AddToFaqModal({ conversationId = null, onClose }: { conversationId?: string | null; onClose: () => void }) {
+  const [phase, setPhase] = useState<Phase>(conversationId ? "loading" : "question");
   const [ineligibleReason, setIneligibleReason] = useState("");
   const [question, setQuestion] = useState("");
   const [check, setCheck] = useState<{ status: "idle" | "checking" | "ok" | "duplicate" | "error"; duplicate?: Duplicate | null }>({ status: "idle" });
@@ -120,6 +122,7 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
 
   // ── Eligibility: exactly one question and one answer ──
   useEffect(() => {
+    if (!conversationId) return; // from scratch: nothing to load
     let cancelled = false;
     fetchMessages(conversationId)
       .then((rows) => {
@@ -284,6 +287,8 @@ export function AddToFaqModal({ conversationId, onClose }: { conversationId: str
                 scheduleCheck(e.target.value);
               }}
               disabled={phase === "preparing"}
+              placeholder={conversationId ? undefined : "e.g. What does the Bible say about forgiving others?"}
+              autoFocus={!conversationId}
               className={`${adminInputClass} resize-y`}
             />
             <p className="text-xs text-zinc-500 dark:text-zinc-400">

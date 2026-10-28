@@ -8,6 +8,10 @@ import { ThemePreferencePicker } from "@/components/auth/ThemePreferencePicker";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// Admin-only, loaded on demand: the full Add-to-FAQ flow, started from scratch.
+const AddToFaqModal = dynamic(() => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })), { ssr: false });
 
 interface ProfileContentProps {
   user: {
@@ -28,6 +32,7 @@ export function ProfileContent({
   const { theme, setTheme } = useTheme();
   const [signingOut, setSigningOut] = useState(false);
   const [savingTheme, setSavingTheme] = useState(false);
+  const [addFaqOpen, setAddFaqOpen] = useState(false);
   const [themeError, setThemeError] = useState<string | null>(null);
 
   async function handleSignOut() {
@@ -142,6 +147,16 @@ export function ProfileContent({
           >
             Send bulk email
           </Link>
+          {/* An FAQ from scratch (not from a conversation): question + group,
+              then the same generate → review → publish flow. */}
+          <button
+            type="button"
+            onClick={() => setAddFaqOpen(true)}
+            className="block w-full rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-4 py-2.5 text-center text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Add to FAQ
+          </button>
+          {addFaqOpen && <AddToFaqModal onClose={() => setAddFaqOpen(false)} />}
           {/* The admin tools (week status, generate, edit, change verse)
               appear on /altar itself for these accounts. */}
           <Link
