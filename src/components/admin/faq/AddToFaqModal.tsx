@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchMessages } from "@/lib/db/queries";
 import {
+  faqMetaTitle,
   faqPagePath,
   faqSlugify,
   FAQ_LANGUAGES,
@@ -44,7 +45,15 @@ type GenState =
   | { status: "done"; result: Generated }
   | { status: "failed"; error: string };
 
-type Phase = "loading" | "ineligible" | "question" | "preparing" | "generating" | "review" | "publishing" | "done";
+type Phase = "loading" | "ineligible" | "question" | "preparing" | "generating" | "translating" | "review" | "publishing" | "done";
+type Drafts = Record<FaqLanguage, { question: string; answer: string }>;
+
+// "Write it myself": the admin's English answer is sent to /api/faq/sync-edit
+// as an edit from this placeholder, so the API proofreads all of it and
+// writes the whole answer into Spanish and French (citations localized from
+// each corpus). The same placeholder stands in for the es/fr answers.
+const ANSWER_PLACEHOLDER = "(Answer not written yet.)";
+const MAX_ANSWER_CHARS = 40_000;
 
 const initialGen = (): Record<FaqLanguage, GenState> => ({
   en: { status: "pending" },
@@ -66,7 +75,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   const [error, setError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<Record<FaqLanguage, Prepared> | null>(null);
   const [gen, setGen] = useState<Record<FaqLanguage, GenState>>(initialGen);
-  const [drafts, setDrafts] = useState<Record<FaqLanguage, { question: string; answer: string }> | null>(null);
+  const [drafts, setDrafts] = useState<Drafts | null>(null);
   const [tab, setTab] = useState<FaqLanguage>("en");
   const [editingAnswer, setEditingAnswer] = useState(false);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
@@ -83,10 +92,16 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   // Admin notes steering the answer (Model API faq_guidance). Used once, not stored.
   const [guidance, setGuidance] = useState("");
   const guidanceRef = useRef<string | undefined>(undefined);
+  // Generate the answers, or translate the admin's own English answer.
+  const [answerMode, setAnswerMode] = useState<"generate" | "write">("generate");
+  const [ownAnswer, setOwnAnswer] = useState("");
+  // The draft under review was written by the admin (no retrieval: no sources).
+  const [curated, setCurated] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   // English as last generated or synced: the "before" of an English edit.
   const [enBase, setEnBase] = useState<{ question: string; answer: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ enCorrected: boolean; notes: Record<"es" | "fr", string[]> } | null>(null);
+  const [syncResult, setSyncResult] = useState<{ translated: boolean; enCorrected: boolean; notes: Record<"es" | "fr", string[]> } | null>(null);
   const checkSeq = useRef(0);
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Results of finished languages, kept across a retry of a later language.
@@ -188,7 +203,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
       resultsRef.current[lang] = result;
       setGen((g) => ({ ...g, [lang]: { status: "done", result } }));
     }
-    const next = {} as Record<FaqLanguage, { question: string; answer: string }>;
+    const next = {} as Drafts;
     for (const lang of FAQ_LANGUAGES) {
       next[lang] = { question: prep[lang].question, answer: resultsRef.current[lang]!.answer_markdown };
     }
@@ -202,7 +217,8 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   async function handlePrepare() {
     setPhase("preparing");
     setError(null);
-    guidanceRef.current = guidance.trim() || undefined;
+    const writing = answerMode === "write";
+    guidanceRef.current = writing ? undefined : guidance.trim() || undefined;
     const { status, data } = await postJson<{
       ok: boolean;
       error?: string;
@@ -235,12 +251,52 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     setPrepared(data.results);
     resultsRef.current = {};
     setGen(initialGen());
-    void runGeneration(data.results, "en", faqKind);
+    setCurated(writing);
+    if (writing) void runTranslation(data.results, faqKind);
+    else void runGeneration(data.results, "en", faqKind);
   }
 
-  /** Proofread the English edit and carry it into the Spanish and French drafts. */
-  async function handleSync() {
-    if (!drafts || !enBase) return;
+  /** "Write it myself": proofread the admin's English answer and write it into Spanish and French. */
+  async function runTranslation(prep: Record<FaqLanguage, Prepared>, faqKind: FaqKind) {
+    setPhase("translating");
+    const answer = ownAnswer.trim();
+    const synced = await syncDrafts(
+      faqKind,
+      { question: prep.en.question, answer: ANSWER_PLACEHOLDER },
+      {
+        en: { question: prep.en.question, answer },
+        es: { question: prep.es.question, answer: ANSWER_PLACEHOLDER },
+        fr: { question: prep.fr.question, answer: ANSWER_PLACEHOLDER },
+      },
+      true,
+    );
+    if (!synced) {
+      setPhase("question");
+      return;
+    }
+    const done = {} as Record<FaqLanguage, GenState>;
+    for (const lang of FAQ_LANGUAGES) {
+      done[lang] = {
+        status: "done",
+        result: { answer_markdown: synced.drafts[lang].answer, rag_context: "", conversation_summary: null, meta_title: "", meta_description: "" },
+      };
+    }
+    setGen(done);
+    setTab("en");
+    setPhase("review");
+  }
+
+  /**
+   * Proofread the English changes from `base` to `current.en` and carry them
+   * into the Spanish and French drafts (Model API /api/faq/sync-edit). On
+   * success the result becomes the drafts and the new English base.
+   */
+  async function syncDrafts(
+    faqKind: FaqKind,
+    base: { question: string; answer: string },
+    current: Drafts,
+    translated = false,
+  ): Promise<{ drafts: Drafts; notes: Record<"es" | "fr", string[]> } | null> {
     setSyncing(true);
     setError(null);
     const { status, data } = await postJson<{
@@ -250,23 +306,40 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
       es?: { question: string; answer: string; notes: string[] };
       fr?: { question: string; answer: string; notes: string[] };
     }>("/api/admin/faq/sync-edit", {
-      faq_kind: kind,
-      en: { question_before: enBase.question, question_after: drafts.en.question, answer_before: enBase.answer, answer_after: drafts.en.answer },
-      targets: { es: { question: drafts.es.question, answer: drafts.es.answer }, fr: { question: drafts.fr.question, answer: drafts.fr.answer } },
+      faq_kind: faqKind,
+      en: { question_before: base.question, question_after: current.en.question, answer_before: base.answer, answer_after: current.en.answer },
+      targets: { es: current.es, fr: current.fr },
     });
     setSyncing(false);
-    if (status !== 200 || !data?.ok || !data.en || !data.es || !data.fr) {
-      setError(data?.error ?? "Couldn't update Spanish and French. Try again.");
-      return;
+    // Drop the placeholder in case the model kept it beside the new text.
+    const clean = (t?: { question: string; answer: string }) =>
+      t ? { question: t.question, answer: t.answer.replace(ANSWER_PLACEHOLDER, "").trim() } : null;
+    const en = clean(data?.en);
+    const es = clean(data?.es);
+    const fr = clean(data?.fr);
+    if (status !== 200 || !data?.ok || !en?.answer || !es?.answer || !fr?.answer) {
+      setError(data?.error ?? (translated ? "Couldn't translate the answer. Try again." : "Couldn't update Spanish and French. Try again."));
+      return null;
     }
-    const en = { question: data.en.question, answer: data.en.answer };
-    setDrafts({ en, es: { question: data.es.question, answer: data.es.answer }, fr: { question: data.fr.question, answer: data.fr.answer } });
+    const next = { en, es, fr };
+    const notes = { es: data.es!.notes ?? [], fr: data.fr!.notes ?? [] };
+    setDrafts(next);
     setEnBase(en);
-    setSyncResult({ enCorrected: data.en.changed, notes: { es: data.es.notes, fr: data.fr.notes } });
+    setSyncResult({ translated, enCorrected: !!data.en!.changed, notes });
+    return { drafts: next, notes };
   }
 
   async function handlePublish() {
-    if (!drafts || !prepared) return;
+    if (!drafts || !prepared || !enBase) return;
+    let toPublish = drafts;
+    // An English edit not yet carried into Spanish and French: do it first.
+    if (drafts.en.question !== enBase.question || drafts.en.answer !== enBase.answer) {
+      const synced = await syncDrafts(kind, enBase, drafts);
+      if (!synced) return;
+      // Notes mean something didn't carry over cleanly: stop so they're read.
+      if (synced.notes.es.length || synced.notes.fr.length) return;
+      toPublish = synced.drafts;
+    }
     setPhase("publishing");
     setError(null);
     const entries = {} as Record<FaqLanguage, FaqEntryDraft>;
@@ -275,9 +348,11 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
       if (g.status !== "done") return;
       entries[lang] = {
         ...g.result,
-        question: drafts[lang].question,
+        // A written answer has no query_summary: the title is the question.
+        ...(curated ? { meta_title: faqMetaTitle(null, toPublish[lang].question) } : {}),
+        question: toPublish[lang].question,
         robust_query: prepared[lang].robust_query,
-        answer_markdown: drafts[lang].answer,
+        answer_markdown: toPublish[lang].answer,
       };
     }
     const group = groupChoice === NEW_GROUP ? { names: groupNames } : { id: groupChoice };
@@ -291,7 +366,24 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     setPhase("done");
   }
 
-  const busy = phase === "preparing" || phase === "generating" || phase === "publishing";
+  /** Throw the draft away and go back to the question (nothing was saved). */
+  function handleDiscard() {
+    setConfirmDiscard(false);
+    setDrafts(null);
+    setPrepared(null);
+    setEnBase(null);
+    setSyncResult(null);
+    setGroupNames(null);
+    setGen(initialGen());
+    resultsRef.current = {};
+    setEditingAnswer(false);
+    setError(null);
+    setPhase("question");
+    scheduleCheck(question);
+  }
+
+  const busy = phase === "preparing" || phase === "generating" || phase === "translating" || phase === "publishing" || syncing;
+  const enEdited = !!drafts && !!enBase && (drafts.en.question !== enBase.question || drafts.en.answer !== enBase.answer);
   const chosenGroup = groups?.find((g) => g.id === groupChoice) ?? null;
   const groupReady = groupChoice === NEW_GROUP ? newGroupName.trim().length > 0 && newGroupName.trim().length <= MAX_GROUP_NAME_CHARS : !!chosenGroup;
   const groupLabel = groupChoice === NEW_GROUP ? (groupNames?.en ?? newGroupName.trim()) : (chosenGroup?.name_en ?? "");
@@ -378,24 +470,75 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="faq-guidance" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Guidance for the answer <span className="font-normal">(optional)</span>
-            </label>
-            <textarea
-              id="faq-guidance"
-              rows={3}
-              value={guidance}
-              maxLength={MAX_GUIDANCE_CHARS}
-              onChange={(e) => setGuidance(e.target.value)}
-              disabled={phase === "preparing"}
-              placeholder="e.g. Focus on the new birth as a real experience, not church membership. Look at where he ties it to the Holy Spirit baptism."
-              className={`${adminInputClass} resize-y`}
-            />
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Steers what the answer looks for and emphasises, in all three languages. It only states what the sermons support, and your notes never appear in the answer. Not saved.
-            </p>
-          </div>
+          <fieldset className="space-y-1.5">
+            <legend className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Answer</legend>
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+              {(
+                [
+                  ["generate", "Generate from the sermons"],
+                  ["write", "Write it myself"],
+                ] as const
+              ).map(([value, label]) => (
+                <label
+                  key={value}
+                  className={`cursor-pointer rounded-md px-3 py-1.5 text-center text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-zinc-400 ${
+                    answerMode === value ? "bg-[var(--surface-base)] text-foreground shadow-sm" : "text-zinc-500 hover:text-foreground dark:text-zinc-400"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="faq-answer-mode"
+                    value={value}
+                    checked={answerMode === value}
+                    onChange={() => setAnswerMode(value)}
+                    disabled={phase === "preparing"}
+                    className="sr-only"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          {answerMode === "write" ? (
+            <div className="space-y-1.5">
+              <label htmlFor="faq-own-answer" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                English answer
+              </label>
+              <textarea
+                id="faq-own-answer"
+                rows={10}
+                value={ownAnswer}
+                maxLength={MAX_ANSWER_CHARS}
+                onChange={(e) => setOwnAnswer(e.target.value)}
+                disabled={phase === "preparing"}
+                placeholder={"Markdown. Cite sermons the usual way, e.g. [THE GODHEAD EXPLAINED — 61-0425B: ¶122–¶126]"}
+                className={`${adminInputClass} resize-y font-mono text-xs`}
+              />
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Spelling and grammar are corrected, then it&apos;s written into Spanish and French with each citation matched to that translation&apos;s sermon. You review all three before publishing.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label htmlFor="faq-guidance" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                Guidance for the answer <span className="font-normal">(optional)</span>
+              </label>
+              <textarea
+                id="faq-guidance"
+                rows={3}
+                value={guidance}
+                maxLength={MAX_GUIDANCE_CHARS}
+                onChange={(e) => setGuidance(e.target.value)}
+                disabled={phase === "preparing"}
+                placeholder="e.g. Focus on the new birth as a real experience, not church membership. Look at where he ties it to the Holy Spirit baptism."
+                className={`${adminInputClass} resize-y`}
+              />
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Steers what the answer looks for and emphasises, in all three languages. It only states what the sermons support, and your notes never appear in the answer. Not saved.
+              </p>
+            </div>
+          )}
 
           {check.status === "checking" && <p className="text-xs text-zinc-500">Checking for an existing FAQ…</p>}
           {check.status === "duplicate" && check.duplicate && (
@@ -411,14 +554,16 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
           {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">{error}</p>}
 
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Generating takes about 2 minutes (three answers).</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              {answerMode === "write" ? "Translating takes about 30 seconds." : "Generating takes about 2 minutes (three answers)."}
+            </p>
             <button
               type="button"
               onClick={handlePrepare}
-              disabled={phase === "preparing" || check.status !== "ok" || !groupReady}
+              disabled={phase === "preparing" || check.status !== "ok" || !groupReady || (answerMode === "write" && !ownAnswer.trim())}
               className={adminPrimaryButtonClass}
             >
-              {phase === "preparing" ? "Preparing…" : "Generate FAQ"}
+              {phase === "preparing" ? "Preparing…" : answerMode === "write" ? "Translate FAQ" : "Generate FAQ"}
             </button>
           </div>
         </div>
@@ -455,6 +600,12 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
         </div>
       )}
 
+      {phase === "translating" && prepared && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">
+          Proofreading <span className="font-medium text-foreground">{prepared.en.question}</span> and writing it in Spanish and French. Keep this window open.
+        </p>
+      )}
+
       {(phase === "review" || phase === "publishing") && drafts && (
         <div className="space-y-4">
           <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700" role="tablist">
@@ -477,10 +628,10 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
             ))}
           </div>
 
-          {enBase && (drafts.en.question !== enBase.question || drafts.en.answer !== enBase.answer) && (
+          {enEdited && enBase && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-900/20 dark:text-blue-200">
-              <span>You&apos;ve edited the English. Spanish and French don&apos;t include it yet.</span>
-              <button type="button" onClick={handleSync} disabled={syncing || phase === "publishing"} className={adminSecondaryButtonClass}>
+              <span>You&apos;ve edited the English. Spanish and French don&apos;t include it yet; publishing updates them first.</span>
+              <button type="button" onClick={() => void syncDrafts(kind, enBase, drafts)} disabled={syncing || phase === "publishing"} className={adminSecondaryButtonClass}>
                 {syncing ? "Updating…" : "Update Spanish & French"}
               </button>
             </div>
@@ -488,7 +639,9 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
           {syncResult && !syncing && (
             <div className="space-y-1 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
               <p>
-                Spanish and French updated{syncResult.enCorrected ? ", and the English spelling and grammar were corrected" : ""}. Check them before publishing.
+                {syncResult.translated ? "Written in Spanish and French" : "Spanish and French updated"}
+                {syncResult.enCorrected ? ", and the English spelling and grammar were corrected" : ""}.{" "}
+                {syncResult.notes.es.length || syncResult.notes.fr.length ? "Read the notes below and check the drafts, then publish." : "Check them before publishing."}
               </p>
               {(["es", "fr"] as const).flatMap((l) => syncResult.notes[l].map((n, i) => (
                 <p key={`${l}${i}`} className="text-amber-700 dark:text-amber-400">{LANG_LABEL[l]}: {n}</p>
@@ -557,17 +710,38 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
 
           {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">{error}</p>}
 
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Check all three languages. Publishing makes them public.</p>
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={phase === "publishing" || syncing || FAQ_LANGUAGES.some((l) => !drafts[l].question.trim() || !drafts[l].answer.trim()) || !currentSlug || !groupNamesReady}
-              className={adminPrimaryButtonClass}
-            >
-              {phase === "publishing" ? "Publishing…" : "Publish"}
-            </button>
-          </div>
+          {curated && <p className="text-xs text-zinc-500 dark:text-zinc-400">Written answer: the page&apos;s passages panel will be empty.</p>}
+
+          {confirmDiscard ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-900/20 dark:text-red-300">
+              <span>Discard this draft in all three languages? Nothing has been published.</span>
+              <span className="flex gap-2">
+                <button type="button" onClick={() => setConfirmDiscard(false)} className={adminSecondaryButtonClass}>Keep it</button>
+                <button type="button" onClick={handleDiscard} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+                  Discard draft
+                </button>
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDiscard(true)}
+                disabled={phase === "publishing" || syncing}
+                className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50 dark:text-red-400"
+              >
+                Discard draft
+              </button>
+              <button
+                type="button"
+                onClick={handlePublish}
+                disabled={phase === "publishing" || syncing || FAQ_LANGUAGES.some((l) => !drafts[l].question.trim() || !drafts[l].answer.trim()) || !currentSlug || !groupNamesReady}
+                className={adminPrimaryButtonClass}
+              >
+                {phase === "publishing" ? "Publishing…" : syncing ? "Updating Spanish & French…" : enEdited ? "Update Spanish & French and publish" : "Publish"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
