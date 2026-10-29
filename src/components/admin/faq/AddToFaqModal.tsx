@@ -48,12 +48,11 @@ type GenState =
 type Phase = "loading" | "ineligible" | "question" | "preparing" | "generating" | "translating" | "review" | "publishing" | "done";
 type Drafts = Record<FaqLanguage, { question: string; answer: string }>;
 
-// "Write it myself": the admin's English answer is sent to /api/faq/sync-edit
-// as an edit from this placeholder, so the API proofreads all of it and
-// writes the whole answer into Spanish and French (citations localized from
-// each corpus). The same placeholder stands in for the es/fr answers.
-const ANSWER_PLACEHOLDER = "(Answer not written yet.)";
+type SyncLang = "es" | "fr";
 const MAX_ANSWER_CHARS = 40_000;
+
+/** A written answer's row fields: no retrieval, so no sources or summary. */
+const writtenResult = (answer: string): Generated => ({ answer_markdown: answer, rag_context: "", conversation_summary: null, meta_title: "", meta_description: "" });
 
 const initialGen = (): Record<FaqLanguage, GenState> => ({
   en: { status: "pending" },
@@ -106,6 +105,12 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Results of finished languages, kept across a retry of a later language.
   const resultsRef = useRef<Partial<Record<FaqLanguage, Generated>>>({});
+  // "Write it myself": each language's translation, kept across a retry of the other.
+  const translatedRef = useRef<{
+    en?: { question: string; answer: string; changed: boolean };
+    es?: { question: string; answer: string; notes: string[] };
+    fr?: { question: string; answer: string; notes: string[] };
+  }>({});
 
   /** Debounced duplicate check; called on open and on every question edit. */
   const scheduleCheck = useCallback((value: string) => {
@@ -177,7 +182,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
 
   // Elapsed-seconds display while a language is generating.
   useEffect(() => {
-    if (phase !== "generating") return;
+    if (phase !== "generating" && phase !== "translating") return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [phase]);
@@ -229,6 +234,8 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
       question: question.trim(),
       ...(groupChoice === NEW_GROUP ? { new_group_name: newGroupName.trim() } : { group_id: groupChoice }),
       ...(guidanceRef.current ? { faq_guidance: guidanceRef.current } : {}),
+      // A written answer keeps the English question exactly as typed.
+      ...(writing ? { keep_question: true } : {}),
     });
     if (status !== 200 || !data?.ok || !data.results) {
       setError(data?.error ?? "Couldn't prepare the question. Try again.");
@@ -256,32 +263,51 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     else void runGeneration(data.results, "en", faqKind);
   }
 
-  /** "Write it myself": proofread the admin's English answer and write it into Spanish and French. */
-  async function runTranslation(prep: Record<FaqLanguage, Prepared>, faqKind: FaqKind) {
-    setPhase("translating");
-    const answer = ownAnswer.trim();
-    const synced = await syncDrafts(
-      faqKind,
-      { question: prep.en.question, answer: ANSWER_PLACEHOLDER },
-      {
-        en: { question: prep.en.question, answer },
-        es: { question: prep.es.question, answer: ANSWER_PLACEHOLDER },
-        fr: { question: prep.fr.question, answer: ANSWER_PLACEHOLDER },
-      },
-      true,
-    );
-    if (!synced) {
-      setPhase("question");
+  /**
+   * "Write it myself": the API proofreads the English answer and writes it in
+   * full in one language (/api/faq/sync-edit with an empty target). One call
+   * per language, in parallel, so a failure is retried on its own.
+   */
+  async function translateLanguage(lang: SyncLang, prep: Record<FaqLanguage, Prepared>, faqKind: FaqKind): Promise<void> {
+    setGen((g) => ({ ...g, [lang]: { status: "running", startedAt: Date.now() } }));
+    const { status, data } = await postJson<{
+      ok: boolean;
+      error?: string;
+      en?: { question: string; answer: string; changed: boolean };
+      es?: { question: string; answer: string; notes: string[] };
+      fr?: { question: string; answer: string; notes: string[] };
+    }>("/api/admin/faq/sync-edit", {
+      faq_kind: faqKind,
+      en: { question_before: prep.en.question, question_after: prep.en.question, answer_before: "", answer_after: ownAnswer.trim() },
+      targets: { [lang]: { question: prep[lang].question, answer: "" } },
+    });
+    const t = data?.[lang];
+    if (status !== 200 || !data?.ok || !data.en?.answer?.trim() || !t?.answer?.trim()) {
+      setGen((g) => ({ ...g, [lang]: { status: "failed", error: data?.error ?? "Couldn't translate the answer. Try again." } }));
       return;
     }
-    const done = {} as Record<FaqLanguage, GenState>;
-    for (const lang of FAQ_LANGUAGES) {
-      done[lang] = {
-        status: "done",
-        result: { answer_markdown: synced.drafts[lang].answer, rag_context: "", conversation_summary: null, meta_title: "", meta_description: "" },
-      };
-    }
-    setGen(done);
+    // Both calls proofread the same English; keep the first.
+    translatedRef.current.en ??= data.en;
+    translatedRef.current[lang] = t;
+    setGen((g) => ({ ...g, [lang]: { status: "done", result: writtenResult(t.answer) } }));
+  }
+
+  async function runTranslation(prep: Record<FaqLanguage, Prepared>, faqKind: FaqKind, langs: SyncLang[] = ["es", "fr"]) {
+    setPhase("translating");
+    setError(null);
+    if (langs.length === 2) translatedRef.current = {};
+    await Promise.all(langs.map((l) => translateLanguage(l, prep, faqKind)));
+    const { en, es, fr } = translatedRef.current;
+    if (!en || !es || !fr) return; // a language failed: its Retry is shown
+    const next: Drafts = {
+      en: { question: en.question, answer: en.answer },
+      es: { question: es.question, answer: es.answer },
+      fr: { question: fr.question, answer: fr.answer },
+    };
+    setGen({ en: { status: "done", result: writtenResult(en.answer) }, es: { status: "done", result: writtenResult(es.answer) }, fr: { status: "done", result: writtenResult(fr.answer) } });
+    setDrafts(next);
+    setEnBase(next.en);
+    setSyncResult({ translated: true, enCorrected: en.changed, notes: { es: es.notes ?? [], fr: fr.notes ?? [] } });
     setTab("en");
     setPhase("review");
   }
@@ -295,7 +321,6 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     faqKind: FaqKind,
     base: { question: string; answer: string },
     current: Drafts,
-    translated = false,
   ): Promise<{ drafts: Drafts; notes: Record<"es" | "fr", string[]> } | null> {
     setSyncing(true);
     setError(null);
@@ -311,21 +336,16 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
       targets: { es: current.es, fr: current.fr },
     });
     setSyncing(false);
-    // Drop the placeholder in case the model kept it beside the new text.
-    const clean = (t?: { question: string; answer: string }) =>
-      t ? { question: t.question, answer: t.answer.replace(ANSWER_PLACEHOLDER, "").trim() } : null;
-    const en = clean(data?.en);
-    const es = clean(data?.es);
-    const fr = clean(data?.fr);
-    if (status !== 200 || !data?.ok || !en?.answer || !es?.answer || !fr?.answer) {
-      setError(data?.error ?? (translated ? "Couldn't translate the answer. Try again." : "Couldn't update Spanish and French. Try again."));
+    if (status !== 200 || !data?.ok || !data.en?.answer || !data.es?.answer || !data.fr?.answer) {
+      setError(data?.error ?? "Couldn't update Spanish and French. Try again.");
       return null;
     }
-    const next = { en, es, fr };
-    const notes = { es: data.es!.notes ?? [], fr: data.fr!.notes ?? [] };
+    const pick = (t: { question: string; answer: string }) => ({ question: t.question, answer: t.answer });
+    const next = { en: pick(data.en), es: pick(data.es), fr: pick(data.fr) };
+    const notes = { es: data.es.notes ?? [], fr: data.fr.notes ?? [] };
     setDrafts(next);
-    setEnBase(en);
-    setSyncResult({ translated, enCorrected: !!data.en!.changed, notes });
+    setEnBase(next.en);
+    setSyncResult({ translated: false, enCorrected: !!data.en.changed, notes });
     return { drafts: next, notes };
   }
 
@@ -382,7 +402,8 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     scheduleCheck(question);
   }
 
-  const busy = phase === "preparing" || phase === "generating" || phase === "translating" || phase === "publishing" || syncing;
+  const running = FAQ_LANGUAGES.some((l) => gen[l].status === "running");
+  const busy = phase === "preparing" || ((phase === "generating" || phase === "translating") && running) || phase === "publishing" || syncing;
   const enEdited = !!drafts && !!enBase && (drafts.en.question !== enBase.question || drafts.en.answer !== enBase.answer);
   const chosenGroup = groups?.find((g) => g.id === groupChoice) ?? null;
   const groupReady = groupChoice === NEW_GROUP ? newGroupName.trim().length > 0 && newGroupName.trim().length <= MAX_GROUP_NAME_CHARS : !!chosenGroup;
@@ -555,7 +576,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
 
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              {answerMode === "write" ? "Translating takes about 30 seconds." : "Generating takes about 2 minutes (three answers)."}
+              {answerMode === "write" ? "Translating takes about a minute." : "Generating takes about 2 minutes (three answers)."}
             </p>
             <button
               type="button"
@@ -569,25 +590,30 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
         </div>
       )}
 
-      {phase === "generating" && prepared && (
+      {(phase === "generating" || phase === "translating") && prepared && (
         <div className="space-y-3">
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
-            Generating <span className="font-medium text-foreground">{prepared.en.question}</span>. Keep this window open.
+            {phase === "translating" ? "Proofreading and translating " : "Generating "}
+            <span className="font-medium text-foreground">{prepared.en.question}</span>. Keep this window open.
           </p>
           <ul className="space-y-2">
-            {FAQ_LANGUAGES.map((lang) => {
+            {(phase === "translating" ? (["es", "fr"] as const) : FAQ_LANGUAGES).map((lang) => {
               const g = gen[lang];
               return (
                 <li key={lang} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
                   <span className="font-medium text-foreground">{LANG_LABEL[lang]}</span>
                   <span className="text-right text-zinc-500 dark:text-zinc-400">
                     {g.status === "pending" && "Waiting"}
-                    {g.status === "running" && `Generating… ${Math.max(0, Math.round((now - g.startedAt) / 1000))}s`}
+                    {g.status === "running" && `${phase === "translating" ? "Translating" : "Generating"}… ${Math.max(0, Math.round((now - g.startedAt) / 1000))}s`}
                     {g.status === "done" && <span className="text-green-700 dark:text-green-400">Ready</span>}
                     {g.status === "failed" && (
                       <span className="flex items-center gap-2">
                         <span className="text-red-600 dark:text-red-400">{g.error}</span>
-                        <button type="button" onClick={() => runGeneration(prepared, lang, kind)} className="font-medium text-foreground underline">
+                        <button
+                          type="button"
+                          onClick={() => (phase === "translating" && lang !== "en" ? runTranslation(prepared, kind, [lang]) : runGeneration(prepared, lang, kind))}
+                          className="font-medium text-foreground underline"
+                        >
                           Retry
                         </button>
                       </span>
@@ -598,12 +624,6 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
             })}
           </ul>
         </div>
-      )}
-
-      {phase === "translating" && prepared && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">
-          Proofreading <span className="font-medium text-foreground">{prepared.en.question}</span> and writing it in Spanish and French. Keep this window open.
-        </p>
       )}
 
       {(phase === "review" || phase === "publishing") && drafts && (

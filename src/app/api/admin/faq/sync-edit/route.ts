@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
 import { getAdminUser } from "@/lib/faq/adminStore";
 import { ModelApiError, syncFaqEdit, type FaqSyncText } from "@/lib/faq/modelApi";
 import type { FaqKind } from "@/lib/faq/groups";
@@ -15,6 +16,8 @@ type EnEdit = { question_before: string; question_after: string; answer_before: 
  *
  * - Review step of Add to FAQ (nothing published yet): `faq_kind` and the
  *   current es/fr drafts (`targets`) come from the dialog.
+ * - An answer the admin wrote: one target with an empty answer and an empty
+ *   `answer_before` — the API writes that language in full.
  * - Edit FAQ on a published English page: `slug` — the kind (from the
  *   FAQ's group) and the current Spanish/French texts are read here.
  */
@@ -30,17 +33,24 @@ export async function POST(request: Request) {
   } | null;
 
   const en = body?.en;
+  // answer_before "" = translate in full (checked below: only with empty targets).
   const enOk =
     en &&
     (["question_before", "question_after"] as const).every((k) => typeof en[k] === "string" && en[k]!.trim() && en[k]!.length <= QUESTION_MAX) &&
-    (["answer_before", "answer_after"] as const).every((k) => typeof en[k] === "string" && en[k]!.trim() && en[k]!.length <= ANSWER_MAX);
+    typeof en.answer_before === "string" &&
+    en.answer_before.length <= ANSWER_MAX &&
+    typeof en.answer_after === "string" &&
+    !!en.answer_after.trim() &&
+    en.answer_after.length <= ANSWER_MAX;
   if (!enOk) return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
+  const writeInFull = !en.answer_before!.trim();
 
   try {
     let kind: FaqKind;
-    let targets: Record<"es" | "fr", FaqSyncText>;
+    let targets: Partial<Record<"es" | "fr", FaqSyncText>>;
     const slug = body?.slug?.trim();
     if (slug) {
+      if (writeInFull) return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
       if (!/^[a-z0-9-]+$/.test(slug)) return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
       const admin = createAdminClient();
       const { data: rows, error } = await admin
@@ -62,16 +72,30 @@ export async function POST(request: Request) {
     } else {
       const k = body?.faq_kind;
       const t = body?.targets;
+      // Writing in full: one or both targets, answers empty. Syncing an edit: both, with answers.
       const valid = (x?: Partial<FaqSyncText>) =>
-        !!x && typeof x.question === "string" && !!x.question.trim() && x.question.length <= QUESTION_MAX && typeof x.answer === "string" && !!x.answer.trim() && x.answer.length <= ANSWER_MAX;
-      if ((k !== "doctrinal" && k !== "bible") || !valid(t?.es) || !valid(t?.fr)) {
+        !!x &&
+        typeof x.question === "string" &&
+        !!x.question.trim() &&
+        x.question.length <= QUESTION_MAX &&
+        typeof x.answer === "string" &&
+        (writeInFull ? x.answer === "" : !!x.answer.trim() && x.answer.length <= ANSWER_MAX);
+      const langs = (["es", "fr"] as const).filter((l) => t?.[l]);
+      if ((k !== "doctrinal" && k !== "bible") || !langs.every((l) => valid(t![l])) || (writeInFull ? langs.length === 0 : langs.length !== 2)) {
         return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
       }
       kind = k;
-      targets = { es: t!.es as FaqSyncText, fr: t!.fr as FaqSyncText };
+      targets = Object.fromEntries(langs.map((l) => [l, t![l] as FaqSyncText]));
     }
 
     const result = await syncFaqEdit(kind, en as EnEdit, targets);
+    if (writeInFull) {
+      // A translation written in full can open with "Respuesta:"/"Réponse:"; generated answers are stored without it.
+      for (const l of ["es", "fr"] as const) {
+        const t = result[l];
+        if (t) t.answer = stripAnswerPrefix(t.answer).trim();
+      }
+    }
     return Response.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof ModelApiError) {

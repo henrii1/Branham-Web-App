@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     group_id?: string;
     new_group_name?: string;
     faq_guidance?: string;
+    keep_question?: boolean;
   } | null;
   const guidance = body?.faq_guidance?.trim() || undefined;
   if (guidance && guidance.length > MAX_GUIDANCE_CHARS) {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
         return Response.json({ ok: false, error: `A group called "${taken.name_en}" already exists. Choose it from the list.` }, { status: 409 });
       }
     }
-    const results = await prepareFaqQuestion(question, kind, newGroupName ?? undefined, guidance);
+    const results = await prepareFaqQuestion(question, kind, newGroupName ?? undefined, guidance, body?.keep_question === true);
     const slug = faqSlugify(results.en.question);
     const duplicate = await findFaqDuplicate(slug, results.en.question);
     return Response.json({ ok: true, slug, results, duplicate, kind });

@@ -52,12 +52,15 @@ function apiConfig() {
  * official translations' terminology. `kind` "bible" shapes a question about
  * the Bible rather than about Brother Branham; `groupName` (a new group's
  * English name) comes back translated as results[lang].group_name.
+ * `keepQuestion` (an answer the admin wrote): the English question is kept
+ * exactly as typed and es/fr are direct translations of it.
  */
 export async function prepareFaqQuestion(
   question: string,
   kind: FaqKind = "doctrinal",
   groupName?: string,
   guidance?: string,
+  keepQuestion = false,
 ): Promise<Record<FaqLanguage, FaqPreparedQuestion>> {
   const { base, key } = apiConfig();
   const res = await fetch(`${base}/api/faq/translate`, {
@@ -69,6 +72,7 @@ export async function prepareFaqQuestion(
       ...(groupName ? { group_name: groupName } : {}),
       // Admin notes: shape the robust_query's search angles (not the title).
       ...(guidance ? { faq_guidance: guidance } : {}),
+      ...(keepQuestion ? { keep_question: true } : {}),
     }),
   });
   const data = (await res.json().catch(() => null)) as {
@@ -164,20 +168,22 @@ export interface FaqSyncText {
 }
 export interface FaqSyncResult {
   en: FaqSyncText & { changed: boolean };
-  es: FaqSyncText & { notes: string[] };
-  fr: FaqSyncText & { notes: string[] };
+  es?: FaqSyncText & { notes: string[] };
+  fr?: FaqSyncText & { notes: string[] };
 }
 
 /**
  * POST /api/faq/sync-edit — proofreads the admin's English edit (only the
  * changed parts) and applies the same change to the Spanish and French
  * answers, localizing any added citation from each language's own corpus.
+ * A target with an empty answer (and `answer_before` "") is written in full
+ * from the English, which is proofread whole (an answer the admin wrote).
  * Writes nothing: the admin reviews the result before saving.
  */
 export async function syncFaqEdit(
   kind: FaqKind,
   en: { question_before: string; question_after: string; answer_before: string; answer_after: string },
-  targets: Record<"es" | "fr", FaqSyncText>,
+  targets: Partial<Record<"es" | "fr", FaqSyncText>>,
 ): Promise<FaqSyncResult> {
   const { base, key } = apiConfig();
   const res = await fetch(`${base}/api/faq/sync-edit`, {
@@ -189,12 +195,11 @@ export async function syncFaqEdit(
   if (res.status === 400 && data?.error === "no_changes") {
     throw new ModelApiError("Nothing has changed in English yet.", 400);
   }
-  if (!res.ok || !data?.ok || !data.en?.answer?.trim() || !data.es?.answer?.trim() || !data.fr?.answer?.trim()) {
-    throw new ModelApiError("Couldn't update Spanish and French. Try again.");
+  const langs = (["es", "fr"] as const).filter((l) => targets[l]);
+  if (!res.ok || !data?.ok || !data.en?.answer?.trim() || langs.some((l) => !data[l]?.answer?.trim())) {
+    throw new ModelApiError(Object.values(targets).every((t) => !t?.answer) ? "Couldn't translate the answer. Try again." : "Couldn't update Spanish and French. Try again.");
   }
-  return {
-    en: { question: data.en.question, answer: data.en.answer, changed: !!data.en.changed },
-    es: { question: data.es.question, answer: data.es.answer, notes: data.es.notes ?? [] },
-    fr: { question: data.fr.question, answer: data.fr.answer, notes: data.fr.notes ?? [] },
-  };
+  const result: FaqSyncResult = { en: { question: data.en.question, answer: data.en.answer, changed: !!data.en.changed } };
+  for (const l of langs) result[l] = { question: data[l]!.question, answer: data[l]!.answer, notes: data[l]!.notes ?? [] };
+  return result;
 }
