@@ -17,7 +17,7 @@ import {
   FaqAnswerPreview,
   postJson,
 } from "./AdminDialog";
-import { MAX_GROUP_NAME_CHARS, type FaqGroup, type FaqKind } from "@/lib/faq/groups";
+import { MAX_GROUP_NAME_CHARS, MAX_GUIDANCE_CHARS, type FaqGroup, type FaqKind } from "@/lib/faq/groups";
 
 const LANG_LABEL: Record<FaqLanguage, string> = { en: "English", es: "Spanish", fr: "French" };
 
@@ -80,6 +80,13 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   const [kind, setKind] = useState<FaqKind>("doctrinal");
   // A new group's names, translated by prepare and editable in review.
   const [groupNames, setGroupNames] = useState<Record<FaqLanguage, string> | null>(null);
+  // Admin notes steering the answer (Model API faq_guidance). Used once, not stored.
+  const [guidance, setGuidance] = useState("");
+  const guidanceRef = useRef<string | undefined>(undefined);
+  // English as last generated or synced: the "before" of an English edit.
+  const [enBase, setEnBase] = useState<{ question: string; answer: string } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ enCorrected: boolean; notes: Record<"es" | "fr", string[]> } | null>(null);
   const checkSeq = useRef(0);
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Results of finished languages, kept across a retry of a later language.
@@ -171,6 +178,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
         question: prep[lang].question,
         robust_query: prep[lang].robust_query,
         faq_kind: faqKind,
+        ...(guidanceRef.current ? { faq_guidance: guidanceRef.current } : {}),
       });
       if (status !== 200 || !data?.ok || !data.result) {
         setGen((g) => ({ ...g, [lang]: { status: "failed", error: data?.error ?? `Request failed (${status}).` } }));
@@ -185,6 +193,8 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
       next[lang] = { question: prep[lang].question, answer: resultsRef.current[lang]!.answer_markdown };
     }
     setDrafts(next);
+    setEnBase({ question: next.en.question, answer: next.en.answer });
+    setSyncResult(null);
     setTab("en");
     setPhase("review");
   }, []);
@@ -192,6 +202,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   async function handlePrepare() {
     setPhase("preparing");
     setError(null);
+    guidanceRef.current = guidance.trim() || undefined;
     const { status, data } = await postJson<{
       ok: boolean;
       error?: string;
@@ -201,6 +212,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     }>("/api/admin/faq/prepare", {
       question: question.trim(),
       ...(groupChoice === NEW_GROUP ? { new_group_name: newGroupName.trim() } : { group_id: groupChoice }),
+      ...(guidanceRef.current ? { faq_guidance: guidanceRef.current } : {}),
     });
     if (status !== 200 || !data?.ok || !data.results) {
       setError(data?.error ?? "Couldn't prepare the question. Try again.");
@@ -224,6 +236,33 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     resultsRef.current = {};
     setGen(initialGen());
     void runGeneration(data.results, "en", faqKind);
+  }
+
+  /** Proofread the English edit and carry it into the Spanish and French drafts. */
+  async function handleSync() {
+    if (!drafts || !enBase) return;
+    setSyncing(true);
+    setError(null);
+    const { status, data } = await postJson<{
+      ok: boolean;
+      error?: string;
+      en?: { question: string; answer: string; changed: boolean };
+      es?: { question: string; answer: string; notes: string[] };
+      fr?: { question: string; answer: string; notes: string[] };
+    }>("/api/admin/faq/sync-edit", {
+      faq_kind: kind,
+      en: { question_before: enBase.question, question_after: drafts.en.question, answer_before: enBase.answer, answer_after: drafts.en.answer },
+      targets: { es: { question: drafts.es.question, answer: drafts.es.answer }, fr: { question: drafts.fr.question, answer: drafts.fr.answer } },
+    });
+    setSyncing(false);
+    if (status !== 200 || !data?.ok || !data.en || !data.es || !data.fr) {
+      setError(data?.error ?? "Couldn't update Spanish and French. Try again.");
+      return;
+    }
+    const en = { question: data.en.question, answer: data.en.answer };
+    setDrafts({ en, es: { question: data.es.question, answer: data.es.answer }, fr: { question: data.fr.question, answer: data.fr.answer } });
+    setEnBase(en);
+    setSyncResult({ enCorrected: data.en.changed, notes: { es: data.es.notes, fr: data.fr.notes } });
   }
 
   async function handlePublish() {
@@ -339,6 +378,25 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
             )}
           </div>
 
+          <div className="space-y-1.5">
+            <label htmlFor="faq-guidance" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Guidance for the answer <span className="font-normal">(optional)</span>
+            </label>
+            <textarea
+              id="faq-guidance"
+              rows={3}
+              value={guidance}
+              maxLength={MAX_GUIDANCE_CHARS}
+              onChange={(e) => setGuidance(e.target.value)}
+              disabled={phase === "preparing"}
+              placeholder="e.g. Focus on the new birth as a real experience, not church membership. Look at where he ties it to the Holy Spirit baptism."
+              className={`${adminInputClass} resize-y`}
+            />
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Steers what the answer looks for and emphasises, in all three languages. It only states what the sermons support, and your notes never appear in the answer. Not saved.
+            </p>
+          </div>
+
           {check.status === "checking" && <p className="text-xs text-zinc-500">Checking for an existing FAQ…</p>}
           {check.status === "duplicate" && check.duplicate && (
             <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">
@@ -419,6 +477,25 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
             ))}
           </div>
 
+          {enBase && (drafts.en.question !== enBase.question || drafts.en.answer !== enBase.answer) && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-900/20 dark:text-blue-200">
+              <span>You&apos;ve edited the English. Spanish and French don&apos;t include it yet.</span>
+              <button type="button" onClick={handleSync} disabled={syncing || phase === "publishing"} className={adminSecondaryButtonClass}>
+                {syncing ? "Updating…" : "Update Spanish & French"}
+              </button>
+            </div>
+          )}
+          {syncResult && !syncing && (
+            <div className="space-y-1 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
+              <p>
+                Spanish and French updated{syncResult.enCorrected ? ", and the English spelling and grammar were corrected" : ""}. Check them before publishing.
+              </p>
+              {(["es", "fr"] as const).flatMap((l) => syncResult.notes[l].map((n, i) => (
+                <p key={`${l}${i}`} className="text-amber-700 dark:text-amber-400">{LANG_LABEL[l]}: {n}</p>
+              )))}
+            </div>
+          )}
+
           {groupNames ? (
             <div className="space-y-1.5">
               <label htmlFor="faq-review-group" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
@@ -447,7 +524,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
               id="faq-review-question"
               value={drafts[tab].question}
               onChange={(e) => setDrafts({ ...drafts, [tab]: { ...drafts[tab], question: e.target.value } })}
-              disabled={phase === "publishing"}
+              disabled={phase === "publishing" || syncing}
               className={adminInputClass}
             />
             {tab === "en" && (
@@ -470,6 +547,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
                 rows={14}
                 value={drafts[tab].answer}
                 onChange={(e) => setDrafts({ ...drafts, [tab]: { ...drafts[tab], answer: e.target.value } })}
+                disabled={syncing}
                 className={`${adminInputClass} resize-y font-mono text-xs`}
               />
             ) : (
@@ -484,7 +562,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
             <button
               type="button"
               onClick={handlePublish}
-              disabled={phase === "publishing" || FAQ_LANGUAGES.some((l) => !drafts[l].question.trim() || !drafts[l].answer.trim()) || !currentSlug || !groupNamesReady}
+              disabled={phase === "publishing" || syncing || FAQ_LANGUAGES.some((l) => !drafts[l].question.trim() || !drafts[l].answer.trim()) || !currentSlug || !groupNamesReady}
               className={adminPrimaryButtonClass}
             >
               {phase === "publishing" ? "Publishing…" : "Publish"}

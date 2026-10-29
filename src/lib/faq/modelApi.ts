@@ -57,12 +57,19 @@ export async function prepareFaqQuestion(
   question: string,
   kind: FaqKind = "doctrinal",
   groupName?: string,
+  guidance?: string,
 ): Promise<Record<FaqLanguage, FaqPreparedQuestion>> {
   const { base, key } = apiConfig();
   const res = await fetch(`${base}/api/faq/translate`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ question, faq_kind: kind, ...(groupName ? { group_name: groupName } : {}) }),
+    body: JSON.stringify({
+      question,
+      faq_kind: kind,
+      ...(groupName ? { group_name: groupName } : {}),
+      // Admin notes: shape the robust_query's search angles (not the title).
+      ...(guidance ? { faq_guidance: guidance } : {}),
+    }),
   });
   const data = (await res.json().catch(() => null)) as {
     ok?: boolean;
@@ -94,6 +101,7 @@ export async function generateFaqAnswer(
   question: string,
   language: FaqLanguage,
   kind: FaqKind = "doctrinal",
+  guidance?: string,
 ): Promise<FaqGeneratedAnswer> {
   const { base, key } = apiConfig();
   const res = await fetch(`${base}/api/chat`, {
@@ -108,6 +116,9 @@ export async function generateFaqAnswer(
       // Bible FAQ format, ending with sermon References.
       response_mode: "faq",
       faq_kind: kind,
+      // Admin notes steering search and emphasis; the same English text for
+      // every language. Never stored, never shown in the answer.
+      ...(guidance ? { faq_guidance: guidance } : {}),
     }),
   });
   if (!res.ok || !res.body) {
@@ -144,5 +155,46 @@ export async function generateFaqAnswer(
     // es/fr pages use their own (localized) question as the title.
     meta_title: faqMetaTitle(language === "en" ? done.querySummary : null, question),
     meta_description: faqMetaDescription(answer),
+  };
+}
+
+export interface FaqSyncText {
+  question: string;
+  answer: string;
+}
+export interface FaqSyncResult {
+  en: FaqSyncText & { changed: boolean };
+  es: FaqSyncText & { notes: string[] };
+  fr: FaqSyncText & { notes: string[] };
+}
+
+/**
+ * POST /api/faq/sync-edit — proofreads the admin's English edit (only the
+ * changed parts) and applies the same change to the Spanish and French
+ * answers, localizing any added citation from each language's own corpus.
+ * Writes nothing: the admin reviews the result before saving.
+ */
+export async function syncFaqEdit(
+  kind: FaqKind,
+  en: { question_before: string; question_after: string; answer_before: string; answer_after: string },
+  targets: Record<"es" | "fr", FaqSyncText>,
+): Promise<FaqSyncResult> {
+  const { base, key } = apiConfig();
+  const res = await fetch(`${base}/api/faq/sync-edit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ faq_kind: kind, en, targets }),
+  });
+  const data = (await res.json().catch(() => null)) as ({ ok?: boolean; error?: string } & Partial<FaqSyncResult>) | null;
+  if (res.status === 400 && data?.error === "no_changes") {
+    throw new ModelApiError("Nothing has changed in English yet.", 400);
+  }
+  if (!res.ok || !data?.ok || !data.en?.answer?.trim() || !data.es?.answer?.trim() || !data.fr?.answer?.trim()) {
+    throw new ModelApiError("Couldn't update Spanish and French. Try again.");
+  }
+  return {
+    en: { question: data.en.question, answer: data.en.answer, changed: !!data.en.changed },
+    es: { question: data.es.question, answer: data.es.answer, notes: data.es.notes ?? [] },
+    fr: { question: data.fr.question, answer: data.fr.answer, notes: data.fr.notes ?? [] },
   };
 }

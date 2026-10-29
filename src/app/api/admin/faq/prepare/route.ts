@@ -1,6 +1,6 @@
 import { faqSlugify } from "@/lib/faq/entry";
 import { findFaqDuplicate, getAdminUser, getFaqGroup, listFaqGroups } from "@/lib/faq/adminStore";
-import { MAX_GROUP_NAME_CHARS, type FaqKind } from "@/lib/faq/groups";
+import { MAX_GROUP_NAME_CHARS, MAX_GUIDANCE_CHARS, type FaqKind } from "@/lib/faq/groups";
 import { ModelApiError, prepareFaqQuestion } from "@/lib/faq/modelApi";
 
 /**
@@ -18,7 +18,16 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
   }
 
-  const body = (await request.json().catch(() => null)) as { question?: string; group_id?: string; new_group_name?: string } | null;
+  const body = (await request.json().catch(() => null)) as {
+    question?: string;
+    group_id?: string;
+    new_group_name?: string;
+    faq_guidance?: string;
+  } | null;
+  const guidance = body?.faq_guidance?.trim() || undefined;
+  if (guidance && guidance.length > MAX_GUIDANCE_CHARS) {
+    return Response.json({ ok: false, error: `Keep the guidance under ${MAX_GUIDANCE_CHARS} characters.` }, { status: 400 });
+  }
   const question = body?.question?.trim() ?? "";
   const groupId = body?.group_id?.trim() || null;
   const newGroupName = body?.new_group_name?.replace(/\s+/g, " ").trim() || null;
@@ -41,7 +50,7 @@ export async function POST(request: Request) {
         return Response.json({ ok: false, error: `A group called "${taken.name_en}" already exists. Choose it from the list.` }, { status: 409 });
       }
     }
-    const results = await prepareFaqQuestion(question, kind, newGroupName ?? undefined);
+    const results = await prepareFaqQuestion(question, kind, newGroupName ?? undefined, guidance);
     const slug = faqSlugify(results.en.question);
     const duplicate = await findFaqDuplicate(slug, results.en.question);
     return Response.json({ ok: true, slug, results, duplicate, kind });

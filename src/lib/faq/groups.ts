@@ -20,6 +20,8 @@ export interface FaqGroup {
 
 export const FAQ_GROUP_COLUMNS = "id, kind, name_en, name_es, name_fr, created_at" as const;
 export const MAX_GROUP_NAME_CHARS = 80;
+/** Admin guidance notes for an FAQ answer (Model API `faq_guidance`). */
+export const MAX_GUIDANCE_CHARS = 2000;
 
 export function groupName(group: FaqGroup, language: string): string {
   return language === "es" ? group.name_es : language === "fr" ? group.name_fr : group.name_en;

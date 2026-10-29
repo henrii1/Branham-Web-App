@@ -60,6 +60,16 @@ export function FaqEditModal({
     };
   }, [slug]);
 
+  // English pages: carry an edit into Spanish and French (Model API sync-edit),
+  // reviewed here before anything is saved.
+  const [syncing, setSyncing] = useState(false);
+  const [review, setReview] = useState<{
+    texts: Record<FaqLanguage, { question: string; answer: string }>;
+    notes: Record<"es" | "fr", string[]>;
+    enCorrected: boolean;
+  } | null>(null);
+  const [reviewTab, setReviewTab] = useState<FaqLanguage>("en");
+
   const textChanged = question.trim() !== initialQuestion.trim() || answer !== initialAnswer;
   const groupChanged = !!groupId && groupId !== initialGroupId;
   const changed = textChanged || groupChanged;
@@ -92,6 +102,70 @@ export function FaqEditModal({
     onClose();
   }
 
+  async function handleSync() {
+    setSyncing(true);
+    setError(null);
+    const { status, data } = await postJson<{
+      ok: boolean;
+      error?: string;
+      en?: { question: string; answer: string; changed: boolean };
+      es?: { question: string; answer: string; notes: string[] };
+      fr?: { question: string; answer: string; notes: string[] };
+    }>("/api/admin/faq/sync-edit", {
+      slug,
+      en: { question_before: initialQuestion, question_after: question, answer_before: initialAnswer, answer_after: answer },
+    });
+    setSyncing(false);
+    if (status !== 200 || !data?.ok || !data.en || !data.es || !data.fr) {
+      setError(data?.error ?? "Couldn't update Spanish and French. Try again.");
+      return;
+    }
+    setReview({
+      texts: {
+        en: { question: data.en.question, answer: data.en.answer },
+        es: { question: data.es.question, answer: data.es.answer },
+        fr: { question: data.fr.question, answer: data.fr.answer },
+      },
+      notes: { es: data.es.notes, fr: data.fr.notes },
+      enCorrected: data.en.changed,
+    });
+    setReviewTab("en");
+  }
+
+  /** Save the reviewed English, Spanish and French (and a group change). */
+  async function handleSaveAll() {
+    if (!review) return;
+    setSaving(true);
+    setError(null);
+    const saved: FaqLanguage[] = [];
+    for (const lang of ["en", "es", "fr"] as FaqLanguage[]) {
+      const t = review.texts[lang];
+      const { status, data } = await postJson<{ ok: boolean; error?: string }>("/api/admin/faq/update", {
+        slug,
+        language: lang,
+        question: t.question,
+        answer_markdown: t.answer,
+      });
+      if (status !== 200 || !data?.ok) {
+        const done = saved.map((l) => LANG_LABEL[l]).join(" and ");
+        setError(`${done ? `${done} saved, but ` : ""}${LANG_LABEL[lang]} wasn't: ${data?.error === "invalid_request" ? "the question and answer can't be empty" : (data?.error ?? "try again")}.`);
+        setSaving(false);
+        return;
+      }
+      saved.push(lang);
+    }
+    if (groupChanged) {
+      const { status, data } = await postJson<{ ok: boolean; error?: string }>("/api/admin/faq/move", { slug, group_id: groupId });
+      if (status !== 200 || !data?.ok) {
+        setError(`All three languages were saved, but the group wasn't changed: ${data?.error ?? "try again."}`);
+        setSaving(false);
+        return;
+      }
+    }
+    router.refresh();
+    onClose();
+  }
+
   async function handleDelete() {
     setDeleting(true);
     setError(null);
@@ -105,7 +179,82 @@ export function FaqEditModal({
     window.location.href = language === "en" ? "/faq" : `/${language}/faq`;
   }
 
-  const busy = saving || deleting;
+  const busy = saving || deleting || syncing;
+
+  if (review) {
+    const t = review.texts[reviewTab];
+    const setText = (patch: Partial<{ question: string; answer: string }>) =>
+      setReview({ ...review, texts: { ...review.texts, [reviewTab]: { ...t, ...patch } } });
+    return (
+      <AdminDialog title="Review all three languages" onClose={onClose} closeDisabled={busy}>
+        <div className="space-y-4">
+          <div className="space-y-1 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
+            <p>
+              Your English edit was applied to Spanish and French{review.enCorrected ? ", and the English spelling and grammar were corrected" : ""}. Nothing is saved yet.
+            </p>
+            {(["es", "fr"] as const).flatMap((l) => review.notes[l].map((n, i) => (
+              <p key={`${l}${i}`} className="text-amber-700 dark:text-amber-400">{LANG_LABEL[l]}: {n}</p>
+            )))}
+          </div>
+
+          <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700" role="tablist">
+            {(["en", "es", "fr"] as FaqLanguage[]).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                role="tab"
+                aria-selected={reviewTab === lang}
+                onClick={() => setReviewTab(lang)}
+                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+                  reviewTab === lang ? "border-zinc-900 text-foreground dark:border-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                }`}
+              >
+                {LANG_LABEL[lang]}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="faq-sync-question" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Question ({LANG_LABEL[reviewTab]})
+            </label>
+            <input id="faq-sync-question" value={t.question} onChange={(e) => setText({ question: e.target.value })} disabled={saving} className={adminInputClass} />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="faq-sync-answer" className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                Answer
+              </label>
+              <button type="button" onClick={() => setShowPreview((v) => !v)} className="text-xs font-medium text-foreground underline">
+                {showPreview ? "Edit text" : "Preview"}
+              </button>
+            </div>
+            {showPreview ? (
+              <FaqAnswerPreview markdown={t.answer} language={reviewTab} />
+            ) : (
+              <textarea id="faq-sync-answer" rows={14} value={t.answer} onChange={(e) => setText({ answer: e.target.value })} disabled={saving} className={`${adminInputClass} resize-y font-mono text-xs`} />
+            )}
+          </div>
+
+          {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">{error}</p>}
+
+          <div className="flex items-center justify-between gap-2">
+            <button type="button" onClick={() => setReview(null)} disabled={saving} className={adminSecondaryButtonClass}>
+              Back to editing
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAll}
+              disabled={saving || (["en", "es", "fr"] as FaqLanguage[]).some((l) => !review.texts[l].question.trim() || !review.texts[l].answer.trim())}
+              className={adminPrimaryButtonClass}
+            >
+              {saving ? "Saving…" : "Save all three languages"}
+            </button>
+          </div>
+        </div>
+      </AdminDialog>
+    );
+  }
 
   return (
     <AdminDialog title={`Edit FAQ (${LANG_LABEL[language]})`} onClose={onClose} closeDisabled={busy}>
@@ -168,7 +317,10 @@ export function FaqEditModal({
             />
           )}
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Keep citations in their bracket form, e.g. [SERMON TITLE — 63-0324E: ¶12–¶14], so they stay clickable. This edits the {LANG_LABEL[language]} page only.
+            Keep citations in their bracket form, e.g. [SERMON TITLE — 63-0324E: ¶12–¶14], so they stay clickable.{" "}
+            {language === "en"
+              ? "Save English only, or use Update Spanish & French to carry your edit into the other two pages and review them first."
+              : `This edits the ${LANG_LABEL[language]} page only.`}
           </p>
         </div>
 
@@ -208,8 +360,13 @@ export function FaqEditModal({
           <button type="button" onClick={onClose} disabled={busy} className={adminSecondaryButtonClass}>
             Cancel
           </button>
+          {language === "en" && textChanged && (
+            <button type="button" onClick={handleSync} disabled={busy || !question.trim() || !answer.trim()} className={adminSecondaryButtonClass}>
+              {syncing ? "Updating…" : "Update Spanish & French"}
+            </button>
+          )}
           <button type="button" onClick={handleSave} disabled={busy || !changed || !question.trim() || !answer.trim()} className={adminPrimaryButtonClass}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : language === "en" && textChanged ? "Save English only" : "Save"}
           </button>
           </div>
         </div>
