@@ -2,16 +2,14 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { seriesCopy, type SeriesPosition } from "@/lib/faq/series";
+import { seriesCopy, seriesPagePath, type SeriesPosition } from "@/lib/faq/series";
 import { markSeriesRead, useSeriesRead } from "@/lib/faq/seriesProgress";
-import { NATURE_SERIES_ANCHOR } from "./NatureSeries";
 
 const qHref = (slug: string, language: string) => (language === "en" ? `/q/${slug}` : `/${language}/q/${slug}`);
-const seriesHref = (language: string) => `${language === "en" ? "/faq" : `/${language}/faq`}#${NATURE_SERIES_ANCHOR}`;
 
 /**
- * Above a nature question: where it sits in the series (links back to the
- * path on the FAQ page), and — for a reader who arrives mid-series without
+ * Above a nature question: where it sits in the series (links to the
+ * series page), and — for a reader who arrives mid-series without
  * having read the question before it — a pointer back to question 1.
  * Opening the page marks the question read.
  */
@@ -23,7 +21,7 @@ export function SeriesHeader({ slug, series, language }: { slug: string; series:
   const arrivedMidway = !!read && series.number > 1 && !!series.prev && !read.has(series.prev.slug);
   return (
     <div className="mb-3">
-      <Link href={seriesHref(language)} className="text-[13px] font-medium text-[var(--series-accent)] hover:underline hover:underline-offset-4">
+      <Link href={seriesPagePath(language)} className="text-[13px] font-medium text-[var(--series-accent)] hover:underline hover:underline-offset-4">
         {c.position(series.part, series.number, series.total)}
         <span className="text-zinc-500 dark:text-zinc-400">{`: ${series.partName}`}</span>
       </Link>

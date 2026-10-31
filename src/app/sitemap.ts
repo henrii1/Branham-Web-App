@@ -67,6 +67,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly" as const,
       priority: 0.5,
     })),
+    // The Christianity Seen in Nature series page.
+    ...(["/faq/nature", "/es/faq/nature", "/fr/faq/nature"] as const).map((path) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
     ...enEntries,
     ...esEntries,
     ...frEntries,

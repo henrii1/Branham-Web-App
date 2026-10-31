@@ -29,6 +29,10 @@ export interface SeriesPosition {
   next: { slug: string; question: string } | null;
 }
 
+/** The series' own page (`/faq/nature`, `/es/faq/nature`, `/fr/faq/nature`). */
+export const seriesPagePath = (language: string) => (language === "en" ? "/faq/nature" : `/${language}/faq/nature`);
+export const SERIES_PAGE_LANG_HREFS = { en: seriesPagePath("en"), es: seriesPagePath("es"), fr: seriesPagePath("fr") };
+
 export function seriesOf<T extends FaqListItem>(sections: FaqSection<T>[]): SeriesEntry[] {
   let n = 0;
   return sections.flatMap((s, i) => s.items.map((item) => ({ slug: item.slug, question: item.question, number: ++n, part: i + 1 })));
@@ -51,6 +55,16 @@ export const SERIES_COPY: Record<
     read: string;
     show: (parts: number, questions: number) => string;
     hide: string;
+    /** The series page: intro, links, share, metadata. */
+    pageIntro: (parts: number, questions: number) => string;
+    allQuestions: string;
+    openPage: string;
+    share: string;
+    copied: string;
+    askQuestion: string;
+    metaDescription: string;
+    /** Under the title on the link-preview image. */
+    ogSubtitle: (parts: number) => string;
   }
 > = {
   en: {
@@ -68,6 +82,14 @@ export const SERIES_COPY: Record<
     read: "Read",
     show: (p, q) => `Show the series: ${p} part${p === 1 ? "" : "s"}, ${q} questions`,
     hide: "Hide the series",
+    pageIntro: (p, q) => `What creation shows us about God, in ${p} part${p === 1 ? "" : "s"} and ${q} questions. Read it in order: each answer builds on the one before.`,
+    allQuestions: "All questions",
+    openPage: "Open the series page",
+    share: "Share the series",
+    copied: "Link copied",
+    askQuestion: "Ask a question",
+    metaDescription: "What creation shows us about God: a series read in order, each answer building on the one before.",
+    ogSubtitle: (p) => `A series in ${p} part${p === 1 ? "" : "s"}, read in order`,
   },
   es: {
     intro: "Una serie. Léala en orden: cada respuesta se apoya en la anterior.",
@@ -84,6 +106,14 @@ export const SERIES_COPY: Record<
     read: "Leída",
     show: (p, q) => `Ver la serie: ${p} parte${p === 1 ? "" : "s"}, ${q} preguntas`,
     hide: "Ocultar la serie",
+    pageIntro: (p, q) => `Lo que la creación nos muestra de Dios, en ${p} parte${p === 1 ? "" : "s"} y ${q} preguntas. Léala en orden: cada respuesta se apoya en la anterior.`,
+    allQuestions: "Todas las preguntas",
+    openPage: "Abrir la página de la serie",
+    share: "Compartir la serie",
+    copied: "Enlace copiado",
+    askQuestion: "Hacer una pregunta",
+    metaDescription: "Lo que la creación nos muestra de Dios: una serie para leer en orden, cada respuesta apoyada en la anterior.",
+    ogSubtitle: (p) => `Una serie en ${p} parte${p === 1 ? "" : "s"}, para leer en orden`,
   },
   fr: {
     intro: "Une série. Lisez-la dans l’ordre : chaque réponse s’appuie sur la précédente.",
@@ -100,6 +130,14 @@ export const SERIES_COPY: Record<
     read: "Lue",
     show: (p, q) => `Voir la série : ${p} partie${p === 1 ? "" : "s"}, ${q} questions`,
     hide: "Masquer la série",
+    pageIntro: (p, q) => `Ce que la création nous montre de Dieu, en ${p} partie${p === 1 ? "" : "s"} et ${q} questions. Lisez-la dans l’ordre : chaque réponse s’appuie sur la précédente.`,
+    allQuestions: "Toutes les questions",
+    openPage: "Ouvrir la page de la série",
+    share: "Partager la série",
+    copied: "Lien copié",
+    askQuestion: "Poser une question",
+    metaDescription: "Ce que la création nous montre de Dieu : une série à lire dans l’ordre, chaque réponse s’appuyant sur la précédente.",
+    ogSubtitle: (p) => `Une série en ${p} partie${p === 1 ? "" : "s"}, à lire dans l’ordre`,
   },
 };
 

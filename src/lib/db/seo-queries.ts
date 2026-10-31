@@ -128,10 +128,15 @@ export const fetchFaqGroups = () =>
     { revalidate: 3600, tags: [FAQ_LIST_CACHE_TAG] },
   )();
 
+/** The Christianity Seen in Nature series in one language: its parts, in order. */
+export async function fetchNatureSeries(language: string) {
+  const [items, groups] = await Promise.all([fetchFaqListItems(language), fetchFaqGroups()]);
+  return groupFaqItems(items, groups).nature;
+}
+
 /** A nature question's place in the Christianity Seen in Nature series. */
 export async function fetchNatureSeriesPosition(slug: string, language: string): Promise<SeriesPosition | null> {
-  const [items, groups] = await Promise.all([fetchFaqListItems(language), fetchFaqGroups()]);
-  const { nature } = groupFaqItems(items, groups);
+  const nature = await fetchNatureSeries(language);
   const entries = seriesOf(nature);
   const i = entries.findIndex((e) => e.slug === slug);
   if (i < 0) return null;
