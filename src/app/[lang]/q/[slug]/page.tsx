@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import {
   fetchAdjacentSeoPages,
   fetchAllPublishedSeoPages,
+  fetchFollowupKind,
   fetchSeoPage,
 } from "@/lib/db/seo-queries";
 import { SeoShell } from "@/components/seo/SeoShell";
@@ -99,6 +100,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
   ]);
 
   if (!page) notFound();
+  const followupKind = await fetchFollowupKind(page.group_id);
 
   const canonicalUrl = `${SITE_URL}/${l}/q/${slug}`;
   const prevUrl = adjacent.prev ? `${SITE_URL}/${l}/q/${adjacent.prev.slug}` : null;
@@ -165,6 +167,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
         ragContext={page.rag_context ?? ""}
         retrievalQuery={page.robust_query}
         conversationSummary={page.conversation_summary}
+        followupKind={followupKind}
         nextPage={adjacent.nextWrapped}
         language={l}
         langHrefs={{

@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/client";
+import { isFollowupFaqKind, type FollowupFaqKind } from "@/lib/faq/groups";
 
 export interface ConversationRow {
   id: string;
   user_id: string;
   title: string | null;
   conversation_summary: string | null;
+  /** Set when the chat started as a follow-up on a Bible or nature FAQ page. */
+  source_faq_kind: FollowupFaqKind | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,7 +44,7 @@ export interface NewShareInput {
 }
 
 const CONVERSATION_COLUMNS =
-  "id, user_id, title, conversation_summary, created_at, updated_at" as const;
+  "id, user_id, title, conversation_summary, source_faq_kind, created_at, updated_at" as const;
 const MESSAGE_COLUMNS =
   "id, conversation_id, user_id, role, content, created_at" as const;
 const RAG_COLUMNS =
@@ -127,12 +130,13 @@ export async function createConversation(
   id: string,
   userId: string,
   title: string | null,
+  sourceFaqKind: FollowupFaqKind | null = null,
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("conversations")
     .upsert(
-      { id, user_id: userId, title },
+      { id, user_id: userId, title, ...(sourceFaqKind ? { source_faq_kind: sourceFaqKind } : {}) },
       { onConflict: "id", ignoreDuplicates: true },
     );
 
@@ -211,21 +215,27 @@ export interface SeoCacheClientRow {
   answer_markdown: string;
   rag_context: string;
   conversation_summary: string | null;
+  /** The FAQ's group kind when follow-ups are answered from Scripture. */
+  followup_kind: FollowupFaqKind | null;
 }
 
 export async function fetchSeoPageClient(
   slug: string,
+  language = "en",
 ): Promise<SeoCacheClientRow | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("seo_cache")
-    .select("slug, question, answer_markdown, rag_context, conversation_summary")
+    .select("slug, question, answer_markdown, rag_context, conversation_summary, faq_groups(kind)")
     .eq("slug", slug)
+    .eq("language", language) // one row per language shares the slug
     .eq("published", true)
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  if (!data) return null;
+  const { faq_groups: group, ...row } = data as typeof data & { faq_groups: { kind: string } | null };
+  return { ...row, followup_kind: isFollowupFaqKind(group?.kind) ? group.kind : null };
 }
 
 export async function fetchUserLanguage(

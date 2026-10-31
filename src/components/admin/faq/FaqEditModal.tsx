@@ -11,7 +11,7 @@ import {
   FaqAnswerPreview,
   postJson,
 } from "./AdminDialog";
-import type { FaqGroup } from "@/lib/faq/groups";
+import { SECTION_LABELS, type FaqGroup } from "@/lib/faq/groups";
 
 const LANG_LABEL: Record<FaqLanguage, string> = { en: "English", es: "Spanish", fr: "French" };
 
@@ -271,11 +271,18 @@ export function FaqEditModal({
             className={adminInputClass}
           >
             {!groups && <option value="">Loading groups…</option>}
-            {groups?.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name_en}
-              </option>
-            ))}
+            {groups &&
+              (["nature", "bible", "doctrinal"] as const).map((section) => (
+                <optgroup key={section} label={SECTION_LABELS[section].en}>
+                  {groups
+                    .filter((g) => g.kind === section)
+                    .map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name_en}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
           </select>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Moves this FAQ in all three languages. The answer isn&apos;t rewritten; to change how it&apos;s answered, delete it and add it again in the new group.

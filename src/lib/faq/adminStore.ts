@@ -17,7 +17,7 @@ import {
   type FaqEntryDraft,
   type FaqLanguage,
 } from "./entry";
-import { FAQ_GROUP_COLUMNS, type FaqGroup } from "./groups";
+import { FAQ_GROUP_COLUMNS, type FaqGroup, type FaqSectionKind } from "./groups";
 
 /** The signed-in user if they're one of the two admin accounts, else null. */
 export async function getAdminUser(): Promise<User | null> {
@@ -86,13 +86,13 @@ export async function getFaqGroup(id: string): Promise<FaqGroup | null> {
 export class FaqGroupNameTakenError extends Error {}
 
 /**
- * Create a Bible group (the only kind admins can create — there is exactly
- * one doctrinal group). Names are already translated by the Model API.
+ * Create a nature or Bible group (there is exactly one doctrinal group).
+ * Names are already translated by the Model API.
  */
-export async function createFaqGroup(names: Record<FaqLanguage, string>): Promise<FaqGroup> {
+export async function createFaqGroup(names: Record<FaqLanguage, string>, kind: FaqSectionKind): Promise<FaqGroup> {
   const { data, error } = await createAdminClient()
     .from("faq_groups")
-    .insert({ kind: "bible", name_en: clean(names.en.trim()), name_es: clean(names.es.trim()), name_fr: clean(names.fr.trim()) })
+    .insert({ kind, name_en: clean(names.en.trim()), name_es: clean(names.es.trim()), name_fr: clean(names.fr.trim()) })
     .select(FAQ_GROUP_COLUMNS)
     .single();
   if (error) {
@@ -106,12 +106,12 @@ export async function createFaqGroup(names: Record<FaqLanguage, string>): Promis
 export async function deleteEmptyFaqGroup(id: string): Promise<void> {
   const admin = createAdminClient();
   const { count } = await admin.from("seo_cache").select("slug", { count: "exact", head: true }).eq("group_id", id);
-  if (count === 0) await admin.from("faq_groups").delete().eq("id", id).eq("kind", "bible");
+  if (count === 0) await admin.from("faq_groups").delete().eq("id", id).neq("kind", "doctrinal");
 }
 
 /**
- * Move an FAQ (every language row of the slug) to another group. A Bible
- * group left without questions is removed, as when its last FAQ is deleted.
+ * Move an FAQ (every language row of the slug) to another group. A nature
+ * or Bible group left without questions is removed, as when its last FAQ is deleted.
  */
 export async function moveFaqToGroup(slug: string, groupId: string): Promise<boolean> {
   const admin = createAdminClient();
@@ -197,7 +197,7 @@ export async function deleteFaq(slug: string): Promise<number> {
   const { data, error } = await admin.from("seo_cache").delete().eq("slug", slug).select("language, group_id");
   if (error) throw error;
   if (data?.length) {
-    // A Bible group left without questions goes too, so pickers stay clean
+    // A nature or Bible group left without questions goes too, so pickers stay clean
     // (deleteEmptyFaqGroup never removes the doctrinal group).
     const groupId = (data[0] as { group_id?: string | null }).group_id;
     if (groupId) await deleteEmptyFaqGroup(groupId).catch((err) => console.error("Empty group cleanup failed:", err));

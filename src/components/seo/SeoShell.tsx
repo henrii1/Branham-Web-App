@@ -41,6 +41,8 @@ import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { aboutHref } from "@/lib/about/content";
 import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
+import { natureFollowupNote, type FollowupFaqKind } from "@/lib/faq/groups";
+import { ComposerNote } from "@/components/chat/Composer";
 import dynamic from "next/dynamic";
 const FaqEditModal = dynamic(
   () => import("@/components/admin/faq/FaqEditModal").then((m) => ({ default: m.FaqEditModal })),
@@ -58,6 +60,8 @@ interface SeoShellProps {
   ragContext: string;
   retrievalQuery: string;
   conversationSummary: string | null;
+  /** Set on Bible and nature FAQs: follow-ups are answered from Scripture. */
+  followupKind: FollowupFaqKind | null;
   nextPage: { slug: string; question: string } | null;
   language: string;
   langHrefs: { en: string; es: string; fr: string };
@@ -81,6 +85,7 @@ export function SeoShell({
   ragContext,
   retrievalQuery,
   conversationSummary,
+  followupKind,
   nextPage,
   language,
   langHrefs,
@@ -461,9 +466,10 @@ export function SeoShell({
   const handleComposerFocus = useCallback(() => {
     if (isAnonymous) {
       localStorage.setItem("pending_seo_slug", slug);
+      localStorage.setItem("pending_seo_language", language);
       setShowLoginModal(true);
     }
-  }, [isAnonymous, slug]);
+  }, [isAnonymous, slug, language]);
 
   const handleFollowUp = useCallback(
     async (content: string) => {
@@ -480,7 +486,7 @@ export function SeoShell({
         const userMsgId = generateId();
         const assistantMsgId = generateId();
 
-        await createConversation(convId, user.id, question);
+        await createConversation(convId, user.id, question, followupKind);
         await saveMessage(userMsgId, convId, user.id, "user", question);
         await saveMessage(assistantMsgId, convId, user.id, "assistant", answerMarkdown);
         await Promise.all([
@@ -502,7 +508,7 @@ export function SeoShell({
         }
       }
     },
-    [isAnonymous, user, seeding, question, answerMarkdown, ragContext, conversationSummary, language, router],
+    [isAnonymous, user, seeding, question, answerMarkdown, ragContext, conversationSummary, followupKind, language, router],
   );
 
   const handleOfflineRetry = useCallback(() => {
@@ -874,6 +880,7 @@ export function SeoShell({
           onSubmit={handleFollowUp}
           disabled={seeding}
           isAnonymous={isAnonymous}
+          note={followupKind === "nature" ? natureFollowupNote(language) : undefined}
         />
       </div>
 
@@ -945,9 +952,10 @@ interface SeoComposerProps {
   onSubmit: (content: string) => void;
   disabled: boolean;
   isAnonymous: boolean;
+  note?: string;
 }
 
-function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerProps) {
+function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous, note }: SeoComposerProps) {
   const [value, setValue] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
 
@@ -1072,6 +1080,7 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous }: SeoComposerPr
           </svg>
         </button>
       </div>
+      {note && <ComposerNote text={note} />}
     </form>
   );
 }

@@ -145,7 +145,7 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
               ))}
             </nav>
 
-            <FaqGroups bible={sections.bible} doctrinal={sections.doctrinal} language={l} slugPrefix={`/${l}/q`} />
+            <FaqGroups nature={sections.nature} bible={sections.bible} doctrinal={sections.doctrinal} language={l} slugPrefix={`/${l}/q`} />
 
           </div>
           <SiteFooter language={l} />

@@ -39,7 +39,7 @@ The admin check is `isAdminEmail()` on every route, as in `/api/admin/send-email
 
 ## API change (branham-llm-ai-api)
 
-New `POST /api/faq/translate` endpoint, specified in the API repo at `src/branham_model_api/core/prompts/FAQ_AND_FAMILY_ALTAR_API_CHANGES.md` (Task 1). `/api/chat` itself is unchanged for FAQ generation. Ships in the same API release as the Family Altar devotional mode (Task 2 of that document).
+New `POST /api/faq/translate` endpoint, specified in the API repo at `src/branham_model_api/core/prompts/WEB_APP_API_CHANGES.md` (part B, Task 1). `/api/chat` itself is unchanged for FAQ generation. Ships in the same API release as the Family Altar devotional mode (Task 2 of that document).
 
 ## Editing and deleting (added 2026-10-10)
 

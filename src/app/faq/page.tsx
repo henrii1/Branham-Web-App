@@ -128,7 +128,7 @@ export default async function FaqPage() {
               ))}
             </nav>
 
-            <FaqGroups bible={sections.bible} doctrinal={sections.doctrinal} language="en" />
+            <FaqGroups nature={sections.nature} bible={sections.bible} doctrinal={sections.doctrinal} language="en" />
 
           </div>
           <SiteFooter language={"en"} />

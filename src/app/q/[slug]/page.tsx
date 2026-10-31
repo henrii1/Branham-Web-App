@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { fetchAdjacentSeoPages, fetchSeoPage } from "@/lib/db/seo-queries";
+import { fetchAdjacentSeoPages, fetchFollowupKind, fetchSeoPage } from "@/lib/db/seo-queries";
 import { SeoShell } from "@/components/seo/SeoShell";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
@@ -91,6 +91,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
   if (!page) {
     notFound();
   }
+  const followupKind = await fetchFollowupKind(page.group_id);
 
   const canonicalUrl = `${SITE_URL}/q/${slug}`;
   const prevUrl = adjacent.prev ? `${SITE_URL}/q/${adjacent.prev.slug}` : null;
@@ -192,6 +193,7 @@ export default async function SeoQuestionPage({ params }: PageProps) {
         ragContext={page.rag_context}
         retrievalQuery={page.robust_query}
         conversationSummary={page.conversation_summary}
+        followupKind={followupKind}
         nextPage={adjacent.nextWrapped}
         language={page.language ?? "en"}
         langHrefs={{

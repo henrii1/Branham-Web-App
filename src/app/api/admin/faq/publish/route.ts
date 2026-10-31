@@ -20,8 +20,8 @@ const MAX_ANSWER_CHARS = 40_000;
 
 /**
  * Writes all three language rows of a reviewed FAQ entry, published, into
- * its group: an existing one (`group.id`) or a new Bible group created here
- * from its reviewed names (`group.names`). If the entry can't be saved, a
+ * its group: an existing one (`group.id`) or a new nature or Bible group
+ * (`group.kind`) created here from its reviewed names (`group.names`). If the entry can't be saved, a
  * group created for it is removed again.
  */
 export async function POST(request: Request) {
@@ -31,11 +31,12 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as {
     entries?: Partial<Record<FaqLanguage, FaqEntryDraft>>;
-    group?: { id?: string; names?: Partial<Record<FaqLanguage, string>> };
+    group?: { id?: string; names?: Partial<Record<FaqLanguage, string>>; kind?: string };
   } | null;
   const entries = body?.entries;
   const groupId = body?.group?.id?.trim() || null;
   const groupNames = body?.group?.names ?? null;
+  const newGroupKind = body?.group?.kind === "nature" ? "nature" : "bible";
   if (!entries || !groupId === !groupNames) {
     return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
   }
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
       }
       targetGroupId = groupId;
     } else {
-      const group = await createFaqGroup(groupNames as Record<FaqLanguage, string>);
+      const group = await createFaqGroup(groupNames as Record<FaqLanguage, string>, newGroupKind);
       createdGroupId = group.id;
       targetGroupId = group.id;
     }

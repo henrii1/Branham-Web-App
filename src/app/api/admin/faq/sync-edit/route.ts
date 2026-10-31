@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       kind = "doctrinal";
       if (groupId) {
         const { data: g } = await admin.from("faq_groups").select("kind").eq("id", groupId).maybeSingle();
-        if (g?.kind === "bible") kind = "bible";
+        if (g?.kind === "bible" || g?.kind === "nature") kind = g.kind;
       }
     } else {
       const k = body?.faq_kind;
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         typeof x.answer === "string" &&
         (writeInFull ? x.answer === "" : !!x.answer.trim() && x.answer.length <= ANSWER_MAX);
       const langs = (["es", "fr"] as const).filter((l) => t?.[l]);
-      if ((k !== "doctrinal" && k !== "bible") || !langs.every((l) => valid(t![l])) || (writeInFull ? langs.length === 0 : langs.length !== 2)) {
+      if ((k !== "doctrinal" && k !== "bible" && k !== "nature") || !langs.every((l) => valid(t![l])) || (writeInFull ? langs.length === 0 : langs.length !== 2)) {
         return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
       }
       kind = k;

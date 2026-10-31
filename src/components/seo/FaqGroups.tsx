@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { groupName, type FaqGroup, type FaqListItem, type FaqSection } from "@/lib/faq/groups";
+import { groupName, SECTION_LABELS, type FaqGroup, type FaqListItem, type FaqSection } from "@/lib/faq/groups";
 
 type Lang = "en" | "es" | "fr";
 
-const COPY: Record<Lang, { bible: string; doctrinalFallback: string; questions: (n: number) => string; showAll: (n: number) => string; showFewer: string }> = {
-  en: { bible: "Bible questions", doctrinalFallback: "William Branham Doctrines", questions: (n) => `${n} question${n === 1 ? "" : "s"}`, showAll: (n) => `Show all ${n}`, showFewer: "Show fewer" },
-  es: { bible: "Preguntas bíblicas", doctrinalFallback: "Doctrinas de William Branham", questions: (n) => `${n} pregunta${n === 1 ? "" : "s"}`, showAll: (n) => `Ver las ${n}`, showFewer: "Ver menos" },
-  fr: { bible: "Questions bibliques", doctrinalFallback: "Doctrines de William Branham", questions: (n) => `${n} question${n === 1 ? "" : "s"}`, showAll: (n) => `Voir les ${n}`, showFewer: "Voir moins" },
+const COPY: Record<Lang, { questions: (n: number) => string; showAll: (n: number) => string; showFewer: string }> = {
+  en: { questions: (n) => `${n} question${n === 1 ? "" : "s"}`, showAll: (n) => `Show all ${n}`, showFewer: "Show fewer" },
+  es: { questions: (n) => `${n} pregunta${n === 1 ? "" : "s"}`, showAll: (n) => `Ver las ${n}`, showFewer: "Ver menos" },
+  fr: { questions: (n) => `${n} question${n === 1 ? "" : "s"}`, showAll: (n) => `Voir les ${n}`, showFewer: "Voir moins" },
 };
 
 function Arrow() {
@@ -103,17 +103,34 @@ function GroupCard({
   );
 }
 
+/** A section of named groups as a grid of cards. */
+function GroupSection({ title, sections, slugPrefix, lang, c }: { title: string; sections: FaqSection<FaqListItem>[]; slugPrefix: string; lang: Lang; c: (typeof COPY)[Lang] }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-display text-[1.4rem] leading-tight text-foreground">{title}</h2>
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+        {sections.map((s) => (
+          <GroupCard key={s.group!.id} id={s.group!.id} title={groupName(s.group!, lang)} items={s.items} slugPrefix={slugPrefix} c={c} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /**
- * The FAQ list as groups: every Bible group under "Bible questions" first,
- * then the doctrinal group last. Each group shows its oldest question and
- * opens to the rest. Same layout in en/es/fr; question URLs are unchanged.
+ * The FAQ list as groups: Christianity Seen in Nature first, then Bible
+ * questions (each holding named groups), then the doctrinal group last. Each
+ * group shows its oldest question and opens to the rest. Same layout in
+ * en/es/fr; question URLs are unchanged.
  */
 export function FaqGroups({
+  nature,
   bible,
   doctrinal,
   language,
   slugPrefix = "/q",
 }: {
+  nature: FaqSection<FaqListItem>[];
   bible: FaqSection<FaqListItem>[];
   doctrinal: FaqSection<FaqListItem> | null;
   language: string;
@@ -121,19 +138,11 @@ export function FaqGroups({
 }) {
   const lang: Lang = language === "es" || language === "fr" ? language : "en";
   const c = COPY[lang];
-  const doctrinalTitle = doctrinal?.group ? groupName(doctrinal.group as FaqGroup, lang) : c.doctrinalFallback;
+  const doctrinalTitle = doctrinal?.group ? groupName(doctrinal.group as FaqGroup, lang) : SECTION_LABELS.doctrinal[lang];
   return (
     <div className="flex flex-col gap-9">
-      {bible.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="font-display text-[1.4rem] leading-tight text-foreground">{c.bible}</h2>
-          <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
-            {bible.map((s) => (
-              <GroupCard key={s.group!.id} id={s.group!.id} title={groupName(s.group!, lang)} items={s.items} slugPrefix={slugPrefix} c={c} />
-            ))}
-          </div>
-        </section>
-      )}
+      {nature.length > 0 && <GroupSection title={SECTION_LABELS.nature[lang]} sections={nature} slugPrefix={slugPrefix} lang={lang} c={c} />}
+      {bible.length > 0 && <GroupSection title={SECTION_LABELS.bible[lang]} sections={bible} slugPrefix={slugPrefix} lang={lang} c={c} />}
       {doctrinal && (
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-3">

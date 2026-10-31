@@ -61,6 +61,7 @@ import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { aboutHref } from "@/lib/about/content";
 import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
+import { natureFollowupNote, type FollowupFaqKind } from "@/lib/faq/groups";
 const AddToFaqModal = dynamic(
   () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
   { ssr: false },
@@ -168,6 +169,9 @@ export function ChatShell({
   const [conversationSummary, setConversationSummary] = useState<string | null>(
     null,
   );
+  // Set when this chat started as a follow-up on a Bible or nature FAQ page:
+  // every turn is then answered from Scripture (followup_kind "bible").
+  const [sourceFaqKind, setSourceFaqKind] = useState<FollowupFaqKind | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // ── Persistence state (logged-in only) ──────────────────────────────
@@ -510,6 +514,7 @@ export function ChatShell({
         setMessages(msgs.map(rowToMessage));
         setRagData(rag ? rowToRagData(rag) : null);
         setConversationSummary(conv.conversation_summary);
+        setSourceFaqKind(conv.source_faq_kind ?? null);
         setConversationExists(true);
         setStreamBuffer("");
         setStreamingStatus("idle");
@@ -552,6 +557,7 @@ export function ChatShell({
 
     const pendingShareFollowupRaw = localStorage.getItem("pending_share_followup");
     const pendingSlug = localStorage.getItem("pending_seo_slug");
+    const pendingSlugLanguage = localStorage.getItem("pending_seo_language");
 
     if (pendingShareFollowupRaw && !initialConversationId) {
       localStorage.removeItem("pending_share_followup");
@@ -582,16 +588,21 @@ export function ChatShell({
       })();
     } else if (pendingSlug && !initialConversationId) {
       localStorage.removeItem("pending_seo_slug");
+      localStorage.removeItem("pending_seo_language");
       (async () => {
         try {
-          const seoData = await fetchSeoPageClient(pendingSlug);
+          const pageLanguage = pendingSlugLanguage && ["en", "es", "fr"].includes(pendingSlugLanguage) ? pendingSlugLanguage : "en";
+          const seoData = await fetchSeoPageClient(pendingSlug, pageLanguage);
           if (!seoData) return;
+          // The reader followed up on a page in this language.
+          userLanguageRef.current = pageLanguage;
+          setChatLanguage(pageLanguage);
 
           const convId = generateId();
           const userMsgId = generateId();
           const assistantMsgId = generateId();
 
-          await createConversation(convId, user.id, seoData.question);
+          await createConversation(convId, user.id, seoData.question, seoData.followup_kind);
           await saveMessage(userMsgId, convId, user.id, "user", seoData.question);
           await saveMessage(assistantMsgId, convId, user.id, "assistant", seoData.answer_markdown);
           const processedSeoRag = postprocessRag(seoData.rag_context);
@@ -613,6 +624,7 @@ export function ChatShell({
             retrieval: [],
           });
           setConversationSummary(seoData.conversation_summary);
+          setSourceFaqKind(seoData.followup_kind);
           setChatReady(false);
           setSourcesReady(false);
           window.history.replaceState(null, "", `/chat/${convId}`);
@@ -953,6 +965,9 @@ export function ChatShell({
       if (historyWindow) {
         requestBody.history_window = historyWindow;
       }
+      if (sourceFaqKind) {
+        requestBody.followup_kind = "bible";
+      }
 
       const userMessage: Message = {
         id: generateId(),
@@ -978,6 +993,7 @@ export function ChatShell({
       conversationId,
       conversationSummary,
       conversationExists,
+      sourceFaqKind,
       runChatRequest,
     ],
   );
@@ -1003,6 +1019,7 @@ export function ChatShell({
     setStreamingStatus("idle");
     setStreamBuffer("");
     setConversationSummary(null);
+    setSourceFaqKind(null);
     setError(null);
     setActiveTab("chat");
     setChatReady(false);
@@ -1475,6 +1492,7 @@ export function ChatShell({
           streamingStatus={streamingStatus}
           placeholder={strings.askPlaceholder}
           waitingPlaceholder={strings.waitingPlaceholder}
+          note={sourceFaqKind === "nature" ? natureFollowupNote(chatLanguage) : undefined}
         />
       </div>
 

@@ -18,7 +18,7 @@ import {
   FaqAnswerPreview,
   postJson,
 } from "./AdminDialog";
-import { MAX_GROUP_NAME_CHARS, MAX_GUIDANCE_CHARS, type FaqGroup, type FaqKind } from "@/lib/faq/groups";
+import { MAX_GROUP_NAME_CHARS, MAX_GUIDANCE_CHARS, SECTION_LABELS, type FaqGroup, type FaqKind, type FaqSectionKind } from "@/lib/faq/groups";
 
 const LANG_LABEL: Record<FaqLanguage, string> = { en: "English", es: "Spanish", fr: "French" };
 
@@ -31,7 +31,11 @@ interface Prepared {
   robust_query: string;
   group_name?: string;
 }
-const NEW_GROUP = "__new__";
+// A new group in one of the sections that hold named groups.
+const NEW_GROUP: Record<FaqSectionKind, string> = { nature: "__new_nature__", bible: "__new_bible__" };
+const newGroupKindOf = (choice: string): FaqSectionKind | null =>
+  choice === NEW_GROUP.nature ? "nature" : choice === NEW_GROUP.bible ? "bible" : null;
+const SECTION_ORDER: FaqKind[] = ["nature", "bible", "doctrinal"];
 interface Generated {
   answer_markdown: string;
   rag_context: string;
@@ -79,7 +83,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   const [editingAnswer, setEditingAnswer] = useState(false);
   const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  // Group: an existing group's id, NEW_GROUP, or "" (not chosen yet).
+  // Group: an existing group's id, a NEW_GROUP value, or "" (not chosen yet).
   const [groups, setGroups] = useState<FaqGroup[] | null>(null);
   const [groupsError, setGroupsError] = useState(false);
   const [groupChoice, setGroupChoice] = useState("");
@@ -97,6 +101,10 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   // The draft under review was written by the admin (no retrieval: no sources).
   const [curated, setCurated] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const newGroupKind = newGroupKindOf(groupChoice);
+  // The chosen group's kind (a new group's section); null until one is chosen.
+  const chosenKind: FaqKind | null = newGroupKind ?? groups?.find((g) => g.id === groupChoice)?.kind ?? null;
+  const writesAnswer = chosenKind === "nature" || answerMode === "write";
   // English as last generated or synced: the "before" of an English edit.
   const [enBase, setEnBase] = useState<{ question: string; answer: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -222,7 +230,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   async function handlePrepare() {
     setPhase("preparing");
     setError(null);
-    const writing = answerMode === "write";
+    const writing = writesAnswer;
     guidanceRef.current = writing ? undefined : guidance.trim() || undefined;
     const { status, data } = await postJson<{
       ok: boolean;
@@ -232,7 +240,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
       kind?: FaqKind;
     }>("/api/admin/faq/prepare", {
       question: question.trim(),
-      ...(groupChoice === NEW_GROUP ? { new_group_name: newGroupName.trim() } : { group_id: groupChoice }),
+      ...(newGroupKind ? { new_group_name: newGroupName.trim(), new_group_kind: newGroupKind } : { group_id: groupChoice }),
       ...(guidanceRef.current ? { faq_guidance: guidanceRef.current } : {}),
       // A written answer keeps the English question exactly as typed.
       ...(writing ? { keep_question: true } : {}),
@@ -251,7 +259,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
     const faqKind = data.kind ?? "doctrinal";
     setKind(faqKind);
     setGroupNames(
-      groupChoice === NEW_GROUP
+      newGroupKind
         ? { en: data.results.en.group_name ?? newGroupName.trim(), es: data.results.es.group_name ?? "", fr: data.results.fr.group_name ?? "" }
         : null,
     );
@@ -375,7 +383,7 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
         answer_markdown: toPublish[lang].answer,
       };
     }
-    const group = groupChoice === NEW_GROUP ? { names: groupNames } : { id: groupChoice };
+    const group = newGroupKind ? { names: groupNames, kind: newGroupKind } : { id: groupChoice };
     const { status, data } = await postJson<{ ok: boolean; slug?: string; error?: string }>("/api/admin/faq/publish", { entries, group });
     if (status !== 200 || !data?.ok || !data.slug) {
       setError(data?.error ?? "Couldn't publish. Nothing was saved. Try again.");
@@ -406,8 +414,8 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
   const busy = phase === "preparing" || ((phase === "generating" || phase === "translating") && running) || phase === "publishing" || syncing;
   const enEdited = !!drafts && !!enBase && (drafts.en.question !== enBase.question || drafts.en.answer !== enBase.answer);
   const chosenGroup = groups?.find((g) => g.id === groupChoice) ?? null;
-  const groupReady = groupChoice === NEW_GROUP ? newGroupName.trim().length > 0 && newGroupName.trim().length <= MAX_GROUP_NAME_CHARS : !!chosenGroup;
-  const groupLabel = groupChoice === NEW_GROUP ? (groupNames?.en ?? newGroupName.trim()) : (chosenGroup?.name_en ?? "");
+  const groupReady = newGroupKind ? newGroupName.trim().length > 0 && newGroupName.trim().length <= MAX_GROUP_NAME_CHARS : !!chosenGroup;
+  const groupLabel = newGroupKind ? (groupNames?.en ?? newGroupName.trim()) : (chosenGroup?.name_en ?? "");
   const groupNamesReady = !groupNames || FAQ_LANGUAGES.every((l) => groupNames[l].trim() && groupNames[l].trim().length <= MAX_GROUP_NAME_CHARS);
   const currentSlug = drafts ? faqSlugify(drafts.en.question) : "";
 
@@ -462,17 +470,24 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
               <option value="" disabled>
                 {groups ? "Choose a group…" : groupsError ? "Couldn't load the groups" : "Loading groups…"}
               </option>
-              {groups?.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name_en}
-                </option>
-              ))}
-              <option value={NEW_GROUP}>New group…</option>
+              {groups &&
+                SECTION_ORDER.map((section) => (
+                  <optgroup key={section} label={SECTION_LABELS[section].en}>
+                    {groups
+                      .filter((g) => g.kind === section)
+                      .map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name_en}
+                        </option>
+                      ))}
+                    {section !== "doctrinal" && <option value={NEW_GROUP[section]}>New group in {SECTION_LABELS[section].en}…</option>}
+                  </optgroup>
+                ))}
             </select>
-            {groupChoice === NEW_GROUP && (
+            {newGroupKind && (
               <input
                 aria-label="New group name (English)"
-                placeholder="New group name in English, e.g. Salvation"
+                placeholder={newGroupKind === "nature" ? "New group name in English, e.g. Design in Creation" : "New group name in English, e.g. Salvation"}
                 value={newGroupName}
                 maxLength={MAX_GROUP_NAME_CHARS}
                 onChange={(e) => setNewGroupName(e.target.value)}
@@ -482,15 +497,20 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
             )}
             {groupChoice && (
               <p className="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
-                {chosenGroup?.kind === "doctrinal" ? (
+                {chosenKind === "doctrinal" ? (
                   <><span className="font-semibold text-foreground">Doctrinal question.</span> Answered from Brother Branham&apos;s sermons, like the existing FAQs.</>
+                ) : chosenKind === "nature" ? (
+                  <><span className="font-semibold text-foreground">Christianity Seen in Nature.</span> Shows from nature that God exists, without quoting the Bible. You write the answer; it&apos;s proofread and translated. Follow-up questions on its page are answered from Scripture.</>
                 ) : (
-                  <><span className="font-semibold text-foreground">Bible question.</span> Answered from Scripture, following Brother Branham&apos;s explanation, with sermon references at the end.{groupChoice === NEW_GROUP && " The group name is translated with the question."}</>
+                  <><span className="font-semibold text-foreground">Bible question.</span> Answered from Scripture, following Brother Branham&apos;s explanation, with sermon references at the end.</>
                 )}
+                {newGroupKind && " The group name is translated with the question."}
               </p>
             )}
           </div>
 
+          {/* Nature answers are always written by the admin. */}
+          {chosenKind !== "nature" && (
           <fieldset className="space-y-1.5">
             <legend className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Answer</legend>
             <div className="grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
@@ -520,8 +540,9 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
               ))}
             </div>
           </fieldset>
+          )}
 
-          {answerMode === "write" ? (
+          {writesAnswer ? (
             <div className="space-y-1.5">
               <label htmlFor="faq-own-answer" className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
                 English answer
@@ -576,15 +597,15 @@ export function AddToFaqModal({ conversationId = null, onClose }: { conversation
 
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              {answerMode === "write" ? "Translating takes about a minute." : "Generating takes about 2 minutes (three answers)."}
+              {writesAnswer ? "Translating takes about a minute." : "Generating takes about 2 minutes (three answers)."}
             </p>
             <button
               type="button"
               onClick={handlePrepare}
-              disabled={phase === "preparing" || check.status !== "ok" || !groupReady || (answerMode === "write" && !ownAnswer.trim())}
+              disabled={phase === "preparing" || check.status !== "ok" || !groupReady || (writesAnswer && !ownAnswer.trim())}
               className={adminPrimaryButtonClass}
             >
-              {phase === "preparing" ? "Preparing…" : answerMode === "write" ? "Translate FAQ" : "Generate FAQ"}
+              {phase === "preparing" ? "Preparing…" : writesAnswer ? "Translate FAQ" : "Generate FAQ"}
             </button>
           </div>
         </div>

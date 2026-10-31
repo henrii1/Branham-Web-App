@@ -10,6 +10,8 @@ interface ComposerProps {
   streamingStatus: StreamingStatus;
   placeholder?: string;
   waitingPlaceholder?: string;
+  /** A short line under the box (e.g. how follow-ups are answered). */
+  note?: string;
 }
 
 // The box grows with its content up to this share of the viewport height,
@@ -23,6 +25,7 @@ export function Composer({
   streamingStatus,
   placeholder = "Ask a question…",
   waitingPlaceholder = "Waiting for response…",
+  note,
 }: ComposerProps) {
   const [value, setValue] = useState("");
   // Live transcript shown while the mic is active (not yet committed).
@@ -165,6 +168,12 @@ export function Composer({
           </svg>
         </button>
       </div>
+      {note && <ComposerNote text={note} />}
     </div>
   );
+}
+
+/** One quiet line under a chat box, aligned with it. */
+export function ComposerNote({ text }: { text: string }) {
+  return <p className="mx-auto mt-2 max-w-4xl px-1 text-xs leading-snug text-zinc-500 xl:max-w-[56rem] dark:text-zinc-400">{text}</p>;
 }

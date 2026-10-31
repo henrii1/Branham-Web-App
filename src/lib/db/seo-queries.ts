@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { FAQ_GROUP_COLUMNS, type FaqGroup } from "@/lib/faq/groups";
+import { FAQ_GROUP_COLUMNS, isFollowupFaqKind, type FaqGroup, type FollowupFaqKind } from "@/lib/faq/groups";
 import { unstable_cache } from "next/cache";
 
 export interface SeoCacheRow {
@@ -13,6 +13,7 @@ export interface SeoCacheRow {
   published: boolean;
   meta_title: string | null;
   meta_description: string | null;
+  group_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,7 +21,7 @@ export interface SeoCacheRow {
 export const FAQ_LIST_CACHE_TAG = "faq-list";
 
 const SEO_COLUMNS =
-  "slug, question, robust_query, answer_markdown, rag_context, conversation_summary, language, published, meta_title, meta_description, created_at, updated_at" as const;
+  "slug, question, robust_query, answer_markdown, rag_context, conversation_summary, language, published, meta_title, meta_description, group_id, created_at, updated_at" as const;
 
 function getPublicClient() {
   return createClient(
@@ -125,6 +126,13 @@ export const fetchFaqGroups = () =>
     ["faq-groups"],
     { revalidate: 3600, tags: [FAQ_LIST_CACHE_TAG] },
   )();
+
+/** The page's group kind when its follow-ups are answered from Scripture. */
+export async function fetchFollowupKind(groupId: string | null): Promise<FollowupFaqKind | null> {
+  if (!groupId) return null;
+  const kind = (await fetchFaqGroups()).find((g) => g.id === groupId)?.kind;
+  return isFollowupFaqKind(kind) ? kind : null;
+}
 
 export interface AdjacentSeoPage {
   slug: string;

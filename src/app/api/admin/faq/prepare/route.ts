@@ -9,9 +9,10 @@ import { ModelApiError, prepareFaqQuestion } from "@/lib/faq/modelApi";
  * on the slug of the shaped English title.
  *
  * The question goes into an existing group (`group_id`) or a new one
- * (`new_group_name`, English). The kind is decided here, never by the
- * client: the doctrinal group → "doctrinal", any other or a new group →
- * "bible". A new group's name is translated in the same call.
+ * (`new_group_name`, English, in section `new_group_kind`: "nature" or
+ * "bible"). The kind is the group's (a new group's section), checked here
+ * against the database. A new group's name is translated in the same call.
+ * Nature FAQs are only ever written by the admin: they need `keep_question`.
  */
 export async function POST(request: Request) {
   if (!(await getAdminUser())) {
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     new_group_name?: string;
     faq_guidance?: string;
     keep_question?: boolean;
+    new_group_kind?: string;
   } | null;
   const guidance = body?.faq_guidance?.trim() || undefined;
   if (guidance && guidance.length > MAX_GUIDANCE_CHARS) {
@@ -40,7 +42,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    let kind: FaqKind = "bible";
+    const keepQuestion = body?.keep_question === true;
+    let kind: FaqKind = body?.new_group_kind === "nature" ? "nature" : "bible";
     if (groupId) {
       const group = await getFaqGroup(groupId);
       if (!group) return Response.json({ ok: false, error: "That group no longer exists. Choose another." }, { status: 404 });
@@ -51,7 +54,10 @@ export async function POST(request: Request) {
         return Response.json({ ok: false, error: `A group called "${taken.name_en}" already exists. Choose it from the list.` }, { status: 409 });
       }
     }
-    const results = await prepareFaqQuestion(question, kind, newGroupName ?? undefined, guidance, body?.keep_question === true);
+    if (kind === "nature" && !keepQuestion) {
+      return Response.json({ ok: false, error: "Christianity Seen in Nature answers are written, not generated. Choose Write it myself." }, { status: 400 });
+    }
+    const results = await prepareFaqQuestion(question, kind, newGroupName ?? undefined, guidance, keepQuestion);
     const slug = faqSlugify(results.en.question);
     const duplicate = await findFaqDuplicate(slug, results.en.question);
     return Response.json({ ok: true, slug, results, duplicate, kind });

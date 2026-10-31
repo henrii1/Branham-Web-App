@@ -18,6 +18,8 @@ interface ChatRequestBody {
   user_language?: string;
   conversation_summary?: string;
   history_window?: ChatHistoryMessage[];
+  /** "bible": a follow-up on a Bible or nature FAQ, answered from Scripture. */
+  followup_kind?: "bible";
 }
 
 const MAX_CONVERSATION_ID_LENGTH = 128;
@@ -134,6 +136,8 @@ function parseChatRequestBody(raw: unknown): ChatRequestBody | null {
     "conversation_summary" in raw ? raw.conversation_summary : undefined;
   const historyWindowValue =
     "history_window" in raw ? raw.history_window : undefined;
+  const followupKindValue =
+    "followup_kind" in raw ? raw.followup_kind : undefined;
 
   const userLanguage =
     languageValue === undefined
@@ -148,7 +152,8 @@ function parseChatRequestBody(raw: unknown): ChatRequestBody | null {
   if (
     (languageValue !== undefined && !userLanguage) ||
     (conversationSummaryValue !== undefined && !conversationSummary) ||
-    historyWindow === null
+    historyWindow === null ||
+    (followupKindValue !== undefined && followupKindValue !== "bible")
   ) {
     return null;
   }
@@ -159,6 +164,7 @@ function parseChatRequestBody(raw: unknown): ChatRequestBody | null {
     user_language: userLanguage ?? undefined,
     conversation_summary: conversationSummary ?? undefined,
     history_window: historyWindow,
+    ...(followupKindValue === "bible" ? { followup_kind: "bible" as const } : {}),
   };
 }
 
