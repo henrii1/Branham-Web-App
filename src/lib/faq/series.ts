@@ -49,6 +49,8 @@ export const SERIES_COPY: Record<
     next: string;
     end: string;
     read: string;
+    show: (parts: number, questions: number) => string;
+    hide: string;
   }
 > = {
   en: {
@@ -64,6 +66,8 @@ export const SERIES_COPY: Record<
     next: "Next in the series",
     end: "You’ve reached the end of the series.",
     read: "Read",
+    show: (p, q) => `Show the series: ${p} part${p === 1 ? "" : "s"}, ${q} questions`,
+    hide: "Hide the series",
   },
   es: {
     intro: "Una serie. Léala en orden: cada respuesta se apoya en la anterior.",
@@ -78,6 +82,8 @@ export const SERIES_COPY: Record<
     next: "Siguiente en la serie",
     end: "Ha llegado al final de la serie.",
     read: "Leída",
+    show: (p, q) => `Ver la serie: ${p} parte${p === 1 ? "" : "s"}, ${q} preguntas`,
+    hide: "Ocultar la serie",
   },
   fr: {
     intro: "Une série. Lisez-la dans l’ordre : chaque réponse s’appuie sur la précédente.",
@@ -92,6 +98,8 @@ export const SERIES_COPY: Record<
     next: "Suivante dans la série",
     end: "Vous êtes arrivé à la fin de la série.",
     read: "Lue",
+    show: (p, q) => `Voir la série : ${p} partie${p === 1 ? "" : "s"}, ${q} questions`,
+    hide: "Masquer la série",
   },
 };
 
