@@ -115,9 +115,7 @@ export default async function FaqPage() {
               Frequently Asked Questions
             </h1>
             <p className="mb-8 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-              {sections.bible.length > 0
-                ? "Common questions about the Bible and the sermons of William Marrion Branham, answered from the Scriptures and the original sermon texts."
-                : "Common questions about the sermons and teachings of William Marrion Branham, answered from the original sermon texts."}
+              Questions about God and Christianity seen in nature, what the Bible teaches, and the teachings of William Marrion Branham, answered from creation, the Scriptures and his original sermons.
             </p>
 
             <nav className="sr-only" aria-label="All questions">
