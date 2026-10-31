@@ -72,6 +72,9 @@ interface SeoShellProps {
 }
 
 const DEFAULT_PANEL_RATIO = 0.4;
+// Nature questions are written answers with no passages: give the answer
+// all the height the divider allows (its minimum for the passages panel).
+const NATURE_PANEL_RATIO = 0.15;
 
 function rowToConversation(row: ConversationRow): Conversation {
   return {
@@ -121,7 +124,7 @@ export function SeoShell({
     const stored = window.sessionStorage.getItem("branham-mobile-active-tab");
     return stored === "chat" || stored === "sources" ? stored : "chat";
   });
-  const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
+  const [panelRatio, setPanelRatio] = useState(followupKind === "nature" ? NATURE_PANEL_RATIO : DEFAULT_PANEL_RATIO);
   const [seeding, setSeeding] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
