@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { groupName, SECTION_LABELS, type FaqGroup, type FaqListItem, type FaqSection } from "@/lib/faq/groups";
+import { NatureSeries } from "./NatureSeries";
 
 type Lang = "en" | "es" | "fr";
 
@@ -118,9 +119,10 @@ function GroupSection({ title, sections, slugPrefix, lang, c }: { title: string;
 }
 
 /**
- * The FAQ list as groups: Christianity Seen in Nature first, then Bible
- * questions (each holding named groups), then the doctrinal group last. Each
- * group shows its oldest question and opens to the rest. Same layout in
+ * The FAQ list as groups: Christianity Seen in Nature first (a series, shown
+ * as one numbered path), then Bible questions (named groups), then the
+ * doctrinal group last. Each Bible/doctrinal group shows its oldest question
+ * and opens to the rest. Same layout in
  * en/es/fr; question URLs are unchanged.
  */
 export function FaqGroups({
@@ -141,7 +143,7 @@ export function FaqGroups({
   const doctrinalTitle = doctrinal?.group ? groupName(doctrinal.group as FaqGroup, lang) : SECTION_LABELS.doctrinal[lang];
   return (
     <div className="flex flex-col gap-9">
-      {nature.length > 0 && <GroupSection title={SECTION_LABELS.nature[lang]} sections={nature} slugPrefix={slugPrefix} lang={lang} c={c} />}
+      {nature.length > 0 && <NatureSeries sections={nature} lang={lang} slugPrefix={slugPrefix} />}
       {bible.length > 0 && <GroupSection title={SECTION_LABELS.bible[lang]} sections={bible} slugPrefix={slugPrefix} lang={lang} c={c} />}
       {doctrinal && (
         <section className="flex flex-col gap-3">

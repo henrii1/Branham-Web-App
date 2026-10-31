@@ -43,6 +43,8 @@ import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { natureFollowupNote, type FollowupFaqKind } from "@/lib/faq/groups";
 import { ComposerNote } from "@/components/chat/Composer";
+import type { SeriesPosition } from "@/lib/faq/series";
+import { SeriesHeader, SeriesNav } from "./SeriesNav";
 import dynamic from "next/dynamic";
 const FaqEditModal = dynamic(
   () => import("@/components/admin/faq/FaqEditModal").then((m) => ({ default: m.FaqEditModal })),
@@ -62,6 +64,8 @@ interface SeoShellProps {
   conversationSummary: string | null;
   /** Set on Bible and nature FAQs: follow-ups are answered from Scripture. */
   followupKind: FollowupFaqKind | null;
+  /** Nature questions: their place in the Christianity Seen in Nature series. */
+  series?: SeriesPosition | null;
   nextPage: { slug: string; question: string } | null;
   language: string;
   langHrefs: { en: string; es: string; fr: string };
@@ -86,6 +90,7 @@ export function SeoShell({
   retrievalQuery,
   conversationSummary,
   followupKind,
+  series = null,
   nextPage,
   language,
   langHrefs,
@@ -774,6 +779,7 @@ export function SeoShell({
             style={{ flex: `${1 - panelRatio} 0 0` }}
           >
             <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-y-auto px-5 py-6 xl:max-w-[56rem]">
+              {series && <SeriesHeader slug={slug} series={series} language={language} />}
               <div className="mb-4 flex items-start justify-between gap-4">
                 <h1 className="font-display text-2xl text-foreground lg:text-3xl">
                   {question}
@@ -797,7 +803,7 @@ export function SeoShell({
               <div data-message-lang={language}>
                 <TypewriterRenderer markdown={answerMarkdown} />
               </div>
-              <NextQuestionLink nextPage={nextPage} language={language} />
+              {series ? <SeriesNav series={series} language={language} /> : <NextQuestionLink nextPage={nextPage} language={language} />}
             </div>
           </div>
         </div>
@@ -846,13 +852,14 @@ export function SeoShell({
                   </button>
                       </div>
                     )}
+                    {series && <SeriesHeader slug={slug} series={series} language={language} />}
                     <h2 className="font-display mb-4 text-2xl text-foreground">
                       {question}
                     </h2>
                     <div data-message-lang={language}>
                       <TypewriterRenderer markdown={answerMarkdown} />
                     </div>
-                    <NextQuestionLink nextPage={nextPage} language={language} />
+                    {series ? <SeriesNav series={series} language={language} /> : <NextQuestionLink nextPage={nextPage} language={language} />}
                   </div>
                 </div>
               </div>

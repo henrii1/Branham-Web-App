@@ -4,6 +4,10 @@
 
 :root {
   color-scheme: light;
+  /* Christianity Seen in Nature: the series path (NatureSeries, SeriesNav). */
+  --series-accent: #3e6a4a;
+  --series-on-accent: #ffffff;
+  --series-line: #c9d6cc;
   --background: #f7f7f8;
   --foreground: #111112;
   --muted-foreground: #4a4b57;
@@ -27,6 +31,9 @@
 
 .dark {
   color-scheme: dark;
+  --series-accent: #94c09f;
+  --series-on-accent: #17241b;
+  --series-line: #44574a;
   --background: #212327;
   --foreground: #f5f6f8;
   --muted-foreground: #cacbd4;

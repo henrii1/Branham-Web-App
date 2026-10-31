@@ -4,6 +4,7 @@ import {
   fetchAdjacentSeoPages,
   fetchAllPublishedSeoPages,
   fetchFollowupKind,
+  fetchNatureSeriesPosition,
   fetchSeoPage,
 } from "@/lib/db/seo-queries";
 import { SeoShell } from "@/components/seo/SeoShell";
@@ -101,6 +102,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
 
   if (!page) notFound();
   const followupKind = await fetchFollowupKind(page.group_id);
+  const series = followupKind === "nature" ? await fetchNatureSeriesPosition(slug, l) : null;
 
   const canonicalUrl = `${SITE_URL}/${l}/q/${slug}`;
   const prevUrl = adjacent.prev ? `${SITE_URL}/${l}/q/${adjacent.prev.slug}` : null;
@@ -168,6 +170,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
         retrievalQuery={page.robust_query}
         conversationSummary={page.conversation_summary}
         followupKind={followupKind}
+        series={series}
         nextPage={adjacent.nextWrapped}
         language={l}
         langHrefs={{

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { FAQ_GROUP_COLUMNS, isFollowupFaqKind, type FaqGroup, type FollowupFaqKind } from "@/lib/faq/groups";
+import { FAQ_GROUP_COLUMNS, groupFaqItems, groupName, isFollowupFaqKind, type FaqGroup, type FollowupFaqKind } from "@/lib/faq/groups";
+import { seriesOf, type SeriesPosition } from "@/lib/faq/series";
 import { unstable_cache } from "next/cache";
 
 export interface SeoCacheRow {
@@ -126,6 +127,25 @@ export const fetchFaqGroups = () =>
     ["faq-groups"],
     { revalidate: 3600, tags: [FAQ_LIST_CACHE_TAG] },
   )();
+
+/** A nature question's place in the Christianity Seen in Nature series. */
+export async function fetchNatureSeriesPosition(slug: string, language: string): Promise<SeriesPosition | null> {
+  const [items, groups] = await Promise.all([fetchFaqListItems(language), fetchFaqGroups()]);
+  const { nature } = groupFaqItems(items, groups);
+  const entries = seriesOf(nature);
+  const i = entries.findIndex((e) => e.slug === slug);
+  if (i < 0) return null;
+  const pick = (e: (typeof entries)[number] | undefined) => (e ? { slug: e.slug, question: e.question } : null);
+  return {
+    number: entries[i].number,
+    total: entries.length,
+    part: entries[i].part,
+    partName: groupName(nature[entries[i].part - 1].group!, language),
+    first: pick(entries[0])!,
+    prev: pick(entries[i - 1]),
+    next: pick(entries[i + 1]),
+  };
+}
 
 /** The page's group kind when its follow-ups are answered from Scripture. */
 export async function fetchFollowupKind(groupId: string | null): Promise<FollowupFaqKind | null> {
