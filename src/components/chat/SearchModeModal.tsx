@@ -3,18 +3,22 @@
 import { useState } from "react";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { saveSearchMode, type SearchMode } from "@/lib/chat/searchMode";
+import { saveBrowserSearchMode } from "@/lib/chat/searchModeTried";
 
 /**
- * Asked once, right after sign-up (needsSearchModeChoice): Scripture or the
- * sermons? The answer becomes the account's default search mode; /profile
- * can change it later. No backdrop dismiss and no close button: one of the
- * two answers is the way out.
+ * Asked once: Scripture or the sermons? Signed in, right after sign-up
+ * (needsSearchModeChoice), the answer becomes the account's default and
+ * /profile can change it. Not signed in, it's asked once per browser and
+ * kept there. No backdrop dismiss and no close button: one of the two
+ * answers is the way out.
  */
 export function SearchModeModal({
   language = "en",
+  signedIn,
   onChosen,
 }: {
   language?: string;
+  signedIn: boolean;
   onChosen: (mode: SearchMode) => void;
 }) {
   const s = getChatStrings(language);
@@ -23,11 +27,14 @@ export function SearchModeModal({
   async function choose(mode: SearchMode) {
     if (saving) return;
     setSaving(mode);
-    try {
-      await saveSearchMode(mode);
-    } catch (err) {
-      // Still use it for this visit; the question comes back next time.
-      console.error("Failed to save search mode:", err);
+    saveBrowserSearchMode(mode);
+    if (signedIn) {
+      try {
+        await saveSearchMode(mode);
+      } catch (err) {
+        // Still used in this browser; the account is updated next time it loads.
+        console.error("Failed to save search mode:", err);
+      }
     }
     onChosen(mode);
   }
@@ -61,7 +68,7 @@ export function SearchModeModal({
           {choice("bible", s.searchModeModalBibleTitle, s.searchModeModalBibleBody)}
           {choice("sermons", s.searchModeModalSermonsTitle, s.searchModeModalSermonsBody)}
         </div>
-        <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">{s.searchModeModalNote}</p>
+        {signedIn && <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">{s.searchModeModalNote}</p>}
       </div>
     </div>
   );

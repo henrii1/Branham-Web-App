@@ -64,8 +64,8 @@ import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { natureFollowupNote, type FollowupFaqKind } from "@/lib/faq/groups";
 import { SearchModeToggle } from "./SearchModeToggle";
-import { defaultSearchMode, needsSearchModeChoice, type SearchMode } from "@/lib/chat/searchMode";
-import { markModeTried } from "@/lib/chat/searchModeTried";
+import { defaultSearchMode, needsSearchModeChoice, saveSearchMode, type SearchMode } from "@/lib/chat/searchMode";
+import { markModeTried, readBrowserSearchMode, useBrowserSearchMode } from "@/lib/chat/searchModeTried";
 const AddToFaqModal = dynamic(
   () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
   { ssr: false },
@@ -184,6 +184,9 @@ export function ChatShell({
   // The account's default, used for every new chat.
   const defaultModeRef = useRef<SearchMode>("sermons");
   const [searchModeChosen, setSearchModeChosen] = useState(false);
+  // This browser's answer to the question (visitors who aren't signed in).
+  const browserSearchMode = useBrowserSearchMode();
+  const anonModeApplied = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // ── Persistence state (logged-in only) ──────────────────────────────
@@ -557,6 +560,13 @@ export function ChatShell({
     initialLoadDone.current = true;
 
     defaultModeRef.current = defaultSearchMode(user);
+    // A new account whose browser already answered the question: keep that answer.
+    const carried = needsSearchModeChoice(user) ? readBrowserSearchMode() : null;
+    if (carried) {
+      defaultModeRef.current = carried;
+      setSearchModeChosen(true);
+      saveSearchMode(carried).catch((err) => console.error("Failed to save search mode:", err));
+    }
     if (!initialConversationId && defaultModeRef.current === "bible") setSourceFaqKind("bible");
     loadConversations();
     fetchUserLanguage(user.id)
@@ -1177,6 +1187,14 @@ export function ChatShell({
     [messages.length],
   );
 
+  // Not signed in: this browser's answer is the default for new chats.
+  useEffect(() => {
+    if (authLoading || user || !browserSearchMode || anonModeApplied.current) return;
+    anonModeApplied.current = true;
+    defaultModeRef.current = browserSearchMode;
+    if (!initialConversationId && browserSearchMode === "bible") setSourceFaqKind("bible");
+  }, [authLoading, user, browserSearchMode, initialConversationId]);
+
   // The answer panel grows in Bible search (desktop split).
   useEffect(() => {
     setPanelRatio(searchMode === "bible" ? BIBLE_PANEL_RATIO : DEFAULT_PANEL_RATIO);
@@ -1237,8 +1255,10 @@ export function ChatShell({
   return (
     <div className="flex h-dvh bg-background">
       <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
-      {needsSearchModeChoice(user) && !searchModeChosen && (
-        <SearchModeModal language={chatLanguage} onChosen={handleSearchModeChosen} />
+      {/* Asked once: new accounts, and visitors whose browser hasn't answered
+          (null; undefined until hydrated, so nothing flashes). */}
+      {!authLoading && !searchModeChosen && browserSearchMode === null && (user ? needsSearchModeChoice(user) : true) && (
+        <SearchModeModal language={chatLanguage} signedIn={!!user} onChosen={handleSearchModeChosen} />
       )}
 
       {/* ── Desktop sidebar ── */}
