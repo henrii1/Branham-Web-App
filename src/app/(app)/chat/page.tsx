@@ -8,10 +8,10 @@ const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
+    absolute: "Branham Sermons Assistant — Biblical Truths and the Sermons of Bro. Branham",
   },
   description:
-    "Ask questions about the sermons of Bro. Branham in English, Spanish, or French. Answers grounded in the original sermon texts — doctrines, quotes, Scripture references, and teachings.",
+    "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of Bro. Branham, in English, Spanish or French. Every answer is linked to its sources.",
   keywords: [
     "Branham Sermons Assistant",
     "Branham Sermons AI",
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/chat` },
   openGraph: {
-    title: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
+    title: "Branham Sermons Assistant — Biblical Truths and the Sermons of Bro. Branham",
     description:
-      "Ask questions about the sermons of Bro. Branham in English, Spanish, or French. Answers grounded in the original sermon texts.",
+      "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of Bro. Branham. Every answer is linked to its sources.",
     url: `${SITE_URL}/chat`,
     type: "website",
     images: [{ url: OG_IMAGE }],
@@ -40,9 +40,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Branham Sermons Assistant — Ask Questions About Bro Branham's Sermons",
+    title: "Branham Sermons Assistant — Biblical Truths and the Sermons of Bro. Branham",
     description:
-      "Ask questions about the sermons of Bro. Branham in English, Spanish, or French. Answers grounded in the original sermon texts.",
+      "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of Bro. Branham. Every answer is linked to its sources.",
     images: [OG_IMAGE],
   },
 };
@@ -61,11 +61,13 @@ export default async function ChatPage({
           Visually hidden; gives crawlers an h1, description, and links
           to /faq and top /q/ pages without changing the chat-first UI. */}
       <div className="sr-only" aria-hidden="true">
-        <h1>Ask Questions About the Sermons of Bro. Branham</h1>
+        <h1>Biblical Truths and the Sermons of Bro. Branham</h1>
         <p>
-          Branham Sermons AI is an AI-powered search and assistant for the
-          messages, doctrines, and beliefs of William Marrion Branham — every
-          answer is grounded in the original sermon texts. Available in English,
+          Branham Sermons AI is a source for biblical truths, answering
+          questions about the Bible with the proper interpretation of
+          Scripture, and an AI-powered search of the messages, doctrines, and
+          beliefs of William Marrion Branham — every answer is grounded in
+          Scripture and the original sermon texts. Available in English,
           Spanish (Español), and French (Français). Explore Branham messages,
           William Branham doctrines, William Branham beliefs, Scripture
           references, sermon quotes, sermones de Branham, sermons de Branham,

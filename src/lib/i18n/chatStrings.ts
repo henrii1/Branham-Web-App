@@ -86,13 +86,22 @@ const CHAT_STRINGS = {
     featureFrenchStat: "359 sermons available in French",
     featureSetLanguage: "Set my language",
     featureLater: "Later",
-    // Sensitive-inquiry disclaimer
-    sensitiveModalHeading: "Before you begin",
-    sensitiveModalBody:
-      "This tool is for comparing sermon quotes, finding exact references, and learning general doctrine — not for personal or sensitive spiritual questions. Its answers cannot be trusted for matters like that. If something sensitive or personal is on your heart, please ask your pastor instead.",
-    sensitiveModalAck: "I understand",
+    // Sermon search / Bible search
+    welcomeDescriptionBible: "Ask questions about the Bible and get answers that search the Scriptures for their proper interpretation.",
+    askPlaceholderBible: "Ask a question about the Bible…",
+    searchModeLabel: "Search in",
+    searchModeSermons: "Sermon search",
+    searchModeBible: "Bible search",
+    searchModeModalHeading: "What are you looking for?",
+    searchModeModalBody: "Choose where your questions start. You can switch at any time.",
+    searchModeModalBibleTitle: "The meaning of Scripture",
+    searchModeModalBibleBody: "Answers to your questions from the Bible, with its proper interpretation.",
+    searchModeModalSermonsTitle: "What Brother Branham preached",
+    searchModeModalSermonsBody: "Find quotations, references and teachings in the original sermons.",
+    searchModeModalNote: "Change your default any time in your profile.",
+    // Sensitive-inquiry banner
     sensitiveBannerText:
-      "Not for personal or sensitive questions — ask your pastor. This tool is for comparing quotes, references, and general doctrine.",
+      "Not for personal or sensitive questions — ask your pastor. Use it to study Scripture, sermon quotes, references and doctrine.",
     // Sermon count note (shown beneath language pill for non-English; empty for EN)
     sermonCountNote: "",
   },
@@ -183,13 +192,22 @@ const CHAT_STRINGS = {
     featureFrenchStat: "359 sermones disponibles en francés",
     featureSetLanguage: "Establecer mi idioma",
     featureLater: "Más tarde",
-    // Sensitive-inquiry disclaimer
-    sensitiveModalHeading: "Antes de comenzar",
-    sensitiveModalBody:
-      "Esta herramienta sirve para comparar citas de sermones, encontrar referencias exactas y aprender doctrina general — no para preguntas personales o espirituales sensibles. Sus respuestas no son confiables para ese tipo de asuntos. Si tienes algo sensible o personal en el corazón, por favor consulta a tu pastor.",
-    sensitiveModalAck: "Entendido",
+    // Sermon search / Bible search
+    welcomeDescriptionBible: "Haga preguntas sobre la Biblia y reciba respuestas que buscan en las Escrituras su debida interpretación.",
+    askPlaceholderBible: "Haga una pregunta sobre la Biblia…",
+    searchModeLabel: "Buscar en",
+    searchModeSermons: "Sermones",
+    searchModeBible: "Biblia",
+    searchModeModalHeading: "¿Qué está buscando?",
+    searchModeModalBody: "Elija dónde empiezan sus preguntas. Puede cambiarlo en cualquier momento.",
+    searchModeModalBibleTitle: "El significado de las Escrituras",
+    searchModeModalBibleBody: "Respuestas a sus preguntas desde la Biblia, con su debida interpretación.",
+    searchModeModalSermonsTitle: "Lo que predicó el Hermano Branham",
+    searchModeModalSermonsBody: "Encuentre citas, referencias y enseñanzas en los sermones originales.",
+    searchModeModalNote: "Puede cambiar su opción predeterminada en su perfil.",
+    // Sensitive-inquiry banner
     sensitiveBannerText:
-      "No es para preguntas personales o sensibles — consulta a tu pastor. Esta herramienta sirve para comparar citas, referencias y doctrina general.",
+      "No es para preguntas personales o sensibles — consulta a tu pastor. Úsala para estudiar las Escrituras, citas de sermones, referencias y doctrina.",
     sermonCountNote:
       "385 de ~1,200 sermones indexados en español. Puede continuar con estas respuestas en mente.",
   },
@@ -280,13 +298,22 @@ const CHAT_STRINGS = {
     featureFrenchStat: "359 sermons disponibles en français",
     featureSetLanguage: "Définir ma langue",
     featureLater: "Plus tard",
-    // Sensitive-inquiry disclaimer
-    sensitiveModalHeading: "Avant de commencer",
-    sensitiveModalBody:
-      "Cet outil sert à comparer des citations de sermons, trouver des références exactes et apprendre la doctrine générale — pas à répondre à des questions personnelles ou spirituelles sensibles. Ses réponses ne sont pas fiables pour ce genre de sujets. Si vous portez quelque chose de sensible ou de personnel sur le cœur, veuillez consulter votre pasteur.",
-    sensitiveModalAck: "J'ai compris",
+    // Sermon search / Bible search
+    welcomeDescriptionBible: "Posez des questions sur la Bible et recevez des réponses qui cherchent dans les Écritures leur juste interprétation.",
+    askPlaceholderBible: "Posez une question sur la Bible…",
+    searchModeLabel: "Rechercher dans",
+    searchModeSermons: "Sermons",
+    searchModeBible: "Bible",
+    searchModeModalHeading: "Que cherchez-vous ?",
+    searchModeModalBody: "Choisissez où commencent vos questions. Vous pouvez changer à tout moment.",
+    searchModeModalBibleTitle: "Le sens des Écritures",
+    searchModeModalBibleBody: "Des réponses à vos questions tirées de la Bible, avec sa juste interprétation.",
+    searchModeModalSermonsTitle: "Ce que Frère Branham a prêché",
+    searchModeModalSermonsBody: "Trouvez des citations, des références et des enseignements dans les sermons originaux.",
+    searchModeModalNote: "Vous pouvez changer votre choix par défaut dans votre profil.",
+    // Sensitive-inquiry banner
     sensitiveBannerText:
-      "Pas pour les questions personnelles ou sensibles — consultez votre pasteur. Cet outil sert à comparer des citations, des références et la doctrine générale.",
+      "Pas pour les questions personnelles ou sensibles — consultez votre pasteur. Utilisez-le pour étudier les Écritures, les citations de sermons, les références et la doctrine.",
     sermonCountNote:
       "359 des ~1 200 sermons indexés en français. Vous pouvez maintenant continuer avec ces réponses à l'esprit.",
   },

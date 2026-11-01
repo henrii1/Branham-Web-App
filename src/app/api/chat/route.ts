@@ -20,6 +20,9 @@ interface ChatRequestBody {
   history_window?: ChatHistoryMessage[];
   /** "bible": a follow-up on a Bible or nature FAQ, answered from Scripture. */
   followup_kind?: "bible";
+  /** Bible search, first question: the Bible FAQ mode (set here, never by the browser). */
+  response_mode?: "faq";
+  faq_kind?: "bible";
 }
 
 const MAX_CONVERSATION_ID_LENGTH = 128;
@@ -138,6 +141,7 @@ function parseChatRequestBody(raw: unknown): ChatRequestBody | null {
     "history_window" in raw ? raw.history_window : undefined;
   const followupKindValue =
     "followup_kind" in raw ? raw.followup_kind : undefined;
+  const searchModeValue = "search_mode" in raw ? raw.search_mode : undefined;
 
   const userLanguage =
     languageValue === undefined
@@ -153,10 +157,20 @@ function parseChatRequestBody(raw: unknown): ChatRequestBody | null {
     (languageValue !== undefined && !userLanguage) ||
     (conversationSummaryValue !== undefined && !conversationSummary) ||
     historyWindow === null ||
-    (followupKindValue !== undefined && followupKindValue !== "bible")
+    (followupKindValue !== undefined && followupKindValue !== "bible") ||
+    (searchModeValue !== undefined && searchModeValue !== "bible" && searchModeValue !== "sermons")
   ) {
     return null;
   }
+
+  // Bible search: the first question is answered by the Bible FAQ mode
+  // (its own study plan), every later one as a Bible follow-up.
+  const bible = searchModeValue === "bible" || followupKindValue === "bible";
+  const bibleMode = !bible
+    ? {}
+    : historyWindow?.length
+      ? { followup_kind: "bible" as const }
+      : { response_mode: "faq" as const, faq_kind: "bible" as const };
 
   return {
     conversation_id: conversationId,
@@ -164,7 +178,7 @@ function parseChatRequestBody(raw: unknown): ChatRequestBody | null {
     user_language: userLanguage ?? undefined,
     conversation_summary: conversationSummary ?? undefined,
     history_window: historyWindow,
-    ...(followupKindValue === "bible" ? { followup_kind: "bible" as const } : {}),
+    ...bibleMode,
   };
 }
 

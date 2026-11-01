@@ -73,7 +73,8 @@ src/
 │   │   ├── ChatPanel.tsx, SourcesPanel.tsx, Composer.tsx
 │   │   ├── ConversationSidebar.tsx, MobileHeader.tsx, SidebarRail.tsx
 │   │   ├── LoginModal.tsx, AnonymousBanner.tsx
-│   │   ├── SensitiveUseModal.tsx, SensitiveUseBanner.tsx  # ★ Sensitive-inquiry disclaimer (once-per-account/session modal + persistent header banner)
+│   │   ├── SearchModeToggle.tsx, SearchModeModal.tsx      # ★ Sermon search / Bible search switch + the question new sign-ups are asked
+│   │   ├── SensitiveUseBanner.tsx          # Persistent "not for personal questions" header banner
 │   │   ├── ShareModal.tsx                  # ★ Share link/copy + card background+text-shade picker + download
 │   │   ├── ShareCardTemplate.tsx           # ★ Off-screen 1200×630 DOM node captured by html-to-image
 │   │   └── DragDivider.tsx, WelcomeEmailTrigger.tsx
@@ -255,6 +256,16 @@ If you change a wire-format invariant on the API side, you must also patch (in o
 - `src/lib/chat/types.ts` (if union types change)
 - `api_contract.md` (the source of truth)
 - `CLAUDE.md` here and on the API side
+
+## Sermon search / Bible search
+
+The chat has two modes, switched just above the composer (`SearchModeToggle`). **Bible search** sends `search_mode: "bible"`; the `/api/chat` proxy (not the browser) turns that into the Model API's Bible FAQ mode (`response_mode: "faq"`, `faq_kind: "bible"`) when there is no `history_window` (first question), and `followup_kind: "bible"` after that. A `response_mode` sent by the browser is dropped. Sermon search is the normal chat.
+
+- A Bible chat is stored as `conversations.source_faq_kind = 'bible'` (same kind as a follow-up on a Bible FAQ page), so it reopens in Bible search; switching mid-chat updates it (`updateConversationKind`). In `ChatShell`, `sourceFaqKind` non-null = Bible search.
+- **Default per account**: auth user metadata `search_mode` (`src/lib/chat/searchMode.ts`), no table column. Accounts created on/after `SEARCH_MODE_QUESTION_SINCE` with no choice yet get `SearchModeModal` ("Scripture or the sermons?") once; older accounts default to sermons and never see it. `/profile` → **Default search** changes it. New chats start in the default; anonymous visitors start in sermons.
+- **Nudge**: the option the reader hasn't asked a question with yet glows (`.search-mode-nudge`, static ring under reduced motion) until tried — `localStorage` `search-mode-tried`, read through `useSyncExternalStore` in `searchModeTried.ts` (client-only file, since server pages import `searchMode.ts`).
+- Bible search on desktop: passages strip 15%, answer 85% (`BIBLE_PANEL_RATIO`). Welcome text and placeholder change with the mode (`welcomeDescriptionBible`, `askPlaceholderBible`).
+- The old once-per-account "Before you begin" sensitive-use modal was removed; the header banner stays.
 
 ## Conversation sharing
 

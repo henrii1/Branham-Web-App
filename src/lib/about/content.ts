@@ -57,11 +57,11 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
   en: {
     metaTitle: "About Branham Sermons Assistant",
     metaDescription:
-      "Why Branham Sermons Assistant exists, who it is for, and how it answers questions from the original sermons of William Marrion Branham with every point linked to the source.",
+      "Why Branham Sermons Assistant exists, who it is for, and how it answers questions about the Bible and the sermons of William Marrion Branham, with every point linked to the source.",
     askQuestion: "Ask a question",
     title: "About Branham Sermons Assistant",
     lead:
-      "Branham Sermons Assistant, also known as Branham Sermons AI, is a search and study tool for the sermons of William Marrion Branham. Ask a question the way you would ask a person, in your own words or with the exact words you remember, and get a clear answer drawn from the sermons with every point linked to the original quotation.",
+      "Branham Sermons Assistant, also known as Branham Sermons AI, is a source for biblical truths and a search and study tool for the sermons of William Marrion Branham. Ask about the Bible and get answers with the proper interpretation of Scripture, or search the sermons the way you would ask a person, in your own words or with the exact words you remember. Every answer is drawn from the sermons, with every point linked to the original quotation.",
     availableIn: "Available in",
     whyHeading: "Why it exists",
     whyParagraphs: [
@@ -107,7 +107,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       },
       { label: "Clickable references", body: "Every citation opens the exact location in the sermon." },
       { label: "Natural follow-up", body: "Ask further questions the way a real conversation unfolds." },
-      { label: "Popular Questions", body: "Curated answers to the doctrinal questions people ask most." },
+      { label: "Popular Questions", body: "Curated answers to the questions people ask most about the Bible and doctrine." },
       {
         label: "Shareable and saved",
         body: "Share answers on WhatsApp and elsewhere, and save conversations once signed in.",
@@ -150,11 +150,11 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
   es: {
     metaTitle: "Acerca de Branham Sermons Assistant",
     metaDescription:
-      "Por qué existe Branham Sermons Assistant, para quién es y cómo responde preguntas a partir de los sermones originales de William Marrion Branham, con cada punto enlazado a la fuente.",
+      "Por qué existe Branham Sermons Assistant, para quién es y cómo responde preguntas sobre la Biblia y los sermones de William Marrion Branham, con cada punto enlazado a la fuente.",
     askQuestion: "Hacer una pregunta",
     title: "Acerca de Branham Sermons Assistant",
     lead:
-      "Branham Sermons Assistant, también conocido como Branham Sermons AI, es una herramienta de búsqueda y estudio de los sermones de William Marrion Branham. Haga una pregunta como se la haría a una persona, con sus propias palabras o con las palabras exactas que recuerda, y reciba una respuesta clara tomada de los sermones, con cada punto enlazado a la cita original.",
+      "Branham Sermons Assistant, también conocido como Branham Sermons AI, es una fuente de verdades bíblicas y una herramienta de búsqueda y estudio de los sermones de William Marrion Branham. Pregunte sobre la Biblia y reciba respuestas con la debida interpretación de las Escrituras, o busque en los sermones como le preguntaría a una persona, con sus propias palabras o con las palabras exactas que recuerda. Cada respuesta se toma de los sermones, con cada punto enlazado a la cita original.",
     availableIn: "Disponible en",
     whyHeading: "Por qué existe",
     whyParagraphs: [
@@ -208,7 +208,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       },
       {
         label: "Preguntas populares",
-        body: "Respuestas seleccionadas a las preguntas doctrinales más frecuentes.",
+        body: "Respuestas seleccionadas a las preguntas más frecuentes sobre la Biblia y la doctrina.",
       },
       {
         label: "Para compartir y guardar",
@@ -255,11 +255,11 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
   fr: {
     metaTitle: "À propos de Branham Sermons Assistant",
     metaDescription:
-      "Pourquoi Branham Sermons Assistant existe, à qui il s’adresse et comment il répond aux questions à partir des sermons originaux de William Marrion Branham, chaque point étant relié à sa source.",
+      "Pourquoi Branham Sermons Assistant existe, à qui il s’adresse et comment il répond aux questions sur la Bible et les sermons de William Marrion Branham, chaque point étant relié à sa source.",
     askQuestion: "Poser une question",
     title: "À propos de Branham Sermons Assistant",
     lead:
-      "Branham Sermons Assistant, aussi appelé Branham Sermons AI, est un outil de recherche et d’étude des sermons de William Marrion Branham. Posez une question comme vous la poseriez à une personne, avec vos propres mots ou avec les mots exacts dont vous vous souvenez, et recevez une réponse claire tirée des sermons, chaque point étant relié à la citation originale.",
+      "Branham Sermons Assistant, aussi appelé Branham Sermons AI, est une source de vérités bibliques et un outil de recherche et d’étude des sermons de William Marrion Branham. Interrogez la Bible et recevez des réponses avec la juste interprétation des Écritures, ou cherchez dans les sermons comme vous le demanderiez à une personne, avec vos propres mots ou avec les mots exacts dont vous vous souvenez. Chaque réponse est tirée des sermons, chaque point étant relié à la citation originale.",
     availableIn: "Disponible en",
     whyHeading: "Pourquoi il existe",
     whyParagraphs: [
@@ -313,7 +313,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       },
       {
         label: "Questions populaires",
-        body: "Des réponses choisies aux questions doctrinales les plus fréquentes.",
+        body: "Des réponses choisies aux questions les plus fréquentes sur la Bible et la doctrine.",
       },
       {
         label: "Partage et sauvegarde",

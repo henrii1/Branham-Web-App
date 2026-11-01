@@ -9,6 +9,7 @@ import { useTheme } from "@/components/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { saveSearchMode, type SearchMode } from "@/lib/chat/searchMode";
 
 // Admin-only, loaded on demand: the full Add-to-FAQ flow, started from scratch.
 const AddToFaqModal = dynamic(() => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })), { ssr: false });
@@ -20,12 +21,14 @@ interface ProfileContentProps {
     displayName?: string;
   };
   currentLanguage: string;
+  currentSearchMode: SearchMode;
   isAdmin?: boolean;
 }
 
 export function ProfileContent({
   user,
   currentLanguage,
+  currentSearchMode,
   isAdmin = false,
 }: ProfileContentProps) {
   const router = useRouter();
@@ -125,6 +128,8 @@ export function ProfileContent({
         />
       </div>
 
+      <DefaultSearch initial={currentSearchMode} />
+
       <div className="rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] p-5 shadow-sm dark:border-zinc-700">
         <h2 className="font-display text-xl text-foreground">Need help?</h2>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -194,6 +199,73 @@ export function ProfileContent({
             enforces the same rule. */}
         {!isAdmin && <DeleteAccount email={user.email} />}
       </div>
+    </div>
+  );
+}
+
+// ── Default search: what a new chat starts in ──
+
+const SEARCH_OPTIONS: { mode: SearchMode; title: string; body: string }[] = [
+  { mode: "sermons", title: "Sermon search", body: "What Brother Branham preached: quotations, references and teachings." },
+  { mode: "bible", title: "Bible search", body: "The meaning of Scripture and its proper interpretation." },
+];
+
+function DefaultSearch({ initial }: { initial: SearchMode }) {
+  const [mode, setMode] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function choose(next: SearchMode) {
+    if (next === mode || saving) return;
+    const previous = mode;
+    setMode(next);
+    setSaving(true);
+    setError(null);
+    try {
+      await saveSearchMode(next);
+    } catch {
+      setMode(previous);
+      setError("Couldn't save your default search. Please try again.");
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="font-display text-xl text-foreground">Default search</h2>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Every new chat starts here. You can still switch in any chat.
+        </p>
+      </div>
+      <div role="radiogroup" aria-label="Default search" className="grid gap-2 sm:grid-cols-2">
+        {SEARCH_OPTIONS.map((o) => {
+          const active = o.mode === mode;
+          return (
+            <button
+              key={o.mode}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => choose(o.mode)}
+              disabled={saving}
+              className={`rounded-xl border px-4 py-3 text-left transition-colors disabled:cursor-wait ${
+                active
+                  ? "border-zinc-900 bg-[var(--surface-base)] ring-1 ring-zinc-900 dark:border-zinc-100 dark:ring-zinc-100"
+                  : "border-zinc-200 bg-[var(--surface-base)] hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
+              }`}
+            >
+              <span className="block text-sm font-semibold text-foreground">{o.title}</span>
+              <span className="mt-0.5 block text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">{o.body}</span>
+            </button>
+          );
+        })}
+      </div>
+      {error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

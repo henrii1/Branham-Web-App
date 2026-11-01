@@ -184,6 +184,20 @@ export async function upsertRag(
   if (error) throw error;
 }
 
+/** Switching a chat between Sermon and Bible search ("bible" or null). */
+export async function updateConversationKind(
+  conversationId: string,
+  sourceFaqKind: FollowupFaqKind | null,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("conversations")
+    .update({ source_faq_kind: sourceFaqKind })
+    .eq("id", conversationId);
+
+  if (error) throw error;
+}
+
 export async function renameConversation(
   conversationId: string,
   title: string,

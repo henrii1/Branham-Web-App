@@ -20,6 +20,7 @@ import {
   fetchUserLanguage,
   updateUserLanguage,
   createConversation,
+  updateConversationKind,
   saveMessage,
   upsertRag,
   updateConversationAfterTurn,
@@ -45,8 +46,8 @@ import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
 import { SensitiveUseBanner } from "./SensitiveUseBanner";
 import dynamic from "next/dynamic";
-const SensitiveUseModal = dynamic(
-  () => import("./SensitiveUseModal").then((m) => ({ default: m.SensitiveUseModal })),
+const SearchModeModal = dynamic(
+  () => import("./SearchModeModal").then((m) => ({ default: m.SearchModeModal })),
   { ssr: false },
 );
 import { LoginModal } from "./LoginModal";
@@ -62,12 +63,17 @@ import { aboutHref } from "@/lib/about/content";
 import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { natureFollowupNote, type FollowupFaqKind } from "@/lib/faq/groups";
+import { SearchModeToggle } from "./SearchModeToggle";
+import { defaultSearchMode, needsSearchModeChoice, type SearchMode } from "@/lib/chat/searchMode";
+import { markModeTried } from "@/lib/chat/searchModeTried";
 const AddToFaqModal = dynamic(
   () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
   { ssr: false },
 );
 
 const DEFAULT_PANEL_RATIO = 0.4;
+// Bible search: the answer takes most of the height, passages a strip.
+const BIBLE_PANEL_RATIO = 0.15;
 const MAX_TITLE_LENGTH = 50;
 const MOBILE_ACTIVE_TAB_KEY = "branham-mobile-active-tab";
 // Mirror the server's per-message and per-window limits in
@@ -139,6 +145,7 @@ interface SendArgs {
   isNew: boolean;
   currentUser: { id: string } | null;
   currentConvId: string;
+  kind: FollowupFaqKind | null;
 }
 
 interface ChatShellProps {
@@ -169,9 +176,14 @@ export function ChatShell({
   const [conversationSummary, setConversationSummary] = useState<string | null>(
     null,
   );
-  // Set when this chat started as a follow-up on a Bible or nature FAQ page:
-  // every turn is then answered from Scripture (followup_kind "bible").
+  // Bible search: set ("bible") when this chat is in Bible search, or
+  // started as a follow-up on a Bible or nature FAQ page; every turn is then
+  // answered from Scripture (search_mode "bible"). Null = Sermon search.
   const [sourceFaqKind, setSourceFaqKind] = useState<FollowupFaqKind | null>(null);
+  const searchMode: SearchMode = sourceFaqKind ? "bible" : "sermons";
+  // The account's default, used for every new chat.
+  const defaultModeRef = useRef<SearchMode>("sermons");
+  const [searchModeChosen, setSearchModeChosen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // ── Persistence state (logged-in only) ──────────────────────────────
@@ -544,6 +556,8 @@ export function ChatShell({
     if (authLoading || !user || initialLoadDone.current) return;
     initialLoadDone.current = true;
 
+    defaultModeRef.current = defaultSearchMode(user);
+    if (!initialConversationId && defaultModeRef.current === "bible") setSourceFaqKind("bible");
     loadConversations();
     fetchUserLanguage(user.id)
       .then((lang) => {
@@ -683,7 +697,7 @@ export function ChatShell({
   // stream never reaches `final`, nothing is persisted (no ghost rows).
   const runChatRequest = useCallback(
     async (args: SendArgs) => {
-      const { userMessage, requestBody, content, isNew, currentUser, currentConvId } = args;
+      const { userMessage, requestBody, content, isNew, currentUser, currentConvId, kind } = args;
       lastSendArgsRef.current = args;
 
       setStreamingStatus("connecting");
@@ -816,6 +830,7 @@ export function ChatShell({
                           currentConvId,
                           currentUser.id,
                           generateTitle(content),
+                          kind,
                         );
                         setConversationExists(true);
                         window.history.replaceState(
@@ -966,8 +981,9 @@ export function ChatShell({
         requestBody.history_window = historyWindow;
       }
       if (sourceFaqKind) {
-        requestBody.followup_kind = "bible";
+        requestBody.search_mode = "bible";
       }
+      markModeTried(searchMode);
 
       const userMessage: Message = {
         id: generateId(),
@@ -984,6 +1000,7 @@ export function ChatShell({
         isNew: !conversationExists,
         currentUser: user,
         currentConvId: conversationId,
+        kind: sourceFaqKind,
       });
     },
     [
@@ -994,6 +1011,7 @@ export function ChatShell({
       conversationSummary,
       conversationExists,
       sourceFaqKind,
+      searchMode,
       runChatRequest,
     ],
   );
@@ -1019,7 +1037,7 @@ export function ChatShell({
     setStreamingStatus("idle");
     setStreamBuffer("");
     setConversationSummary(null);
-    setSourceFaqKind(null);
+    setSourceFaqKind(defaultModeRef.current === "bible" ? "bible" : null);
     setError(null);
     setActiveTab("chat");
     setChatReady(false);
@@ -1135,6 +1153,35 @@ export function ChatShell({
     [user, chatLanguage],
   );
 
+  // ── Sermon search / Bible search ────────────────────────────────────
+  // Applies to this chat's next question; a saved chat keeps the switch.
+  const handleSearchModeChange = useCallback(
+    (mode: SearchMode) => {
+      const kind = mode === "bible" ? "bible" : null;
+      setSourceFaqKind(kind);
+      if (user && conversationExists) {
+        updateConversationKind(conversationId, kind).catch((err) =>
+          console.error("Failed to switch search mode:", err),
+        );
+      }
+    },
+    [user, conversationExists, conversationId],
+  );
+
+  const handleSearchModeChosen = useCallback(
+    (mode: SearchMode) => {
+      setSearchModeChosen(true);
+      defaultModeRef.current = mode;
+      if (messages.length === 0) setSourceFaqKind(mode === "bible" ? "bible" : null);
+    },
+    [messages.length],
+  );
+
+  // The answer panel grows in Bible search (desktop split).
+  useEffect(() => {
+    setPanelRatio(searchMode === "bible" ? BIBLE_PANEL_RATIO : DEFAULT_PANEL_RATIO);
+  }, [searchMode]);
+
   // ── Chat language change ────────────────────────────────────────────
   const handleChatLanguageChange = useCallback(
     async (lang: string) => {
@@ -1190,7 +1237,9 @@ export function ChatShell({
   return (
     <div className="flex h-dvh bg-background">
       <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
-      <SensitiveUseModal language={chatLanguage} userId={user?.id ?? null} />
+      {needsSearchModeChoice(user) && !searchModeChosen && (
+        <SearchModeModal language={chatLanguage} onChosen={handleSearchModeChosen} />
+      )}
 
       {/* ── Desktop sidebar ── */}
       <aside
@@ -1366,7 +1415,7 @@ export function ChatShell({
               streamBuffer={streamBuffer}
               error={error}
               isLoading={conversationLoading}
-              welcomeDescription={strings.welcomeDescription}
+              welcomeDescription={searchMode === "bible" ? strings.welcomeDescriptionBible : strings.welcomeDescription}
               finalizingText={strings.finalizingResponse}
               mode={answerViewMode}
               onModeChange={handleAnswerViewModeChange}
@@ -1407,7 +1456,7 @@ export function ChatShell({
                   streamBuffer={streamBuffer}
                   error={error}
                   isLoading={conversationLoading}
-                  welcomeDescription={strings.welcomeDescription}
+                  welcomeDescription={searchMode === "bible" ? strings.welcomeDescriptionBible : strings.welcomeDescription}
                   finalizingText={strings.finalizingResponse}
                   mode={answerViewMode}
                   onModeChange={handleAnswerViewModeChange}
@@ -1469,14 +1518,24 @@ export function ChatShell({
 
         {/* ── Chat language indicator (all users) ── */}
         <div className="bg-[var(--surface-base)] px-4 pb-1 pt-1.5">
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-              {strings.respondingIn}
-            </span>
-            <ChatLanguagePill
-              language={chatLanguage}
-              onChange={handleChatLanguageChange}
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+            <SearchModeToggle
+              mode={searchMode}
+              onChange={handleSearchModeChange}
+              sermonsLabel={strings.searchModeSermons}
+              bibleLabel={strings.searchModeBible}
+              groupLabel={strings.searchModeLabel}
+              disabled={streamingStatus === "connecting" || streamingStatus === "rag_received" || streamingStatus === "streaming"}
             />
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                {strings.respondingIn}
+              </span>
+              <ChatLanguagePill
+                language={chatLanguage}
+                onChange={handleChatLanguageChange}
+              />
+            </div>
           </div>
           {strings.sermonCountNote ? (
             <p className="mt-0.5 text-center text-[10px] text-zinc-400 dark:text-zinc-500">
@@ -1490,7 +1549,7 @@ export function ChatShell({
           onSend={handleSendMessage}
           disabled={false}
           streamingStatus={streamingStatus}
-          placeholder={strings.askPlaceholder}
+          placeholder={searchMode === "bible" ? strings.askPlaceholderBible : strings.askPlaceholder}
           waitingPlaceholder={strings.waitingPlaceholder}
           note={sourceFaqKind === "nature" ? natureFollowupNote(chatLanguage) : undefined}
         />

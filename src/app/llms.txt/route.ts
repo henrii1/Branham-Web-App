@@ -25,9 +25,9 @@ function buildLlmsTxt(pages: SeoCacheRow[]): string {
   const intro = [
     "# Branham Sermons AI",
     "",
-    "> Branham Sermons Assistant (a.k.a. Branham Sermons AI) is an AI-powered search and Q&A assistant for the messages, doctrines, and beliefs of William Marrion Branham. Every answer is grounded in the original sermon texts.",
+    "> Branham Sermons Assistant (a.k.a. Branham Sermons AI) is a source for biblical truths and an AI-powered search of the sermons of William Marrion Branham. It answers questions about the Bible with the proper interpretation of Scripture (Bible search), and questions about Bro. Branham's messages, doctrines, and beliefs from the original sermon texts (Sermon search). Every answer is grounded in Scripture and the sermons, with cited passages.",
     "",
-    "The site lets visitors ask any question about Bro. Branham's teachings and receive an answer with cited passages from the original sermons. It covers Branham messages, doctrines, beliefs, Scripture references, sermon quotes, and biographical detail. Curated answer pages exist at `/q/{slug}` and are linked below; interactive follow-ups happen in the chat at `/chat`.",
+    "The site lets visitors ask a question about the Bible or about Bro. Branham's teachings and receive an answer with cited passages from the original sermons. A daily Family Altar devotion is at `/altar`. It covers Branham messages, doctrines, beliefs, Scripture references, sermon quotes, and biographical detail. Curated answer pages exist at `/q/{slug}` and are linked below; interactive follow-ups happen in the chat at `/chat`.",
     "",
     "## Supported Languages",
     "",

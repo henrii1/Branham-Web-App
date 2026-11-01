@@ -48,7 +48,7 @@ export default function OpenGraphImage() {
               color: "#4b5563",
             }}
           >
-            Ask questions grounded in the original sermon texts.
+            Biblical truths and the sermons of Bro. Branham.
           </div>
         </div>
 

@@ -721,3 +721,18 @@ html {
     font-size: 16px;
   }
 }
+
+/* ── Search mode switch: soft glow on the option not tried yet ── */
+.search-mode-nudge {
+  animation: search-mode-nudge 2.6s ease-in-out infinite;
+}
+@keyframes search-mode-nudge {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(214 168 64 / 0); }
+  50% { box-shadow: 0 0 0 2px rgb(214 168 64 / 0.45), 0 0 14px 2px rgb(214 168 64 / 0.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-mode-nudge {
+    animation: none;
+    box-shadow: 0 0 0 2px rgb(214 168 64 / 0.5);
+  }
+}

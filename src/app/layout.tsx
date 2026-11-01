@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     template: "%s | Branham Sermons Assistant",
   },
   description:
-    "Ask questions about the sermons of William Marrion Branham. Answers grounded in the original sermon texts.",
+    "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of William Marrion Branham. Answers grounded in Scripture and the original sermon texts.",
   keywords: SITE_KEYWORDS,
   robots: {
     index: false,
