@@ -89,7 +89,7 @@ export function NatureSeries({
           page (inert while closed) so the links stay crawlable. */}
       <div id={pathId} className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden" inert={!open}>
-          <ol className="relative mt-6 ml-[15px] border-l border-[var(--series-line)] pb-1">
+          <ol className="relative mt-6 ml-[15px] border-l border-[var(--series-line)]">
             {sections.map((s, i) => (
               <li key={s.group!.id} className={i > 0 ? "mt-7" : ""}>
                 <div className="-ml-[5px] flex items-baseline gap-3">
@@ -136,6 +136,10 @@ export function NatureSeries({
                 </ol>
               </li>
             ))}
+            {/* End stop: the line finishes here, after the last question. */}
+            <li aria-hidden="true" className="mt-3 -ml-[8px] flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 border-[var(--series-accent)] bg-[var(--background)]">
+              <span className="h-[5px] w-[5px] rounded-full bg-[var(--series-accent)]" />
+            </li>
           </ol>
         </div>
       </div>
