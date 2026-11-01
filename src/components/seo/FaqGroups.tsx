@@ -13,6 +13,14 @@ const COPY: Record<Lang, { questions: (n: number) => string; showAll: (n: number
   fr: { questions: (n) => `${n} question${n === 1 ? "" : "s"}`, showAll: (n) => `Voir les ${n}`, showFewer: "Voir moins" },
 };
 
+/** The doctrinal card's always-shown question (the oldest, Serpent Seed, otherwise). Same slug in every language. */
+const DOCTRINAL_SPOTLIGHT_SLUG = "what-did-brother-branham-teach-about-the-godhead";
+
+function spotlightFirst(items: FaqListItem[]): FaqListItem[] {
+  const i = items.findIndex((item) => item.slug === DOCTRINAL_SPOTLIGHT_SLUG);
+  return i > 0 ? [items[i], ...items.slice(0, i), ...items.slice(i + 1)] : items;
+}
+
 function Arrow() {
   return (
     <svg className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400 transition-colors group-hover:text-zinc-600 dark:group-hover:text-zinc-300" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
@@ -121,8 +129,8 @@ function GroupSection({ title, sections, slugPrefix, lang, c }: { title: string;
 /**
  * The FAQ list as groups: Christianity Seen in Nature first (a series, shown
  * as one numbered path), then Bible questions (named groups), then the
- * doctrinal group last. Each Bible/doctrinal group shows its oldest question
- * and opens to the rest. Same layout in
+ * doctrinal group last. Each Bible group shows its oldest question, the
+ * doctrinal group the Godhead (DOCTRINAL_SPOTLIGHT_SLUG), and opens to the rest. Same layout in
  * en/es/fr; question URLs are unchanged.
  */
 export function FaqGroups({
@@ -152,7 +160,7 @@ export function FaqGroups({
             <span className="shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400">{c.questions(doctrinal.items.length)}</span>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2">
-            <GroupCard id={doctrinal.group?.id ?? "doctrinal"} title={null} items={doctrinal.items} slugPrefix={slugPrefix} wide c={c} />
+            <GroupCard id={doctrinal.group?.id ?? "doctrinal"} title={null} items={spotlightFirst(doctrinal.items)} slugPrefix={slugPrefix} wide c={c} />
           </div>
         </section>
       )}
