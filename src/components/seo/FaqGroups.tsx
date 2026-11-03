@@ -112,10 +112,13 @@ function GroupCard({
   );
 }
 
+/** Anchor for the Bible questions section (`/faq#bible-questions`, shared links). */
+export const BIBLE_QUESTIONS_ANCHOR = "bible-questions";
+
 /** A section of named groups as a grid of cards. */
-function GroupSection({ title, sections, slugPrefix, lang, c }: { title: string; sections: FaqSection<FaqListItem>[]; slugPrefix: string; lang: Lang; c: (typeof COPY)[Lang] }) {
+function GroupSection({ id, title, sections, slugPrefix, lang, c }: { id?: string; title: string; sections: FaqSection<FaqListItem>[]; slugPrefix: string; lang: Lang; c: (typeof COPY)[Lang] }) {
   return (
-    <section className="flex flex-col gap-3">
+    <section id={id} className="flex scroll-mt-6 flex-col gap-3">
       <h2 className="font-display text-[1.4rem] leading-tight text-foreground">{title}</h2>
       <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
         {sections.map((s) => (
@@ -152,7 +155,7 @@ export function FaqGroups({
   return (
     <div className="flex flex-col gap-9">
       {nature.length > 0 && <NatureSeries sections={nature} lang={lang} slugPrefix={slugPrefix} />}
-      {bible.length > 0 && <GroupSection title={SECTION_LABELS.bible[lang]} sections={bible} slugPrefix={slugPrefix} lang={lang} c={c} />}
+      {bible.length > 0 && <GroupSection id={BIBLE_QUESTIONS_ANCHOR} title={SECTION_LABELS.bible[lang]} sections={bible} slugPrefix={slugPrefix} lang={lang} c={c} />}
       {doctrinal && (
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-3">

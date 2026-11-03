@@ -8,9 +8,9 @@ import { aboutHref } from "@/lib/about/content";
 type FooterLang = "en" | "es" | "fr";
 
 const COPY: Record<FooterLang, { about: string; faq: string; altar: string; contact: string; follow: string; site: string }> = {
-  en: { about: "About", faq: "FAQ", altar: "Family Altar", contact: "Contact us", follow: "Follow us", site: "Site" },
-  es: { about: "Acerca de", faq: "Preguntas frecuentes", altar: "Altar Familiar", contact: "Contáctenos", follow: "Síganos", site: "Sitio" },
-  fr: { about: "À propos", faq: "Questions fréquentes", altar: "Autel familial", contact: "Nous contacter", follow: "Suivez-nous", site: "Site" },
+  en: { about: "About", faq: "Questions of Faith", altar: "Family Altar", contact: "Contact us", follow: "Follow us", site: "Site" },
+  es: { about: "Acerca de", faq: "Preguntas de fe", altar: "Altar Familiar", contact: "Contáctenos", follow: "Síganos", site: "Sitio" },
+  fr: { about: "À propos", faq: "Questions de foi", altar: "Autel familial", contact: "Nous contacter", follow: "Suivez-nous", site: "Site" },
 };
 
 const prefix = (lang: FooterLang) => (lang === "en" ? "" : `/${lang}`);

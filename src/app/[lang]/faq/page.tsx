@@ -19,20 +19,16 @@ const LANG_META: Record<
   { title: string; description: string; label: string; subtitle: string }
 > = {
   es: {
-    title: "Preguntas frecuentes sobre el Hno. Branham | Branham Sermons Assistant",
-    description:
-      "Preguntas comunes sobre las doctrinas, sermones, biografía y creencias de William Marrion Branham, respondidas desde los textos originales de los sermones.",
-    label: "Preguntas frecuentes",
-    subtitle:
-      "Preguntas sobre Dios y el cristianismo visto en la naturaleza, lo que enseña la Biblia y las enseñanzas de William Marrion Branham, respondidas desde la creación, las Escrituras y sus sermones originales.",
+    title: "Preguntas de fe | Branham Sermons Assistant",
+    description: "Respuestas preparadas a las preguntas que la gente hace sobre Dios, la Biblia y las enseñanzas de William Marrion Branham, tomadas de la creación, las Escrituras y sus propios sermones.",
+    label: "Preguntas de fe",
+    subtitle: "Respuestas preparadas a las preguntas que la gente hace sobre Dios, la Biblia y las enseñanzas de William Marrion Branham, tomadas de la creación, las Escrituras y sus propios sermones.",
   },
   fr: {
-    title: "Questions fréquentes sur Frère Branham | Branham Sermons Assistant",
-    description:
-      "Questions courantes sur les doctrines, sermons, biographie et croyances de William Marrion Branham, répondues à partir des textes originaux des sermons.",
-    label: "Questions fréquentes",
-    subtitle:
-      "Questions sur Dieu et le christianisme vu dans la nature, sur ce qu’enseigne la Bible et sur les enseignements de William Marrion Branham, avec des réponses tirées de la création, des Écritures et de ses sermons originaux.",
+    title: "Questions de foi | Branham Sermons Assistant",
+    description: "Des réponses préparées aux questions que l’on se pose sur Dieu, la Bible et les enseignements de William Marrion Branham, tirées de la création, des Écritures et de ses propres sermons.",
+    label: "Questions de foi",
+    subtitle: "Des réponses préparées aux questions que l’on se pose sur Dieu, la Bible et les enseignements de William Marrion Branham, tirées de la création, des Écritures et de ses propres sermons.",
   },
 };
 

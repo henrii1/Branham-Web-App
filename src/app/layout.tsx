@@ -130,7 +130,7 @@ const organizationJsonLd = {
 const siteNavigationJsonLd = {
   "@context": "https://schema.org",
   "@type": "SiteNavigationElement",
-  name: ["Chat", "Popular Questions"],
+  name: ["Chat", "Questions of Faith"],
   url: [
     "https://branhamsermons.ai/chat",
     "https://branhamsermons.ai/faq",

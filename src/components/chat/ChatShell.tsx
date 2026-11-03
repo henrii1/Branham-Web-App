@@ -65,7 +65,7 @@ import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { natureFollowupNote, type FollowupFaqKind } from "@/lib/faq/groups";
 import { SearchModeToggle } from "./SearchModeToggle";
 import { defaultSearchMode, needsSearchModeChoice, saveSearchMode, type SearchMode } from "@/lib/chat/searchMode";
-import { markModeTried, readBrowserSearchMode, useBrowserSearchMode } from "@/lib/chat/searchModeTried";
+import { markModeTried, readBrowserSearchMode, saveBrowserSearchMode, useBrowserSearchMode } from "@/lib/chat/searchModeTried";
 const AddToFaqModal = dynamic(
   () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
   { ssr: false },
@@ -151,11 +151,14 @@ interface SendArgs {
 interface ChatShellProps {
   initialConversationId?: string;
   triggerWelcomeEmail?: boolean;
+  /** `/chat?mode=bible|sermons` (shared links): the mode this first chat starts in. */
+  initialSearchMode?: SearchMode;
 }
 
 export function ChatShell({
   initialConversationId,
   triggerWelcomeEmail = false,
+  initialSearchMode,
 }: ChatShellProps) {
   const { user, isLoading: authLoading } = useAuth();
   // Admin-only tools (Add to FAQ). The API routes re-check on the server.
@@ -554,6 +557,12 @@ export function ChatShell({
     [isMobileViewport, user],
   );
 
+  // A mode link answers the question for a browser that hasn't been asked.
+  // Runs before the effects below, which read the browser's answer.
+  useEffect(() => {
+    if (initialSearchMode && readBrowserSearchMode() === null) saveBrowserSearchMode(initialSearchMode);
+  }, [initialSearchMode]);
+
   // ── Initial data load (runs once after auth resolves) ───────────────
   useEffect(() => {
     if (authLoading || !user || initialLoadDone.current) return;
@@ -567,7 +576,7 @@ export function ChatShell({
       setSearchModeChosen(true);
       saveSearchMode(carried).catch((err) => console.error("Failed to save search mode:", err));
     }
-    if (!initialConversationId && defaultModeRef.current === "bible") setSourceFaqKind("bible");
+    if (!initialConversationId && (initialSearchMode ?? defaultModeRef.current) === "bible") setSourceFaqKind("bible");
     loadConversations();
     fetchUserLanguage(user.id)
       .then((lang) => {
@@ -1192,8 +1201,8 @@ export function ChatShell({
     if (authLoading || user || !browserSearchMode || anonModeApplied.current) return;
     anonModeApplied.current = true;
     defaultModeRef.current = browserSearchMode;
-    if (!initialConversationId && browserSearchMode === "bible") setSourceFaqKind("bible");
-  }, [authLoading, user, browserSearchMode, initialConversationId]);
+    if (!initialConversationId && (initialSearchMode ?? browserSearchMode) === "bible") setSourceFaqKind("bible");
+  }, [authLoading, user, browserSearchMode, initialConversationId, initialSearchMode]);
 
   // The answer panel grows in Bible search (desktop split).
   useEffect(() => {
@@ -1257,7 +1266,7 @@ export function ChatShell({
       <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
       {/* Asked once: new accounts, and visitors whose browser hasn't answered
           (null; undefined until hydrated, so nothing flashes). */}
-      {!authLoading && !searchModeChosen && browserSearchMode === null && (user ? needsSearchModeChoice(user) : true) && (
+      {!authLoading && !searchModeChosen && !initialSearchMode && browserSearchMode === null && (user ? needsSearchModeChoice(user) : true) && (
         <SearchModeModal language={chatLanguage} signedIn={!!user} onChosen={handleSearchModeChosen} />
       )}
 

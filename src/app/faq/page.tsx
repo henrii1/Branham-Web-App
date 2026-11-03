@@ -13,9 +13,9 @@ const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
-  title: { absolute: "Popular Questions About Bro Branham | Branham Sermons Assistant" },
+  title: { absolute: "Questions of Faith | Branham Sermons Assistant" },
   description:
-    "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham — answered from the original sermon texts.",
+    "Prepared answers to the questions people ask about God, the Bible and the teachings of William Marrion Branham, drawn from creation, the Scriptures and his own sermons.",
   keywords: [
     "Branham Sermons Assistant",
     "Branham Sermons AI",
@@ -29,9 +29,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/faq` },
   openGraph: {
-    title: "Popular Questions About Bro Branham | Branham Sermons Assistant",
+    title: "Questions of Faith | Branham Sermons Assistant",
     description:
-      "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham.",
+      "Prepared answers to the questions people ask about God, the Bible and the teachings of William Marrion Branham, drawn from creation, the Scriptures and his own sermons.",
     url: `${SITE_URL}/faq`,
     type: "website",
     images: [{ url: OG_IMAGE }],
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Popular Questions About Bro Branham | Branham Sermons Assistant",
+    title: "Questions of Faith | Branham Sermons Assistant",
     description:
-      "Explore common questions about the doctrines, sermons, biography, and beliefs of William Marrion Branham.",
+      "Prepared answers to the questions people ask about God, the Bible and the teachings of William Marrion Branham, drawn from creation, the Scriptures and his own sermons.",
     images: [OG_IMAGE],
   },
 };
@@ -112,10 +112,10 @@ export default async function FaqPage() {
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-4xl px-4 py-10 xl:max-w-[56rem]">
             <h1 className="font-display mb-2 text-3xl text-foreground lg:text-4xl">
-              Frequently Asked Questions
+              Questions of Faith
             </h1>
             <p className="mb-8 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-              Questions about God and Christianity seen in nature, what the Bible teaches, and the teachings of William Marrion Branham, answered from creation, the Scriptures and his original sermons.
+              Prepared answers to the questions people ask about God, the Bible and the teachings of William Marrion Branham, drawn from creation, the Scriptures and his own sermons.
             </p>
 
             <nav className="sr-only" aria-label="All questions">

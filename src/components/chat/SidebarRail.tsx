@@ -117,8 +117,8 @@ export function SidebarRail({
           prefetch={false}
           href="/faq"
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-[var(--surface-base)] text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          aria-label="Popular Questions"
-          title="Popular Questions"
+          aria-label="Questions of Faith"
+          title="Questions of Faith"
         >
           <svg
             className="h-4 w-4"

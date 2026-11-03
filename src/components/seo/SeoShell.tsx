@@ -72,9 +72,9 @@ interface SeoShellProps {
 }
 
 const DEFAULT_PANEL_RATIO = 0.4;
-// Nature questions are written answers with no passages: give the answer
-// all the height the divider allows (its minimum for the passages panel).
-const NATURE_PANEL_RATIO = 0.15;
+// Nature and Bible questions: the answer is the focus, so it takes all the
+// height the divider allows (its minimum for the passages panel).
+const ANSWER_FOCUS_PANEL_RATIO = 0.15;
 
 function rowToConversation(row: ConversationRow): Conversation {
   return {
@@ -124,7 +124,7 @@ export function SeoShell({
     const stored = window.sessionStorage.getItem("branham-mobile-active-tab");
     return stored === "chat" || stored === "sources" ? stored : "chat";
   });
-  const [panelRatio, setPanelRatio] = useState(followupKind === "nature" ? NATURE_PANEL_RATIO : DEFAULT_PANEL_RATIO);
+  const [panelRatio, setPanelRatio] = useState(followupKind ? ANSWER_FOCUS_PANEL_RATIO : DEFAULT_PANEL_RATIO);
   const [seeding, setSeeding] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
@@ -752,7 +752,7 @@ export function SeoShell({
                   href={language === "en" ? "/faq" : `/${language}/faq`}
                   className="text-xs font-medium text-zinc-500 transition-colors hover:text-foreground"
                 >
-                  Popular Questions
+                  {strings.popularQuestions}
                 </Link>
               </div>
               <div className="flex-1 overflow-y-auto">

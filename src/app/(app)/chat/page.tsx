@@ -50,9 +50,9 @@ export const metadata: Metadata = {
 export default async function ChatPage({
   searchParams,
 }: {
-  searchParams: Promise<{ welcomeEmail?: string }>;
+  searchParams: Promise<{ welcomeEmail?: string; mode?: string }>;
 }) {
-  const { welcomeEmail } = await searchParams;
+  const { welcomeEmail, mode } = await searchParams;
   const topQuestions = await fetchTopPublishedSeoPages(8);
 
   return (
@@ -82,7 +82,10 @@ export default async function ChatPage({
           ))}
         </nav>
       </div>
-      <ChatShell triggerWelcomeEmail={welcomeEmail === "1"} />
+      <ChatShell
+        triggerWelcomeEmail={welcomeEmail === "1"}
+        initialSearchMode={mode === "bible" || mode === "sermons" ? mode : undefined}
+      />
     </>
   );
 }
