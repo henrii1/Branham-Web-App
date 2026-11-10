@@ -110,6 +110,7 @@ src/
 - Browser client: `lib/supabase/client.ts` (anon key from `NEXT_PUBLIC_*`).
 - Server client: `lib/supabase/server.ts` (reads session cookies).
 - Session refresh middleware: `src/middleware.ts`.
+- **Email sign-in** (`AuthForm`): one email carries a link and a 6-digit code (the Magic Link template in the Supabase dashboard must include `{{ .Token }}`). The link is PKCE, so it only works in the browser that asked for it; the code (`verifyOtp`, type `email`) works anywhere and is offered on the "Check your email" screen and through "I already have a code". After a code it goes where the callback would (onboarding or `next`).
 - **Anonymous chat is allowed** for the first few turns; persistence is gated on `userId !== null`. Anonymous users hit a per-IP rate-limit at the proxy (10 req/min).
 
 ### Supabase schema (chat-relevant tables)
@@ -428,6 +429,10 @@ Bulk sends use their own Postmark message stream, `BULK_MESSAGE_STREAM = "send-b
 - **Double-send guard**: a partial unique index, `create unique index ... on admin_email_sends (sender_user_id) where status = 'sending'`, makes "at most one in-flight send per admin" a database-enforced constraint, not just an application check — closing the race a plain check-then-insert would leave open between reading "is anything in flight" and writing the new row. `hasRecentInFlightSend()` is a fast, non-authoritative pre-check the route runs first (avoids the Postmark round-trip in the common case); `startSend()`'s unique-index conflict is the real enforcement.
 - **Self-healing, not a lockout**: if a request crashes without ever reaching `completeSend`/`failSend` (a killed Worker, a dropped connection), its row is left at `status: 'sending'` — but `startSend()` treats a unique-index conflict against a row older than `IN_FLIGHT_WINDOW_MS` (5 minutes) as stale, reclaims it (marks it `failed`), and retries the insert once. A crashed request can only block its sender for that bounded window, never permanently. A conflict against a genuinely fresh row throws `SendInFlightError`, which the route turns into a 409.
 - `completeSend()` is called in its own try/catch in the route: a failure to *record* a successful send must never surface as a false "the send failed" response to the admin — that would invite a real duplicate send on retry. The send having actually gone out takes priority over the audit write succeeding.
+
+## Copying answers
+
+`CopyButton` (`src/components/site/CopyButton.tsx`) under every chat answer (`MessageBubble`, so shares too), FAQ answer (`SeoShell`: question + answer + page link) and the Family Altar day ("Copy devotion": every section + the day's link). `copyMarkdown` (`src/lib/markdown/copyText.ts`) writes HTML from `renderMarkdown` plus plain text; citations stay as `[TITLE — DATE_ID: ¶n]` in both.
 
 ## Passage n-gram highlighting
 

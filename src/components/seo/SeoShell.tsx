@@ -26,6 +26,10 @@ import { postprocessRag } from "@/lib/markdown/ragPostprocess";
 import { applyNgramHighlights } from "@/lib/markdown/ngramHighlight";
 import { buildCardAnswerExcerpt } from "@/lib/share/cardExcerpt";
 import { TypewriterRenderer } from "./TypewriterRenderer";
+import { CopyButton } from "@/components/site/CopyButton";
+import { faqPagePath, type FaqLanguage } from "@/lib/faq/entry";
+import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
+import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 import { LangSwitcher } from "./LangSwitcher";
 import { LoginModal } from "@/components/chat/LoginModal";
 import { ShareModal } from "@/components/chat/ShareModal";
@@ -532,6 +536,9 @@ export function SeoShell({
   }, []);
 
   const strings = getChatStrings(language);
+  // Copy: the question, the answer with its citations, and the page link.
+  const copyFaqMarkdown = () =>
+    `## ${question}\n\n${postprocessChatResponse(stripAnswerPrefix(answerMarkdown))}\n\nhttps://branhamsermons.ai${faqPagePath(slug, (language === "es" || language === "fr" ? language : "en") as FaqLanguage)}`;
   const faqHref = language === "en" ? "/faq" : `/${language}/faq`;
   const aboutPageHref = aboutHref(language);
   const altarPageHref = altarHref(language);
@@ -806,6 +813,7 @@ export function SeoShell({
               <div data-message-lang={language}>
                 <TypewriterRenderer markdown={answerMarkdown} />
               </div>
+              <CopyButton className="-ml-2 mt-3" language={language} getMarkdown={copyFaqMarkdown} />
               {series ? <SeriesNav series={series} language={language} /> : <NextQuestionLink nextPage={nextPage} language={language} />}
             </div>
           </div>
@@ -862,6 +870,7 @@ export function SeoShell({
                     <div data-message-lang={language}>
                       <TypewriterRenderer markdown={answerMarkdown} />
                     </div>
+                    <CopyButton className="-ml-2 mt-3" language={language} getMarkdown={copyFaqMarkdown} />
                     {series ? <SeriesNav series={series} language={language} /> : <NextQuestionLink nextPage={nextPage} language={language} />}
                   </div>
                 </div>

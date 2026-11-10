@@ -10,6 +10,7 @@ import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { applyCitations } from "@/lib/markdown/citations";
 import { ALTAR_STRINGS, altarDayHref, altarHref, type AltarStrings } from "@/lib/altar/strings";
+import { CopyButton } from "@/components/site/CopyButton";
 import { AltarShareButton } from "./AltarShareButton";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { WHATSAPP_CHANNEL_URL } from "@/lib/site/social";
@@ -280,6 +281,25 @@ function Devotional({ row, s }: { row: FamilyAltarDay; s: AltarStrings }) {
   const html = (md: string | null) => (md ? applyCitations(renderMarkdown(md)) : "");
   const prose = "chat-markdown prose prose-zinc max-w-none break-words dark:prose-invert prose-p:leading-relaxed";
 
+  // Copy the whole devotion, citations included, with the day's link.
+  const devotionMarkdown = () =>
+    [
+      `> ${row.scripture_text}`,
+      `${row.scripture_ref} (${row.bible_version})`,
+      `## ${row.title}`,
+      `### ${s.reflection}`,
+      row.reflection_markdown,
+      row.sermon_quotes_markdown && `### ${s.fromSermons}\n\n${row.sermon_quotes_markdown}`,
+      `### ${s.talkTogether}`,
+      row.discussion_questions.map((q, i) => `${i + 1}. ${q}`).join("\n"),
+      `### ${s.prayerPoints}`,
+      row.prayer_intro,
+      row.prayer_points.map((p) => `- ${p}`).join("\n"),
+      `https://branhamsermons.ai${altarDayHref(row.language, row.day)}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
   async function copyPrayer() {
     const text = [row.prayer_intro, ...row.prayer_points.map((p) => `• ${p}`)].filter(Boolean).join("\n");
     try {
@@ -351,6 +371,7 @@ function Devotional({ row, s }: { row: FamilyAltarDay; s: AltarStrings }) {
           <a href="https://table.branham.org/" target="_blank" rel="noopener noreferrer" className="underline">The Table</a>.
         </p>
       )}
+      <CopyButton className="-ml-2 self-start" language={row.language} label={s.copyDevotion} getMarkdown={devotionMarkdown} />
     </article>
   );
 }

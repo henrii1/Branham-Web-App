@@ -72,16 +72,30 @@ export function Composer({
       : interimTranscript
     : value;
 
+  const shownPlaceholder = isStreaming ? waitingPlaceholder : placeholder;
+
   // Fit the height to the content after every change, whatever caused it
   // (typing, paste, autocorrect, voice, clearing after send), before paint.
+  // When empty, fit the hint instead, so a hint that wraps on a phone shows
+  // in full (the placeholder doesn't count towards scrollHeight).
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
-    const max = (window.innerHeight * MAX_TEXTAREA_VH) / 100;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
-    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
-  }, [displayValue]);
+    const fit = () => {
+      const max = (window.innerHeight * MAX_TEXTAREA_VH) / 100;
+      const empty = el.value === "";
+      if (empty) el.value = shownPlaceholder;
+      el.style.height = "auto";
+      const height = el.scrollHeight;
+      if (empty) el.value = "";
+      el.style.height = `${Math.min(height, max)}px`;
+      el.style.overflowY = height > max ? "auto" : "hidden";
+    };
+    fit();
+    // The width (and so the hint's wrapping) changes on rotation.
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [displayValue, shownPlaceholder]);
 
   return (
     <div className="flex-shrink-0 border-t border-zinc-200 bg-[var(--surface-base)] px-4 py-3 dark:border-zinc-700">
@@ -95,7 +109,7 @@ export function Composer({
             setValue(e.target.value);
           }}
           enterKeyHint="enter"
-          placeholder={isStreaming ? waitingPlaceholder : placeholder}
+          placeholder={shownPlaceholder}
           disabled={isDisabled}
           rows={1}
           className={`flex-1 resize-none rounded-2xl border bg-[var(--surface-soft)] px-4 py-3 text-base lg:text-sm text-foreground placeholder:text-zinc-400 transition-colors focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:focus:bg-zinc-800 ${

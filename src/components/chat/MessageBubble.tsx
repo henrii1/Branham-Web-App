@@ -12,6 +12,7 @@ import {
 } from "@/lib/markdown/citations";
 import { postprocessChatResponse } from "@/lib/markdown/chatPostprocess";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
+import { CopyButton } from "@/components/site/CopyButton";
 
 interface MessageBubbleProps {
   message: Message;
@@ -75,6 +76,11 @@ export function MessageBubble({
           dangerouslySetInnerHTML={{ __html: rendered.html }}
         />
       )}
+      <CopyButton
+        className="-ml-2 mt-2"
+        language={message.language}
+        getMarkdown={() => postprocessChatResponse(stripParagraphLetterSuffixes(stripAnswerPrefix(message.content)))}
+      />
     </div>
   );
 }

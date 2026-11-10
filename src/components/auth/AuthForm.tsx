@@ -31,12 +31,14 @@ function GoogleIcon() {
   );
 }
 
-export function AuthForm({ mode, next }: AuthFormProps) {
+export function AuthForm({ next }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   async function handleGoogleOAuth() {
     setGoogleLoading(true);
@@ -80,6 +82,40 @@ export function AuthForm({ mode, next }: AuthFormProps) {
     setLoading(false);
   }
 
+  // The code in the email works in any browser or app; the link only in the
+  // browser that asked for it (PKCE), so the code is the fallback.
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    const token = code.replace(/\D/g, "");
+    if (!token) return;
+
+    setVerifying(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { data, error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token,
+      type: "email",
+    });
+
+    if (verifyError || !data.user) {
+      setError("That code didn't work. Check it and try again, or ask for a new link.");
+      setVerifying(false);
+      return;
+    }
+
+    // Same destination as the link (/api/auth/callback).
+    const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/chat";
+    if (data.user.user_metadata?.onboarding_completed !== true) {
+      const onboarding = new URL("/onboarding/language", window.location.origin);
+      if (safeNext !== "/chat") onboarding.searchParams.set("next", safeNext);
+      window.location.assign(onboarding.toString());
+    } else {
+      window.location.assign(safeNext);
+    }
+  }
+
   if (otpSent) {
     return (
       <div className="text-center space-y-3">
@@ -102,15 +138,44 @@ export function AuthForm({ mode, next }: AuthFormProps) {
           Check your email
         </h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          We sent a magic link to <strong className="text-foreground">{email}</strong>.
-          Click the link to{" "}
-          {mode === "signup" ? "complete your signup" : "log in"}.
+          We sent a sign-in link and a 6-digit code to <strong className="text-foreground">{email}</strong>.
+          Tap the link, or type the code here.
         </p>
+        <form onSubmit={handleVerifyCode} className="space-y-3 pt-1 text-left">
+          <label htmlFor="otp-code" className="block text-sm font-medium text-foreground">
+            6-digit code
+          </label>
+          <input
+            id="otp-code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            maxLength={12}
+            disabled={verifying}
+            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center text-lg tracking-[0.3em] text-foreground tabular-nums transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800"
+          />
+          <button
+            type="submit"
+            disabled={verifying || !code.replace(/\D/g, "")}
+            className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {verifying ? <Spinner /> : "Sign in"}
+          </button>
+        </form>
+        {error && (
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+            {error}
+          </div>
+        )}
         <button
           type="button"
           onClick={() => {
             setOtpSent(false);
             setEmail("");
+            setCode("");
+            setError(null);
           }}
           className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
         >
@@ -166,6 +231,20 @@ export function AuthForm({ mode, next }: AuthFormProps) {
           {loading ? <Spinner /> : "Send magic link"}
         </button>
       </form>
+      <button
+        type="button"
+        onClick={() => {
+          if (!email.trim()) {
+            setError("Type your email address first, then enter the code.");
+            return;
+          }
+          setError(null);
+          setOtpSent(true);
+        }}
+        className="block w-full text-center text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+      >
+        I already have a code
+      </button>
 
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
