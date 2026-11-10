@@ -138,12 +138,12 @@ export function AuthForm({ next }: AuthFormProps) {
           Check your email
         </h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          We sent a sign-in link and a 6-digit code to <strong className="text-foreground">{email}</strong>.
+          We sent a sign-in link and a 8-digit code to <strong className="text-foreground">{email}</strong>.
           Tap the link, or type the code here.
         </p>
         <form onSubmit={handleVerifyCode} className="space-y-3 pt-1 text-left">
           <label htmlFor="otp-code" className="block text-sm font-medium text-foreground">
-            6-digit code
+            8-digit code
           </label>
           <input
             id="otp-code"

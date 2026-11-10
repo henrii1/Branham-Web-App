@@ -110,7 +110,7 @@ src/
 - Browser client: `lib/supabase/client.ts` (anon key from `NEXT_PUBLIC_*`).
 - Server client: `lib/supabase/server.ts` (reads session cookies).
 - Session refresh middleware: `src/middleware.ts`.
-- **Email sign-in** (`AuthForm`): one email carries a link and a 6-digit code (the Magic Link template in the Supabase dashboard must include `{{ .Token }}`). The link is PKCE, so it only works in the browser that asked for it; the code (`verifyOtp`, type `email`) works anywhere and is offered on the "Check your email" screen and through "I already have a code". After a code it goes where the callback would (onboarding or `next`).
+- **Email sign-in** (`AuthForm`): one email carries a link and a 8-digit code (the Magic Link template in the Supabase dashboard must include `{{ .Token }}`). The link is PKCE, so it only works in the browser that asked for it; the code (`verifyOtp`, type `email`) works anywhere and is offered on the "Check your email" screen and through "I already have a code". After a code it goes where the callback would (onboarding or `next`).
 - **Anonymous chat is allowed** for the first few turns; persistence is gated on `userId !== null`. Anonymous users hit a per-IP rate-limit at the proxy (10 req/min).
 
 ### Supabase schema (chat-relevant tables)

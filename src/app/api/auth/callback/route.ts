@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     loginUrl.searchParams.set("error", "auth_callback_failed");
     loginUrl.searchParams.set(
       "error_description",
-      "This sign-in link didn't work. It may have opened in a different browser or app from the one you used here, or a newer link was sent. Type the 6-digit code from the email instead, or ask for a new link."
+      "This sign-in link didn't work. It may have opened in a different browser or app from the one you used here, or a newer link was sent. Type the 8-digit code from the email instead, or ask for a new link."
     );
     return NextResponse.redirect(loginUrl);
   }
