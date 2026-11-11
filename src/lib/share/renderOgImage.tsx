@@ -104,7 +104,7 @@ export function renderOgImage({ question, excerptText }: RenderOgImageProps) {
           style={{ width: 40, height: 40, borderRadius: 9 }}
         />
         <div style={{ display: "flex", fontSize: 20, fontWeight: 600, color: "#18181b" }}>
-          Branham Sermons Assistant
+          BranhamSermons.ai
         </div>
       </div>
     </div>

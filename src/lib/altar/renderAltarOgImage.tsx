@@ -17,7 +17,7 @@ export const ALTAR_IMAGE_SIZES: Record<AltarImageFormat, { width: number; height
   story: { width: 1080, height: 1920 },
 };
 export const ALTAR_OG_SIZE = ALTAR_IMAGE_SIZES.og;
-export const ALTAR_OG_BRAND = "Branham Sermons Assistant";
+export const ALTAR_OG_BRAND = "BranhamSermons.ai";
 export const ALTAR_IMAGE_DOMAIN = "branhamsermons.ai";
 
 export interface AltarOgContent {

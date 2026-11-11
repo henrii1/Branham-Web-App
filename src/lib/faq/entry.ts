@@ -70,7 +70,7 @@ export function faqMetaDescription(answerMarkdown: string): string {
 }
 
 export function faqMetaTitle(querySummary: string | null, question: string): string {
-  return `${querySummary?.trim() || question} | Branham Sermons AI`;
+  return `${querySummary?.trim() || question} | BranhamSermons.ai`;
 }
 
 /** Clean a raw /api/chat answer the way the seed script did before storing. */

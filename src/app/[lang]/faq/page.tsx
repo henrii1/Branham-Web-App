@@ -19,13 +19,13 @@ const LANG_META: Record<
   { title: string; description: string; label: string; subtitle: string }
 > = {
   es: {
-    title: "Preguntas de fe | Branham Sermons Assistant",
+    title: "Preguntas de fe | BranhamSermons.ai",
     description: "Respuestas preparadas a las preguntas que la gente hace sobre Dios, la Biblia y las enseñanzas de William Marrion Branham, tomadas de la creación, las Escrituras y sus propios sermones.",
     label: "Preguntas de fe",
     subtitle: "Respuestas preparadas a las preguntas que la gente hace sobre Dios, la Biblia y las enseñanzas de William Marrion Branham, tomadas de la creación, las Escrituras y sus propios sermones.",
   },
   fr: {
-    title: "Questions de foi | Branham Sermons Assistant",
+    title: "Questions de foi | BranhamSermons.ai",
     description: "Des réponses préparées aux questions que l’on se pose sur Dieu, la Bible et les enseignements de William Marrion Branham, tirées de la création, des Écritures et de ses propres sermons.",
     label: "Questions de foi",
     subtitle: "Des réponses préparées aux questions que l’on se pose sur Dieu, la Bible et les enseignements de William Marrion Branham, tirées de la création, des Écritures et de ses propres sermons.",
@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${SITE_URL}/${l}/faq`,
       type: "website",
       images: [{ url: OG_IMAGE }],
-      siteName: "Branham Sermons Assistant",
+      siteName: "BranhamSermons.ai",
     },
   };
 }

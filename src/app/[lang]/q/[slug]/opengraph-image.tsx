@@ -10,7 +10,7 @@ const SUPPORTED_LANGS = ["es", "fr"] as const;
 type SupportedLang = (typeof SUPPORTED_LANGS)[number];
 
 const FALLBACK = {
-  question: "Branham Sermons Assistant",
+  question: "BranhamSermons.ai",
   excerptText: "Ask questions grounded in the original sermon texts.",
 };
 

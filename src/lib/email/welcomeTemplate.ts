@@ -13,7 +13,11 @@ export const FALLBACK_WELCOME_EMAIL_TEMPLATE: WelcomeEmailTemplate = {
 
 **We’re glad to have you with us! 🎉🙌**
 
-BranhamSermons.ai is a place to find the accurate interpretation of Scripture. Ask a question about the Bible the way you would ask a person, in your own words, with a verse, a phrase or a topic, and receive a clear answer that searches the Scriptures for their proper meaning.
+BranhamSermons.ai is a free place to explore faith, study the Bible and search the sermons of William Branham. Ask in your own words, and every answer shows the verses or quotes it rests on, so you can check it for yourself.
+
+## 🌿 Christianity Seen in Nature
+
+For anyone, whatever they believe: a series on what creation shows about God, one question at a time. Start at [branhamsermons.ai/faq/nature](https://branhamsermons.ai/faq/nature) and share it with someone who is searching.
 
 ## 📖 Bible search
 
@@ -31,7 +35,7 @@ A new devotion every day to study the Word together at home: a verse of Scriptur
 
 ## ✨ Also included
 
-• Popular Questions
+• Questions of Faith
 • Conversation history after signing in
 • English, Spanish and French
 

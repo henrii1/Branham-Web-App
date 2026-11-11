@@ -52,6 +52,10 @@ export const SERIES_COPY: Record<
     previous: string;
     next: string;
     end: string;
+    /** The WhatsApp channel panel at the end of the series. */
+    channelTitle: string;
+    channelBody: string;
+    channelButton: string;
     read: string;
     show: (parts: number, questions: number) => string;
     hide: string;
@@ -79,6 +83,9 @@ export const SERIES_COPY: Record<
     previous: "Previous",
     next: "Next in the series",
     end: "You’ve reached the end of the series.",
+    channelTitle: "Keep walking with us",
+    channelBody: "Join our WhatsApp channel for the daily Family Altar devotion and new answers. You’ll find a way to talk with us there.",
+    channelButton: "Join the WhatsApp channel",
     read: "Read",
     show: (p, q) => `Show the series: ${p} part${p === 1 ? "" : "s"}, ${q} questions`,
     hide: "Hide the series",
@@ -103,6 +110,9 @@ export const SERIES_COPY: Record<
     previous: "Anterior",
     next: "Siguiente en la serie",
     end: "Ha llegado al final de la serie.",
+    channelTitle: "Siga caminando con nosotros",
+    channelBody: "Únase a nuestro canal de WhatsApp para recibir cada día el devocional del Altar Familiar y las nuevas respuestas. Allí encontrará también una forma de hablar con nosotros.",
+    channelButton: "Unirse al canal de WhatsApp",
     read: "Leída",
     show: (p, q) => `Ver la serie: ${p} parte${p === 1 ? "" : "s"}, ${q} preguntas`,
     hide: "Ocultar la serie",
@@ -127,6 +137,9 @@ export const SERIES_COPY: Record<
     previous: "Précédente",
     next: "Suivante dans la série",
     end: "Vous êtes arrivé à la fin de la série.",
+    channelTitle: "Continuez la route avec nous",
+    channelBody: "Rejoignez notre chaîne WhatsApp pour recevoir chaque jour la méditation de l’Autel familial et les nouvelles réponses. Vous y trouverez aussi un moyen de nous parler.",
+    channelButton: "Rejoindre la chaîne WhatsApp",
     read: "Lue",
     show: (p, q) => `Voir la série : ${p} partie${p === 1 ? "" : "s"}, ${q} questions`,
     hide: "Masquer la série",

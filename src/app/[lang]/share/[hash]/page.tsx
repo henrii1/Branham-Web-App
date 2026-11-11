@@ -19,7 +19,7 @@ export async function generateMetadata({
   if (!SUPPORTED_LANGS.includes(lang as SupportedLang)) return { title: "Not Found" };
   const share = await fetchShareByHash(hash);
   if (!share || share.language !== lang) return { title: "Not Found" };
-  const title = `${share.title_snapshot ?? "Shared conversation"} | Branham Sermons Assistant`;
+  const title = `${share.title_snapshot ?? "Shared conversation"} | BranhamSermons.ai`;
   return {
     title: { absolute: title },
     alternates: { canonical: `${SITE_URL}/${lang}/share/${hash}` },

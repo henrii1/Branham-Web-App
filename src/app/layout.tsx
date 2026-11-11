@@ -1,3 +1,4 @@
+import { POSITIONING, SITE_TITLE } from "@/lib/site/positioning";
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { Fraunces, Geist, Geist_Mono, Newsreader } from "next/font/google";
@@ -61,11 +62,10 @@ const SITE_KEYWORDS = [
 export const metadata: Metadata = {
   metadataBase: new URL("https://branhamsermons.ai"),
   title: {
-    default: "Branham Sermons Assistant",
-    template: "%s | Branham Sermons Assistant",
+    default: SITE_TITLE,
+    template: "%s | BranhamSermons.ai",
   },
-  description:
-    "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of William Marrion Branham. Answers grounded in Scripture and the original sermon texts.",
+  description: POSITIONING.en.medium,
   keywords: SITE_KEYWORDS,
   robots: {
     index: false,
@@ -77,8 +77,9 @@ const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "@id": "https://branhamsermons.ai/#website",
-  name: "Branham Sermons Assistant",
+  name: "BranhamSermons.ai",
   alternateName: [
+    "Branham Sermons Assistant",
     "Branham Sermons AI",
     "Branham Sermons search",
     "Branham Sermons",
@@ -94,8 +95,9 @@ const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   "@id": "https://branhamsermons.ai/#organization",
-  name: "Branham Sermons Assistant",
+  name: "BranhamSermons.ai",
   alternateName: [
+    "Branham Sermons Assistant",
     "Branham Sermons AI",
     "Branham Sermons search",
   ],

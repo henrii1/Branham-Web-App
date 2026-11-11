@@ -6,7 +6,7 @@ const SITE_URL = "https://branhamsermons.ai";
 
 /** Title, description and alternates for the series page in one language. */
 export function natureSeriesMetadata(lang: "en" | "es" | "fr"): Metadata {
-  const title = `${SECTION_LABELS.nature[lang]} | Branham Sermons Assistant`;
+  const title = `${SECTION_LABELS.nature[lang]} | BranhamSermons.ai`;
   const description = seriesCopy(lang).metaDescription;
   const url = `${SITE_URL}${seriesPagePath(lang)}`;
   return {
@@ -18,7 +18,7 @@ export function natureSeriesMetadata(lang: "en" | "es" | "fr"): Metadata {
     },
     // The preview image comes from opengraph-image.tsx in this route; an
     // explicit images value here would override it.
-    openGraph: { title, description, url, type: "website", siteName: "Branham Sermons Assistant", locale: lang },
+    openGraph: { title, description, url, type: "website", siteName: "BranhamSermons.ai", locale: lang },
     twitter: { card: "summary_large_image", title, description },
   };
 }

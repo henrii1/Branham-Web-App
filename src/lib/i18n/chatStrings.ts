@@ -14,7 +14,7 @@ const CHAT_STRINGS = {
     backToAnswer: "Back to answer",
     respondingIn: "Responding in",
     popularQuestions: "Questions of Faith",
-    aboutLink: "About Branham Sermons AI",
+    aboutLink: "About BranhamSermons.ai",
     altarLink: "Family Altar",
     altarSubtitle: "Today's devotion",
     chatTab: "Chat",
@@ -37,7 +37,7 @@ const CHAT_STRINGS = {
     noConversationsYet: "No conversations yet",
     historyEmptyGuest: "History stays empty as a guest",
     noConversationsDesc: "Your recent chats will show up here once you ask a question.",
-    guestHistoryDesc: "Sign up to save your Branham Sermons Assistant conversations and return to them later.",
+    guestHistoryDesc: "Sign up to save your BranhamSermons.ai conversations and return to them later.",
     groupToday: "Today",
     groupYesterday: "Yesterday",
     groupPrev7: "Previous 7 days",
@@ -101,7 +101,7 @@ const CHAT_STRINGS = {
     searchModeModalNote: "Change your default any time in your profile.",
     // Sensitive-inquiry banner
     sensitiveBannerText:
-      "Not for personal or sensitive questions — ask your pastor. Use it to study Scripture, sermon quotes, references and doctrine.",
+      "Not for personal or sensitive questions — talk to a pastor or someone you trust. Use it to study Scripture, sermon quotes, references and doctrine.",
     // Sermon count note (shown beneath language pill for non-English; empty for EN)
     sermonCountNote: "",
   },
@@ -120,7 +120,7 @@ const CHAT_STRINGS = {
     backToAnswer: "Volver a la respuesta",
     respondingIn: "Respondiendo en",
     popularQuestions: "Preguntas de fe",
-    aboutLink: "Acerca de Branham Sermons AI",
+    aboutLink: "Acerca de BranhamSermons.ai",
     altarLink: "Altar Familiar",
     altarSubtitle: "Devocional de hoy",
     chatTab: "Chat",
@@ -207,7 +207,7 @@ const CHAT_STRINGS = {
     searchModeModalNote: "Puede cambiar su opción predeterminada en su perfil.",
     // Sensitive-inquiry banner
     sensitiveBannerText:
-      "No es para preguntas personales o sensibles — consulta a tu pastor. Úsala para estudiar las Escrituras, citas de sermones, referencias y doctrina.",
+      "No es para preguntas personales o sensibles — hable con un pastor o con alguien de su confianza. Úselo para estudiar las Escrituras, citas de sermones, referencias y doctrina.",
     sermonCountNote:
       "385 de ~1,200 sermones indexados en español. Puede continuar con estas respuestas en mente.",
   },
@@ -226,7 +226,7 @@ const CHAT_STRINGS = {
     backToAnswer: "Retour à la réponse",
     respondingIn: "Répondre en",
     popularQuestions: "Questions de foi",
-    aboutLink: "À propos de Branham Sermons AI",
+    aboutLink: "À propos de BranhamSermons.ai",
     altarLink: "Autel familial",
     altarSubtitle: "Dévotion du jour",
     chatTab: "Chat",
@@ -313,7 +313,7 @@ const CHAT_STRINGS = {
     searchModeModalNote: "Vous pouvez changer votre choix par défaut dans votre profil.",
     // Sensitive-inquiry banner
     sensitiveBannerText:
-      "Pas pour les questions personnelles ou sensibles — consultez votre pasteur. Utilisez-le pour étudier les Écritures, les citations de sermons, les références et la doctrine.",
+      "Pas pour les questions personnelles ou sensibles — parlez à un pasteur ou à une personne de confiance. Utilisez-le pour étudier les Écritures, les citations de sermons, les références et la doctrine.",
     sermonCountNote:
       "359 des ~1 200 sermons indexés en français. Vous pouvez maintenant continuer avec ces réponses à l'esprit.",
   },

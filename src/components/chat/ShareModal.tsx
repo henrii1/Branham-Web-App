@@ -218,7 +218,7 @@ export function ShareModal({
     setNativeShareError(false);
     try {
       await navigator.share({
-        title: "Branham Sermons Assistant",
+        title: "BranhamSermons.ai",
         text: latestQuestion,
         url: shareUrl,
       });

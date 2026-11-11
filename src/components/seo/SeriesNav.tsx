@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { seriesCopy, seriesPagePath, type SeriesPosition } from "@/lib/faq/series";
 import { markSeriesRead, useSeriesRead } from "@/lib/faq/seriesProgress";
+import { WHATSAPP_CHANNEL_URL } from "@/lib/site/social";
+import { WhatsAppIcon } from "@/components/site/SocialIcons";
 
 const qHref = (slug: string, language: string) => (language === "en" ? `/q/${slug}` : `/${language}/q/${slug}`);
 
@@ -56,7 +58,10 @@ export function SeriesNav({ series, language }: { series: SeriesPosition; langua
           </svg>
         </Link>
       ) : (
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">{c.end}</p>
+        <>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">{c.end}</p>
+          <SeriesChannelCta language={language} className="mt-4" />
+        </>
       )}
       {series.prev && (
         <Link href={qHref(series.prev.slug, language)} className="mt-3 inline-flex items-center gap-1 text-[13px] text-zinc-500 hover:text-foreground dark:text-zinc-400">
@@ -67,5 +72,25 @@ export function SeriesNav({ series, language }: { series: SeriesPosition; langua
         </Link>
       )}
     </nav>
+  );
+}
+
+/** End of the series: the WhatsApp channel, where readers can stay and reach us. */
+export function SeriesChannelCta({ language, className = "" }: { language: string; className?: string }) {
+  const c = seriesCopy(language);
+  return (
+    <section className={`flex flex-col gap-2.5 rounded-2xl border border-[var(--series-line)] p-5 ${className}`}>
+      <h2 className="font-display text-[1.3rem] leading-tight text-foreground">{c.channelTitle}</h2>
+      <p className="text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-300">{c.channelBody}</p>
+      <a
+        href={WHATSAPP_CHANNEL_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1 inline-flex w-fit items-center gap-2 rounded-full bg-[var(--series-accent)] px-4 py-2 text-sm font-medium text-[var(--series-on-accent)] transition-opacity hover:opacity-90"
+      >
+        <WhatsAppIcon />
+        {c.channelButton}
+      </a>
+    </section>
   );
 }

@@ -32,14 +32,14 @@ function WelcomeState({ description, extra }: { description: string; extra?: Rea
         <div className="max-w-lg rounded-[28px] border border-zinc-200 bg-[var(--surface-base)] px-8 py-10 text-center shadow-sm dark:border-zinc-700">
           <Image
             src={logo}
-            alt="Branham Sermons Assistant logo"
+            alt="BranhamSermons.ai logo"
             width={76}
             height={76}
             priority
             className="mx-auto mb-5 rounded-2xl object-cover shadow-sm"
           />
           <h2 className="font-display mb-3 text-3xl text-foreground">
-            Branham Sermons Assistant
+            BranhamSermons.ai
           </h2>
           <p className="text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
             {description}
@@ -61,7 +61,7 @@ function WelcomeState({ description, extra }: { description: string; extra?: Rea
       <div className="order-2 flex w-full flex-col rounded-[24px] border border-zinc-200 bg-[var(--surface-base)] px-5 py-4 text-center shadow-sm lg:order-1 lg:max-w-lg lg:px-6 lg:py-6 dark:border-zinc-700">
         <Image
           src={logo}
-          alt="Branham Sermons Assistant logo"
+          alt="BranhamSermons.ai logo"
           width={76}
           height={76}
           priority
@@ -69,7 +69,7 @@ function WelcomeState({ description, extra }: { description: string; extra?: Rea
         />
         <div className="min-w-0">
           <h2 className="font-display mb-1.5 text-[1.4rem] leading-tight text-foreground lg:mb-2 lg:text-2xl">
-            Branham Sermons Assistant
+            BranhamSermons.ai
           </h2>
           <p className="text-sm leading-snug text-zinc-500 lg:leading-relaxed dark:text-zinc-400">
             {description}

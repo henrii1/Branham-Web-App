@@ -67,6 +67,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly" as const,
       priority: 0.5,
     })),
+    // The links page (social media bios).
+    ...(["/links", "/es/links", "/fr/links"] as const).map((path) => ({
+      url: `${SITE_URL}${path}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    })),
     // The Christianity Seen in Nature series page.
     ...(["/faq/nature", "/es/faq/nature", "/fr/faq/nature"] as const).map((path) => ({
       url: `${SITE_URL}${path}`,

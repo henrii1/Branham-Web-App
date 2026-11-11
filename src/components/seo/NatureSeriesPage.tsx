@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { SeriesChannelCta } from "./SeriesNav";
 import { NatureSeries } from "@/components/seo/NatureSeries";
 import { SECTION_LABELS, type FaqListItem, type FaqSection } from "@/lib/faq/groups";
 import { seriesCopy, seriesOf, SERIES_PAGE_LANG_HREFS } from "@/lib/faq/series";
@@ -46,6 +47,7 @@ export function NatureSeriesPage({ sections, lang }: { sections: FaqSection<FaqL
           <h1 className="font-display mt-4 mb-2 text-3xl text-foreground lg:text-4xl">{SECTION_LABELS.nature[lang]}</h1>
           <p className="mb-7 max-w-2xl text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-300">{c.pageIntro(sections.length, total)}</p>
           <NatureSeries sections={sections} lang={lang} slugPrefix={slugPrefix} standalone />
+          <SeriesChannelCta language={lang} className="mt-10" />
         </div>
         <SiteFooter language={lang} />
       </main>

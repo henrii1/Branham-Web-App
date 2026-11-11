@@ -23,7 +23,7 @@ export function BrandLogo({
     <>
       <Image
         src={logo}
-        alt="Branham Sermons AI logo"
+        alt="BranhamSermons.ai logo"
         width={size}
         height={size}
         priority={priority}
@@ -33,7 +33,7 @@ export function BrandLogo({
         <span
           className={`font-display text-base leading-none font-semibold text-foreground ${nameClassName}`.trim()}
         >
-          Branham Sermons Assistant
+          BranhamSermons.ai
         </span>
       )}
     </>
@@ -46,7 +46,7 @@ export function BrandLogo({
       prefetch={false}
       href={href}
       className={`inline-flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-90 ${className}`.trim()}
-      aria-label="Branham Sermons Assistant home"
+      aria-label="BranhamSermons.ai home"
     >
       {content}
     </Link>

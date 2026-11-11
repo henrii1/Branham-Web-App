@@ -35,6 +35,9 @@ export function natureFollowupNote(language: string | null | undefined): string 
   return NATURE_FOLLOWUP_NOTE[language === "es" || language === "fr" ? language : "en"];
 }
 
+/** Anchor for the Bible questions section (`/faq#bible-questions`, shared links). */
+export const BIBLE_QUESTIONS_ANCHOR = "bible-questions";
+
 export const SECTION_LABELS: Record<FaqKind, Record<FaqGroupLanguage, string>> = {
   nature: { en: "Christianity Seen in Nature", es: "El cristianismo visto en la naturaleza", fr: "Le christianisme vu dans la nature" },
   bible: { en: "Bible questions", es: "Preguntas bíblicas", fr: "Questions bibliques" },

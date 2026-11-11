@@ -23,11 +23,11 @@ function snippet(md: string, maxChars = 160): string {
 
 function buildLlmsTxt(pages: SeoCacheRow[]): string {
   const intro = [
-    "# Branham Sermons AI",
+    "# BranhamSermons.ai",
     "",
-    "> Branham Sermons Assistant (a.k.a. Branham Sermons AI) is a source for biblical truths and an AI-powered search of the sermons of William Marrion Branham. It answers questions about the Bible with the proper interpretation of Scripture (Bible search), and questions about Bro. Branham's messages, doctrines, and beliefs from the original sermon texts (Sermon search). Every answer is grounded in Scripture and the sermons, with cited passages.",
+    "> BranhamSermons.ai (also known as Branham Sermons Assistant and Branham Sermons AI) is a free place to explore faith, study the Bible and search the sermons of William Marrion Branham. For anyone, whatever they believe, Christianity Seen in Nature is a series on what creation shows about God. For Christians, Bible search answers questions about Scripture from Scripture. For anyone looking into William Branham, Sermon search finds what he preached, with every quote cited by sermon date and paragraph.",
     "",
-    "The site lets visitors ask a question about the Bible or about Bro. Branham's teachings and receive an answer with cited passages from the original sermons. A daily Family Altar devotion is at `/altar`. It covers Branham messages, doctrines, beliefs, Scripture references, sermon quotes, and biographical detail. Curated answer pages exist at `/q/{slug}` and are linked below; interactive follow-ups happen in the chat at `/chat`.",
+    "Where to start: Christianity Seen in Nature at `/faq/nature` (a series read in order); Bible search at `/chat?mode=bible`; Sermon search at `/chat?mode=sermons`; Questions of Faith (prepared answers) at `/faq`; a daily Family Altar devotion at `/altar`; all links at `/links`. Answer pages exist at `/q/{slug}` and are linked below; follow-up questions happen in the chat at `/chat`.",
     "",
     "## Supported Languages",
     "",
@@ -54,11 +54,13 @@ function buildLlmsTxt(pages: SeoCacheRow[]): string {
     "",
     "## Resources",
     "",
-    `- [Chat interface](${SITE_URL}/chat): Ask any question about Bro. Branham's sermons in English, Spanish, or French; answers stream with cited passages.`,
+    `- [Christianity Seen in Nature](${SITE_URL}/faq/nature): What creation shows about God, for anyone whatever they believe; read in order. Also at /es/faq/nature and /fr/faq/nature.`,
+    `- [Chat](${SITE_URL}/chat): Bible search (answers from Scripture) and Sermon search (William Branham's sermons, every quote cited), in English, Spanish or French.`,
     `- [Questions of Faith — English](${SITE_URL}/faq): Browse the full set of curated Q&A pages in English.`,
     `- [Questions of Faith — Spanish / Preguntas de fe](${SITE_URL}/es/faq): Curated Q&A pages in Spanish.`,
     `- [Questions of Faith — French / Questions de foi](${SITE_URL}/fr/faq): Curated Q&A pages in French.`,
-    `- [About](${SITE_URL}/about): Why the assistant exists, who it is for, what it does and does not do (not a substitute for a pastor or for the Table app), and how to make contact. Also at /es/about and /fr/about.`,
+    `- [Family Altar](${SITE_URL}/altar): A short daily devotion for families. Also at /es/altar and /fr/altar.`,
+    `- [About](${SITE_URL}/about): What the site is, where to start, and what it is not (not a church or a pastor, not a replacement for the full sermons). Also at /es/about and /fr/about.`,
     "",
     "## Optional",
     "",
@@ -83,7 +85,7 @@ export async function GET() {
     });
   } catch (err) {
     console.error("Failed to build llms.txt:", err);
-    return new Response("# Branham Sermons AI\n\n> Service temporarily unavailable.\n", {
+    return new Response("# BranhamSermons.ai\n\n> Service temporarily unavailable.\n", {
       status: 200,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });

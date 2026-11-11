@@ -13,7 +13,7 @@ const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
-  title: { absolute: "Questions of Faith | Branham Sermons Assistant" },
+  title: { absolute: "Questions of Faith | BranhamSermons.ai" },
   description:
     "Prepared answers to the questions people ask about God, the Bible and the teachings of William Marrion Branham, drawn from creation, the Scriptures and his own sermons.",
   keywords: [
@@ -29,17 +29,17 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/faq` },
   openGraph: {
-    title: "Questions of Faith | Branham Sermons Assistant",
+    title: "Questions of Faith | BranhamSermons.ai",
     description:
       "Prepared answers to the questions people ask about God, the Bible and the teachings of William Marrion Branham, drawn from creation, the Scriptures and his own sermons.",
     url: `${SITE_URL}/faq`,
     type: "website",
     images: [{ url: OG_IMAGE }],
-    siteName: "Branham Sermons Assistant",
+    siteName: "BranhamSermons.ai",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Questions of Faith | Branham Sermons Assistant",
+    title: "Questions of Faith | BranhamSermons.ai",
     description:
       "Prepared answers to the questions people ask about God, the Bible and the teachings of William Marrion Branham, drawn from creation, the Scriptures and his own sermons.",
     images: [OG_IMAGE],

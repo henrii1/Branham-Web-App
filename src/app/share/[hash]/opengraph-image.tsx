@@ -7,7 +7,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const FALLBACK = {
-  question: "Branham Sermons Assistant",
+  question: "BranhamSermons.ai",
   excerptText: "Ask questions grounded in the original sermon texts.",
 };
 

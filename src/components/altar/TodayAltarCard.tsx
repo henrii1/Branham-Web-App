@@ -7,7 +7,7 @@ import { localTodayIso } from "@/lib/altar/week";
 import { ALTAR_STRINGS, altarHref } from "@/lib/altar/strings";
 import { ALTAR_GENERATED_LANGUAGES, type AltarLanguage } from "@/lib/altar/types";
 
-interface TodayRow {
+export interface TodayRow {
   scripture_ref: string;
   scripture_text: string;
   title: string | null;
@@ -17,9 +17,10 @@ interface TodayRow {
 
 type CardState = { status: "loading" } | { status: "ready"; row: TodayRow } | { status: "none" };
 
-// One request per day, shared by both ChatPanel instances (desktop + mobile).
+// One request per day, shared by both ChatPanel instances (desktop + mobile)
+// and the links page.
 const cache = new Map<string, Promise<TodayRow | null>>();
-function loadToday(day: string, language: AltarLanguage): Promise<TodayRow | null> {
+export function loadToday(day: string, language: AltarLanguage): Promise<TodayRow | null> {
   const key = `${day}:${language}`;
   if (!cache.has(key)) {
     cache.set(

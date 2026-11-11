@@ -5,6 +5,8 @@ import { LangSwitcher } from "@/components/seo/LangSwitcher";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { applyCitations } from "@/lib/markdown/citations";
+import { CONTACT_EMAIL, WHATSAPP_CHANNEL_URL } from "@/lib/site/social";
+import { WhatsAppIcon } from "@/components/site/SocialIcons";
 import {
   ABOUT_CONTENT,
   ABOUT_LANGS,
@@ -14,7 +16,6 @@ import {
 
 const SITE_URL = "https://branhamsermons.ai";
 const TABLE_URL = "https://table.branham.org/";
-const CONTACT_EMAIL = "info@branhamsermons.ai";
 
 const LANG_NAMES: Record<AboutLang, string> = {
   en: "English",
@@ -26,7 +27,7 @@ export function buildAboutMetadata(lang: AboutLang): Metadata {
   const c = ABOUT_CONTENT[lang];
   const url = `${SITE_URL}${aboutHref(lang)}`;
   return {
-    title: { absolute: `${c.metaTitle} | Branham Sermons AI` },
+    title: { absolute: c.metaTitle },
     description: c.metaDescription,
     robots: { index: true, follow: true },
     alternates: {
@@ -43,14 +44,13 @@ export function buildAboutMetadata(lang: AboutLang): Metadata {
       description: c.metaDescription,
       url,
       type: "website",
-      siteName: "Branham Sermons Assistant",
+      siteName: "BranhamSermons.ai",
     },
   };
 }
 
 export function AboutPage({ lang }: { lang: AboutLang }) {
   const c = ABOUT_CONTENT[lang];
-  const faqHref = lang === "en" ? "/faq" : `/${lang}/faq`;
   const langHrefs = { en: aboutHref("en"), es: aboutHref("es"), fr: aboutHref("fr") };
 
   // Static, first-party strings only — the same applyCitations() pass every
@@ -69,8 +69,8 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
     inLanguage: lang,
     about: {
       "@type": "Organization",
-      name: "Branham Sermons Assistant",
-      alternateName: "Branham Sermons AI",
+      name: "BranhamSermons.ai",
+      alternateName: ["Branham Sermons Assistant", "Branham Sermons AI"],
       url: SITE_URL,
       email: CONTACT_EMAIL,
     },
@@ -124,45 +124,43 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
               </div>
             </div>
 
-            {/* ── Why it exists ── */}
+            {/* ── Where to start: one path per audience, outsiders first ── */}
             <section className="flex flex-col gap-4">
               <h2 className="font-display text-[1.7rem] leading-tight text-balance text-foreground">
-                {c.whyHeading}
+                {c.pathsHeading}
               </h2>
-              {c.whyParagraphs.map((p) => (
-                <p key={p} className="text-[16.5px] leading-[1.72] text-foreground">
-                  {p}
-                </p>
-              ))}
-              <p className="font-display mt-3 text-2xl leading-[1.3] text-balance text-foreground before:mb-[18px] before:block before:h-0.5 before:w-10 before:bg-foreground before:content-[''] lg:text-[1.95rem]">
-                {c.pullQuote}
-              </p>
-            </section>
-
-            {/* ── Who it's for ── */}
-            <section className="flex flex-col gap-4">
-              <h2 className="font-display text-[1.7rem] leading-tight text-balance text-foreground">
-                {c.whoHeading}
-              </h2>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-8">
-                {c.who.map((item) => (
+              <ul className="flex flex-col">
+                {c.paths.map((path) => (
                   <li
-                    key={item.label}
-                    className="flex flex-col gap-1 border-t border-zinc-200 pt-3.5 pb-4 dark:border-zinc-700"
+                    key={path.label}
+                    className="flex flex-col gap-1.5 border-t border-zinc-200 pt-4 pb-5 dark:border-zinc-700"
                   >
-                    <b className="text-[15px] font-semibold text-foreground">{item.label}</b>
-                    <span className="text-[14.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
-                      {item.body}
-                    </span>
+                    <h3 className="font-display text-[1.3rem] leading-tight text-foreground">{path.label}</h3>
+                    <p className="text-[15.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">{path.body}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-2">
+                      {path.links.map((link, i) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={
+                            i === 0
+                              ? "rounded-full bg-[var(--series-accent)] px-3.5 py-1.5 text-sm font-medium text-[var(--series-on-accent)] transition-opacity hover:opacity-90"
+                              : "py-1.5 text-sm font-medium text-[var(--series-accent)] underline-offset-4 hover:underline"
+                          }
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
                   </li>
                 ))}
               </ul>
             </section>
 
-            {/* ── What it does ── */}
+            {/* ── Nothing to take on trust ── */}
             <section className="flex flex-col gap-4">
               <h2 className="font-display text-[1.7rem] leading-tight text-balance text-foreground">
-                {c.doesHeading}
+                {c.trustHeading}
               </h2>
               <p className="text-lg leading-snug text-foreground">{c.principle}</p>
 
@@ -188,18 +186,9 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
                   {c.example.caption}
                 </figcaption>
               </figure>
-
-              <ul className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-                {c.features.map((f) => (
-                  <li key={f.label} className="flex flex-col gap-0.5">
-                    <b className="text-[15px] font-semibold text-foreground">{f.label}</b>
-                    <span className="text-[14.5px] text-zinc-600 dark:text-zinc-300">{f.body}</span>
-                  </li>
-                ))}
-              </ul>
             </section>
 
-            {/* ── What it is not ── */}
+            {/* ── What it isn't ── */}
             <section className="flex flex-col gap-4">
               <h2 className="font-display text-[1.7rem] leading-tight text-balance text-foreground">
                 {c.isntHeading}
@@ -207,11 +196,17 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <div className="flex flex-col gap-2 rounded-2xl bg-[var(--surface-soft)] px-[18px] pt-[18px] pb-5">
                   <h3 className="font-display text-[19px] font-medium text-foreground">
-                    {c.isntPastor.heading}
+                    {c.isntChurch.heading}
                   </h3>
                   <p className="text-[14.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
-                    {c.isntPastor.body}
+                    {c.isntChurch.body}
                   </p>
+                  <a
+                    href={`mailto:${CONTACT_EMAIL}`}
+                    className="text-sm font-medium text-blue-700 hover:underline dark:text-blue-300"
+                  >
+                    {CONTACT_EMAIL}
+                  </a>
                 </div>
                 <div className="flex flex-col gap-2 rounded-2xl bg-[var(--surface-soft)] px-[18px] pt-[18px] pb-5">
                   <h3 className="font-display text-[19px] font-medium text-foreground">
@@ -232,67 +227,27 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
               </div>
             </section>
 
-            {/* ── What's ahead ── */}
-            <section className="flex flex-col gap-4">
-              <h2 className="font-display text-[1.7rem] leading-tight text-balance text-foreground">
-                {c.aheadHeading}
+            {/* ── Stay connected: the WhatsApp channel first ── */}
+            <section className="flex flex-col gap-3 rounded-[20px] bg-[var(--surface-soft)] p-5 sm:p-6">
+              <h2 className="font-display text-[1.5rem] leading-tight text-balance text-foreground">
+                {c.connectHeading}
               </h2>
-              <p className="text-[16.5px] leading-[1.72] text-foreground">{c.aheadIntro}</p>
-              <ul className="flex flex-col">
-                {c.roadmap.map((r) => (
-                  <li
-                    key={r.label}
-                    className="grid grid-cols-[22px_1fr] gap-3 border-t border-zinc-200 py-3 dark:border-zinc-700"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="mt-[7px] ml-[5px] h-[9px] w-[9px] rounded-full border-[1.5px] border-zinc-400 dark:border-zinc-500"
-                    />
-                    <div>
-                      <b className="block text-[15px] font-semibold text-foreground">{r.label}</b>
-                      <span className="text-[14.5px] text-zinc-600 dark:text-zinc-300">{r.body}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">{c.foundation}</p>
-            </section>
-
-            {/* ── Contact ── */}
-            <section className="flex flex-col gap-2.5">
-              <h2 className="font-display text-[1.7rem] leading-tight text-balance text-foreground">
-                {c.contactHeading}
-              </h2>
-              <p className="text-[15.5px] text-zinc-600 dark:text-zinc-300">{c.contactBody}</p>
+              <p className="text-[15.5px] text-zinc-600 dark:text-zinc-300">{c.connectBody}</p>
               <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className="w-fit text-[17px] font-medium text-foreground underline decoration-zinc-300 underline-offset-[5px] hover:decoration-zinc-500 dark:decoration-zinc-600"
+                href={WHATSAPP_CHANNEL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#1f7a4c] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
               >
-                {CONTACT_EMAIL}
+                <WhatsAppIcon className="h-[18px] w-[18px]" />
+                {c.connectButton}
               </a>
-            </section>
-
-            {/* Closing call to action: a search-style bar with a real example
-                question (it opens the chat), and the FAQ as a quieter link. */}
-            <section className="flex flex-col gap-4 rounded-[20px] bg-[var(--surface-soft)] p-5 sm:p-6">
-              <h2 className="font-display text-[1.5rem] leading-tight text-balance text-foreground">{c.ctaChat}</h2>
-              <Link
-                href="/chat"
-                className="group flex min-w-0 items-center gap-3 rounded-2xl border border-zinc-300 bg-[var(--surface-base)] py-2 pr-2 pl-4 shadow-sm transition-colors hover:border-zinc-400 dark:border-zinc-600 dark:hover:border-zinc-500"
-              >
-                <span className="line-clamp-2 min-w-0 flex-1 py-1 text-[15px] leading-snug text-zinc-500 dark:text-zinc-400">{c.ctaExample}</span>
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-zinc-900 text-white transition-colors group-hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:group-hover:bg-zinc-300">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0-6 6m6-6 6 6" />
-                  </svg>
-                </span>
-              </Link>
-              <Link
-                href={faqHref}
-                className="flex w-fit items-center gap-1 text-[14.5px] font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-[5px] hover:text-foreground hover:decoration-zinc-500 dark:text-zinc-300 dark:decoration-zinc-600"
-              >
-                {c.ctaFaq}
-              </Link>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                {c.emailLead}{" "}
+                <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-foreground underline decoration-zinc-300 underline-offset-4 dark:decoration-zinc-600">
+                  {CONTACT_EMAIL}
+                </a>
+              </p>
             </section>
           </article>
           <SiteFooter language={lang} />

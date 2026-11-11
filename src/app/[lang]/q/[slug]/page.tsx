@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const page = await fetchSeoPage(slug, l);
   if (!page) return { title: "Not Found" };
 
-  const title = page.meta_title || `${page.question} | Branham Sermons Assistant`;
+  const title = page.meta_title || `${page.question} | BranhamSermons.ai`;
   const description =
     page.meta_description || stripMarkdownToPlain(page.answer_markdown).slice(0, 155);
   const canonicalUrl = `${SITE_URL}/${l}/q/${slug}`;
@@ -80,7 +80,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url: canonicalUrl,
       type: "article",
-      siteName: "Branham Sermons Assistant",
+      siteName: "BranhamSermons.ai",
     },
     twitter: {
       card: "summary_large_image",
@@ -110,7 +110,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
   const answerPlain = stripMarkdownToPlain(page.answer_markdown);
   const ogImageUrl = `${canonicalUrl}/opengraph-image`;
 
-  const appOrg = { "@type": "Organization", name: "Branham Sermons AI", url: SITE_URL };
+  const appOrg = { "@type": "Organization", name: "BranhamSermons.ai", url: SITE_URL };
 
   const articleJsonLd = {
     "@context": "https://schema.org",
@@ -126,7 +126,7 @@ export default async function LocalizedSeoQuestionPage({ params }: PageProps) {
     author: appOrg,
     publisher: {
       "@type": "Organization",
-      name: "Branham Sermons AI",
+      name: "BranhamSermons.ai",
       url: SITE_URL,
       logo: { "@type": "ImageObject", url: `${SITE_URL}/logo.png`, width: 1024, height: 1024 },
     },

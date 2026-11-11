@@ -1,3 +1,4 @@
+import { POSITIONING, SITE_TITLE } from "@/lib/site/positioning";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChatShell } from "@/components/chat/ChatShell";
@@ -7,11 +8,8 @@ const SITE_URL = "https://branhamsermons.ai";
 const OG_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
-  title: {
-    absolute: "Branham Sermons Assistant — Biblical Truths and the Sermons of Bro. Branham",
-  },
-  description:
-    "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of Bro. Branham, in English, Spanish or French. Every answer is linked to its sources.",
+  title: { absolute: SITE_TITLE },
+  description: POSITIONING.en.medium,
   keywords: [
     "Branham Sermons Assistant",
     "Branham Sermons AI",
@@ -22,6 +20,10 @@ export const metadata: Metadata = {
     "William Branham Doctrines",
     "William Branham Beliefs",
     "Branham",
+    "Bible study",
+    "Bible questions and answers",
+    "Christianity seen in nature",
+    "does God exist",
     "Branham en español",
     "Branham en français",
     "sermones de Branham",
@@ -30,19 +32,17 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   alternates: { canonical: `${SITE_URL}/chat` },
   openGraph: {
-    title: "Branham Sermons Assistant — Biblical Truths and the Sermons of Bro. Branham",
-    description:
-      "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of Bro. Branham. Every answer is linked to its sources.",
+    title: SITE_TITLE,
+    description: POSITIONING.en.medium,
     url: `${SITE_URL}/chat`,
     type: "website",
     images: [{ url: OG_IMAGE }],
-    siteName: "Branham Sermons Assistant",
+    siteName: "BranhamSermons.ai",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Branham Sermons Assistant — Biblical Truths and the Sermons of Bro. Branham",
-    description:
-      "A source for biblical truths and the proper interpretation of Scripture, and a search of the sermons of Bro. Branham. Every answer is linked to its sources.",
+    title: SITE_TITLE,
+    description: POSITIONING.en.medium,
     images: [OG_IMAGE],
   },
 };
@@ -61,20 +61,19 @@ export default async function ChatPage({
           Visually hidden; gives crawlers an h1, description, and links
           to /faq and top /q/ pages without changing the chat-first UI. */}
       <div className="sr-only" aria-hidden="true">
-        <h1>Biblical Truths and the Sermons of Bro. Branham</h1>
+        <h1>Explore Faith, Study the Bible, Search the Sermons of William Branham</h1>
         <p>
-          Branham Sermons AI is a source for biblical truths, answering
-          questions about the Bible with the proper interpretation of
-          Scripture, and an AI-powered search of the messages, doctrines, and
-          beliefs of William Marrion Branham — every answer is grounded in
-          Scripture and the original sermon texts. Available in English,
-          Spanish (Español), and French (Français). Explore Branham messages,
-          William Branham doctrines, William Branham beliefs, Scripture
-          references, sermon quotes, sermones de Branham, sermons de Branham,
-          and more.
+          BranhamSermons.ai is a free place to explore faith, study the Bible
+          and search the sermons of William Marrion Branham. Christianity Seen
+          in Nature looks at what creation shows about God, for anyone
+          whatever they believe. Bible search answers questions about Scripture
+          from Scripture. Sermon search finds what Brother Branham preached,
+          with every quote cited. Available in English, Spanish (Español) and
+          French (Français): sermones de Branham, sermons de Branham.
         </p>
-        <nav aria-label="Popular questions">
-          <Link href="/faq">Browse all popular questions</Link>
+        <nav aria-label="Questions of Faith">
+          <Link href="/faq/nature">Christianity Seen in Nature</Link>
+          <Link href="/faq">Browse Questions of Faith</Link>
           {topQuestions.map((q) => (
             <Link key={q.slug} href={`/q/${q.slug}`}>
               {q.question}

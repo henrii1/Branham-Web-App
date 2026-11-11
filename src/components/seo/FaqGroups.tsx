@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { groupName, SECTION_LABELS, type FaqGroup, type FaqListItem, type FaqSection } from "@/lib/faq/groups";
+import { BIBLE_QUESTIONS_ANCHOR, groupName, SECTION_LABELS, type FaqGroup, type FaqListItem, type FaqSection } from "@/lib/faq/groups";
 import { NatureSeries } from "./NatureSeries";
 
 type Lang = "en" | "es" | "fr";
@@ -111,9 +111,6 @@ function GroupCard({
     </div>
   );
 }
-
-/** Anchor for the Bible questions section (`/faq#bible-questions`, shared links). */
-export const BIBLE_QUESTIONS_ANCHOR = "bible-questions";
 
 /** A section of named groups as a grid of cards. */
 function GroupSection({ id, title, sections, slugPrefix, lang, c }: { id?: string; title: string; sections: FaqSection<FaqListItem>[]; slugPrefix: string; lang: Lang; c: (typeof COPY)[Lang] }) {

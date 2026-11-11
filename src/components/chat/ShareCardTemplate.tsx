@@ -237,7 +237,7 @@ export const ShareCardTemplate = forwardRef<HTMLDivElement, ShareCardTemplatePro
               color: textShade.textColor,
             }}
           >
-            Branham Sermons Assistant
+            BranhamSermons.ai
           </span>
         </div>
 

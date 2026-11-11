@@ -1,28 +1,25 @@
-# Linktree links
+# Links page
 
-Links for the BranhamSermons.ai Linktree, in display order. Social URLs come from `src/lib/site/social.ts`. If a link changes there, update this file too.
+The social media bios link to our own links page instead of Linktree:
 
-## Features
+- English: https://branhamsermons.ai/links
+- Spanish: https://branhamsermons.ai/es/links
+- French: https://branhamsermons.ai/fr/links
 
-| Title | Caption | Link |
-|---|---|---|
-| Family Altar | A short devotion for your family, every day | https://branhamsermons.ai/altar |
-| Ask the Sermons | Get answers from Brother Branham's sermons | https://branhamsermons.ai/chat?mode=sermons |
-| Ask the Bible | Get answers straight from Scripture | https://branhamsermons.ai/chat?mode=bible |
-| Christianity Seen in Nature | A 26-part series on God revealed in creation | https://branhamsermons.ai/faq/nature |
-| Bible Questions Answered | Clear, Scripture-based answers to questions people often ask | https://branhamsermons.ai/faq#bible-questions |
+It is built into the site (`src/components/site/LinksPage.tsx`, text in `src/lib/site/links.ts`): the WhatsApp channel first, today's Family Altar verse, then the nature series, Bible search, Bible questions and Sermon search, then the social icons. Social URLs come from `src/lib/site/social.ts`.
 
-The two chat links open a new chat already in that mode. A visitor who hasn't chosen a mode yet isn't asked, and the link's mode becomes their default in that browser. A signed-in user's saved default doesn't change.
+## Direct links
 
-### Spanish and French pages
+| Feature | Link |
+|---|---|
+| Christianity Seen in Nature | https://branhamsermons.ai/faq/nature |
+| Ask the Bible (Bible search) | https://branhamsermons.ai/chat?mode=bible |
+| Bible questions | https://branhamsermons.ai/faq#bible-questions |
+| Ask the Sermons (Sermon search) | https://branhamsermons.ai/chat?mode=sermons |
+| Family Altar | https://branhamsermons.ai/altar |
+| About | https://branhamsermons.ai/about |
 
-| Feature | Spanish | French |
-|---|---|---|
-| Family Altar | https://branhamsermons.ai/es/altar | https://branhamsermons.ai/fr/altar |
-| Christianity Seen in Nature | https://branhamsermons.ai/es/faq/nature | https://branhamsermons.ai/fr/faq/nature |
-| Bible Questions Answered | https://branhamsermons.ai/es/faq#bible-questions | https://branhamsermons.ai/fr/faq#bible-questions |
-
-The chat has no separate language address. Readers change the language inside the chat.
+Spanish and French pages add `/es` or `/fr` before the path (not the chat links, which have no language address). The chat links open a new chat in that mode; a visitor who hasn't chosen a mode yet isn't asked, and the link's mode becomes their default in that browser.
 
 ## Socials
 
@@ -33,4 +30,4 @@ The chat has no separate language address. Readers change the language inside th
 | Facebook | https://www.facebook.com/share/1A2ybQezGf/ |
 | TikTok | https://www.tiktok.com/@branham.sermons.as |
 | X | https://x.com/branhamsermon |
-| Email us | mailto:info@branhamsermons.ai |
+| Email | mailto:info@branhamsermons.ai |

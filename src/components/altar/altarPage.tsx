@@ -11,14 +11,14 @@ const SITE_URL = "https://branhamsermons.ai";
 export function buildAltarMetadata(language: AltarLanguage): Metadata {
   const s = ALTAR_STRINGS[language];
   return {
-    title: { absolute: `${s.pageTitle} | Branham Sermons AI` },
+    title: { absolute: `${s.pageTitle} | BranhamSermons.ai` },
     description: s.metaDescription,
     robots: { index: true, follow: true },
     alternates: {
       canonical: `${SITE_URL}${altarHref(language)}`,
       languages: { en: `${SITE_URL}/altar`, es: `${SITE_URL}/es/altar`, fr: `${SITE_URL}/fr/altar`, "x-default": `${SITE_URL}/altar` },
     },
-    openGraph: { title: s.pageTitle, description: s.metaDescription, url: `${SITE_URL}${altarHref(language)}`, type: "website", siteName: "Branham Sermons Assistant" },
+    openGraph: { title: s.pageTitle, description: s.metaDescription, url: `${SITE_URL}${altarHref(language)}`, type: "website", siteName: "BranhamSermons.ai" },
   };
 }
 
@@ -48,7 +48,7 @@ export async function buildAltarDayMetadata(language: AltarLanguage, day: string
       canonical: url,
       languages: { en: `${SITE_URL}/altar/${day}`, es: `${SITE_URL}/es/altar/${day}`, fr: `${SITE_URL}/fr/altar/${day}`, "x-default": `${SITE_URL}/altar/${day}` },
     },
-    openGraph: { title, description, url, type: "article", siteName: "Branham Sermons Assistant" },
+    openGraph: { title, description, url, type: "article", siteName: "BranhamSermons.ai" },
     twitter: { card: "summary_large_image", title, description },
   };
 }

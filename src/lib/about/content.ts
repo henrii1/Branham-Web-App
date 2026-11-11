@@ -1,12 +1,16 @@
 /**
  * Copy for the /about page in every supported language.
  *
- * Source: "About Branham Sermons Assistant.pdf" (English, supplied by the
- * project owner), condensed for the web. Spanish and French are translations
- * of the approved English. The example quote in each language is the real
- * sermon text for HEBREWS, CHAPTER ONE (57-0821) ¶104, as returned by the
- * API's /api/reference endpoint for that language — not a translation of
- * the English — so the citation pill opens a matching passage.
+ * Positioning, in this order: an evangelism tool for anyone whatever they
+ * believe (Christianity Seen in Nature), a place to study Scripture (Bible
+ * search, Questions of Faith, Family Altar), and a search of William
+ * Branham's sermons. The same three-part message is used across the site
+ * (lib/site/positioning.ts). Spanish uses "usted".
+ *
+ * The example quote in each language is the real sermon text for HEBREWS,
+ * CHAPTER ONE (57-0821) ¶104, as returned by the API's /api/reference
+ * endpoint for that language — not a translation of the English — so the
+ * citation pill opens a matching passage.
  *
  * Adding a language: add an entry here (the AboutLang union forces every
  * field), then add its route params and sitemap entry.
@@ -16,6 +20,13 @@ export type AboutLang = "en" | "es" | "fr";
 
 export const ABOUT_LANGS: AboutLang[] = ["en", "es", "fr"];
 
+/** One way into the site, for one audience. */
+export interface AboutPath {
+  label: string;
+  body: string;
+  links: { label: string; href: string }[];
+}
+
 export interface AboutContent {
   metaTitle: string;
   metaDescription: string;
@@ -23,12 +34,9 @@ export interface AboutContent {
   title: string;
   lead: string;
   availableIn: string;
-  whyHeading: string;
-  whyParagraphs: string[];
-  pullQuote: string;
-  whoHeading: string;
-  who: { label: string; body: string }[];
-  doesHeading: string;
+  pathsHeading: string;
+  paths: AboutPath[];
+  trustHeading: string;
   principle: string;
   example: {
     question: string;
@@ -37,60 +45,49 @@ export interface AboutContent {
     evidenceLabel: string;
     caption: string;
   };
-  features: { label: string; body: string }[];
   isntHeading: string;
-  isntPastor: { heading: string; body: string };
+  isntChurch: { heading: string; body: string };
   isntTable: { heading: string; body: string; linkLabel: string };
-  aheadHeading: string;
-  aheadIntro: string;
-  roadmap: { label: string; body: string }[];
-  foundation: string;
-  contactHeading: string;
-  contactBody: string;
-  ctaChat: string;
-  ctaFaq: string;
-  /** Example question shown in the closing search-style link. */
-  ctaExample: string;
+  connectHeading: string;
+  connectBody: string;
+  connectButton: string;
+  emailLead: string;
 }
 
 export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
   en: {
-    metaTitle: "About Branham Sermons Assistant",
+    metaTitle: "About BranhamSermons.ai",
     metaDescription:
-      "Why Branham Sermons Assistant exists, who it is for, and how it answers questions about the Bible and the sermons of William Marrion Branham, with every point linked to the source.",
+      "Explore what creation shows about God, study the Bible with answers drawn from Scripture, and search the sermons of William Branham. Every answer is cited.",
     askQuestion: "Ask a question",
-    title: "About Branham Sermons Assistant",
+    title: "About BranhamSermons.ai",
     lead:
-      "Branham Sermons Assistant, also known as Branham Sermons AI, is a source for biblical truths and a search and study tool for the sermons of William Marrion Branham. Ask about the Bible and get answers with the proper interpretation of Scripture, or search the sermons the way you would ask a person, in your own words or with the exact words you remember. Every answer is drawn from the sermons, with every point linked to the original quotation.",
+      "BranhamSermons.ai (also known as Branham Sermons Assistant) is a free place to explore faith, study the Bible and search the sermons of William Branham. Whatever you believe, start with Christianity Seen in Nature, a series that looks at what creation shows about God. If you follow Christ, ask anything about the Bible and get answers that let Scripture interpret Scripture. And if you want to know what Brother Branham actually preached, search his sermons in your own words. Every answer shows the verses or quotes it rests on, so you can check it for yourself.",
     availableIn: "Available in",
-    whyHeading: "Why it exists",
-    whyParagraphs: [
-      "The idea came one morning during prayer. A sermon came to mind and I wanted to find it, but no keyword I tried in the Table app brought it up. What if people could find sermons, compare doctrines and study the Message and Scripture by asking natural questions instead of guessing keywords?",
-      "A real situation added to the burden. Someone who wanted to understand what our church believed searched online, and what they found painted a distorted and alarming picture, enough that they discouraged a young man from ever attending. When people look for the truth about Brother Branham, what they find first is often incomplete, second-hand or biased.",
-    ],
-    pullQuote:
-      "This platform exists to stand between an honest question and a trustworthy answer, and to make sure that answer always points back to the sermons themselves.",
-    whoHeading: "Who it’s for",
-    who: [
+    pathsHeading: "Where to start",
+    paths: [
       {
-        label: "Young and new believers",
-        body: "Clear, scriptural answers to questions about their faith and the doctrines they hold.",
+        label: "Exploring faith",
+        body: "Whatever you believe, Christianity Seen in Nature looks at what creation shows about God, one question at a time. It starts from nature, not from the Bible.",
+        links: [{ label: "Start the series", href: "/faq/nature" }],
       },
       {
-        label: "Ministers and teachers",
-        body: "Preparing sermons, Bible studies and research across subjects in the Message.",
+        label: "Studying the Bible",
+        body: "Ask about any passage or subject and get answers that let Scripture interpret Scripture. Browse Questions of Faith, and open the Family Altar each day for a short devotion to share at home.",
+        links: [
+          { label: "Ask the Bible", href: "/chat?mode=bible" },
+          { label: "Questions of Faith", href: "/faq" },
+          { label: "Family Altar", href: "/altar" },
+        ],
       },
       {
-        label: "Believers studying deeper",
-        body: "Comparing related sermons to gain a broader understanding of a subject.",
-      },
-      {
-        label: "Seekers outside the Message",
-        body: "Anyone curious about Brother Branham for the first time, who deserves the sermons themselves rather than distorted information found online.",
+        label: "Finding out about Brother Branham",
+        body: "Sermon search shows what he actually said, quoted with the sermon’s date and paragraph, instead of second-hand summaries.",
+        links: [{ label: "Search the sermons", href: "/chat?mode=sermons" }],
       },
     ],
-    doesHeading: "What it does",
-    principle: "It never asks you to take its word for anything. It shows you the source.",
+    trustHeading: "Nothing to take on trust",
+    principle: "Every answer shows the verses or sermon quotes it rests on.",
     example: {
       question: "Where did he say God spoke by the prophets, but now through His Son?",
       quote:
@@ -99,91 +96,55 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       evidenceLabel: "Evidence",
       caption: "Tap the citation to read the exact paragraph it points to.",
     },
-    features: [
-      { label: "Search naturally or exactly", body: "Describe what you remember, or search by precise wording." },
-      {
-        label: "Focused answers",
-        body: "A clear response supported by sermon quotations, with retrieved passages shown alongside.",
-      },
-      { label: "Clickable references", body: "Every citation opens the exact location in the sermon." },
-      { label: "Natural follow-up", body: "Ask further questions the way a real conversation unfolds." },
-      { label: "Popular Questions", body: "Curated answers to the questions people ask most about the Bible and doctrine." },
-      {
-        label: "Shareable and saved",
-        body: "Share answers on WhatsApp and elsewhere, and save conversations once signed in.",
-      },
-    ],
-    isntHeading: "What it is not",
-    isntPastor: {
-      heading: "A substitute for your pastor",
-      body: "It is made for comparing quotes, finding references and understanding general doctrine. Personal or sensitive spiritual matters belong with your pastor. It supports the life of the believer and never replaces the shepherd God has placed over it.",
+    isntHeading: "What it isn’t",
+    isntChurch: {
+      heading: "A church or a pastor",
+      body: "For personal or spiritual matters, talk to a pastor or someone you trust. If you’re looking for a church, write to us and we’ll help you find one.",
     },
     isntTable: {
-      heading: "A replacement for the Table",
-      body: "It is not a reader for the sermon audio or text. It helps you find the right sermon and quotation, then sends you to the source to read the full sermon.",
+      heading: "A replacement for the full sermons",
+      body: "Every sermon quote points to the Table, where you can read or listen to the whole sermon.",
       linkLabel: "Open the Table app",
     },
-    aheadHeading: "What’s ahead",
-    aheadIntro:
-      "The aim is to be the bridge between what people search for online and the actual sermon tapes and books, the place a seeker’s question leads and from which they are guided to the right sermons.",
-    roadmap: [
-      {
-        label: "More languages",
-        body: "Building on English, Spanish and French so more people can read the Message in their own tongue.",
-      },
-      {
-        label: "A trustworthy first result",
-        body: "When someone searches online about Brother Branham’s message, the answer they meet first should be grounded, scriptural and linked to the sermons.",
-      },
-      { label: "More platforms", body: "Including mobile, so the tool is available wherever people study." },
-    ],
-    foundation:
-      "In time, Branham Sermons Assistant will sit under the Branham Sermons Foundation as part of a wider work serving believers and seekers alike.",
-    contactHeading: "Contact",
-    contactBody:
-      "We welcome feedback and recommendations from those new to the Message and those who have long studied the sermons.",
-    ctaChat: "Ask your first question",
-    ctaFaq: "Browse popular questions",
-    ctaExample: "What did Brother Branham teach about the Seven Seals?",
+    connectHeading: "Stay connected",
+    connectBody: "Our WhatsApp channel shares the daily Family Altar and new answers, and it’s where to reach us.",
+    connectButton: "Join the WhatsApp channel",
+    emailLead: "Or email",
   },
 
   es: {
-    metaTitle: "Acerca de Branham Sermons Assistant",
+    metaTitle: "Acerca de BranhamSermons.ai",
     metaDescription:
-      "Por qué existe Branham Sermons Assistant, para quién es y cómo responde preguntas sobre la Biblia y los sermones de William Marrion Branham, con cada punto enlazado a la fuente.",
+      "Descubra lo que la creación muestra acerca de Dios, estudie la Biblia con respuestas tomadas de las Escrituras y busque en los sermones de William Branham. Todo citado.",
     askQuestion: "Hacer una pregunta",
-    title: "Acerca de Branham Sermons Assistant",
+    title: "Acerca de BranhamSermons.ai",
     lead:
-      "Branham Sermons Assistant, también conocido como Branham Sermons AI, es una fuente de verdades bíblicas y una herramienta de búsqueda y estudio de los sermones de William Marrion Branham. Pregunte sobre la Biblia y reciba respuestas con la debida interpretación de las Escrituras, o busque en los sermones como le preguntaría a una persona, con sus propias palabras o con las palabras exactas que recuerda. Cada respuesta se toma de los sermones, con cada punto enlazado a la cita original.",
+      "BranhamSermons.ai (también conocido como Branham Sermons Assistant) es un lugar gratuito para explorar la fe, estudiar la Biblia y buscar en los sermones de William Branham. Sea cual sea su creencia, comience con El cristianismo visto en la naturaleza, una serie que examina lo que la creación muestra acerca de Dios. Si usted sigue a Cristo, pregunte cualquier cosa sobre la Biblia y reciba respuestas que dejan que la Escritura interprete la Escritura. Y si desea saber lo que el Hermano Branham predicó realmente, busque en sus sermones con sus propias palabras. Cada respuesta muestra los versículos o las citas en que se basa, para que usted mismo pueda comprobarla.",
     availableIn: "Disponible en",
-    whyHeading: "Por qué existe",
-    whyParagraphs: [
-      "La idea llegó una mañana durante la oración. Me vino a la mente un sermón y quise encontrarlo, pero ninguna palabra clave que probé en la aplicación The Table lo encontró. ¿Y si las personas pudieran encontrar sermones, comparar doctrinas y estudiar el Mensaje y las Escrituras haciendo preguntas naturales en lugar de adivinar palabras clave?",
-      "Una situación real aumentó esa carga. Alguien que quería entender lo que creía nuestra iglesia buscó en internet, y lo que encontró pintaba un cuadro distorsionado y alarmante, al punto de que disuadió a un joven de asistir. Cuando las personas buscan la verdad sobre el Hermano Branham, lo primero que encuentran suele ser incompleto, de segunda mano o parcial.",
-    ],
-    pullQuote:
-      "Esta plataforma existe para estar entre una pregunta sincera y una respuesta confiable, y para asegurar que esa respuesta siempre remita a los sermones mismos.",
-    whoHeading: "Para quién es",
-    who: [
+    pathsHeading: "Por dónde empezar",
+    paths: [
       {
-        label: "Creyentes jóvenes y nuevos",
-        body: "Respuestas claras y bíblicas a preguntas sobre su fe y las doctrinas que sostienen.",
+        label: "Explorar la fe",
+        body: "Sea cual sea su creencia, El cristianismo visto en la naturaleza examina lo que la creación muestra acerca de Dios, una pregunta a la vez. Parte de la naturaleza, no de la Biblia.",
+        links: [{ label: "Comenzar la serie", href: "/es/faq/nature" }],
       },
       {
-        label: "Ministros y maestros",
-        body: "Para preparar sermones, estudios bíblicos e investigaciones sobre los temas del Mensaje.",
+        label: "Estudiar la Biblia",
+        body: "Pregunte sobre cualquier pasaje o tema y reciba respuestas que dejan que la Escritura interprete la Escritura. Vea las Preguntas de fe y abra cada día el Altar Familiar para un breve devocional que compartir en casa.",
+        links: [
+          { label: "Preguntar a la Biblia", href: "/chat?mode=bible" },
+          { label: "Preguntas de fe", href: "/es/faq" },
+          { label: "Altar Familiar", href: "/es/altar" },
+        ],
       },
       {
-        label: "Creyentes que estudian a fondo",
-        body: "Para comparar sermones relacionados y obtener una comprensión más amplia de un tema.",
-      },
-      {
-        label: "Buscadores fuera del Mensaje",
-        body: "Cualquiera que sienta curiosidad por el Hermano Branham por primera vez, y que merece los sermones mismos en lugar de información distorsionada en internet.",
+        label: "Conocer al Hermano Branham",
+        body: "La búsqueda en los sermones muestra lo que él realmente dijo, citado con la fecha y el párrafo del sermón, en lugar de resúmenes de segunda mano.",
+        links: [{ label: "Buscar en los sermones", href: "/chat?mode=sermons" }],
       },
     ],
-    doesHeading: "Qué hace",
-    principle: "Nunca le pide que confíe en su palabra. Le muestra la fuente.",
+    trustHeading: "Nada que deba creer sin comprobar",
+    principle: "Cada respuesta muestra los versículos o las citas de los sermones en que se basa.",
     example: {
       question: "¿Dónde dijo que Dios habló por los profetas, pero ahora a través de Su Hijo?",
       quote:
@@ -192,103 +153,55 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       evidenceLabel: "Evidencia",
       caption: "Toque la cita para leer el párrafo exacto al que se refiere.",
     },
-    features: [
-      {
-        label: "Búsqueda natural o exacta",
-        body: "Describa lo que recuerda o busque por las palabras precisas.",
-      },
-      {
-        label: "Respuestas enfocadas",
-        body: "Una respuesta clara respaldada por citas de los sermones, con los pasajes encontrados al lado.",
-      },
-      { label: "Referencias con enlace", body: "Cada cita abre la ubicación exacta en el sermón." },
-      {
-        label: "Preguntas de seguimiento",
-        body: "Siga preguntando como en una conversación real.",
-      },
-      {
-        label: "Preguntas populares",
-        body: "Respuestas seleccionadas a las preguntas más frecuentes sobre la Biblia y la doctrina.",
-      },
-      {
-        label: "Para compartir y guardar",
-        body: "Comparta respuestas por WhatsApp y otras plataformas, y guarde sus conversaciones al iniciar sesión.",
-      },
-    ],
     isntHeading: "Lo que no es",
-    isntPastor: {
-      heading: "Un sustituto de su pastor",
-      body: "Está hecho para comparar citas, encontrar referencias y entender la doctrina general. Los asuntos espirituales personales o delicados corresponden a su pastor. Apoya la vida del creyente y nunca reemplaza al pastor que Dios ha puesto sobre ella.",
+    isntChurch: {
+      heading: "Una iglesia ni un pastor",
+      body: "Para asuntos personales o espirituales, hable con un pastor o con alguien de su confianza. Si busca una iglesia, escríbanos y le ayudaremos a encontrar una.",
     },
     isntTable: {
-      heading: "Un reemplazo de The Table",
-      body: "No es un lector del audio ni del texto de los sermones. Le ayuda a encontrar el sermón y la cita correctos, y luego lo envía a la fuente para leer el sermón completo.",
+      heading: "Un sustituto de los sermones completos",
+      body: "Cada cita de un sermón remite a The Table, donde puede leer o escuchar el sermón completo.",
       linkLabel: "Abrir la aplicación The Table",
     },
-    aheadHeading: "Lo que viene",
-    aheadIntro:
-      "La meta es ser el puente entre lo que las personas buscan en internet y las cintas y libros de los sermones, el lugar al que conduce la pregunta de quien busca y desde el cual se le guía a los sermones correctos.",
-    roadmap: [
-      {
-        label: "Más idiomas",
-        body: "A partir del inglés, el español y el francés, para que más personas puedan leer el Mensaje en su propia lengua.",
-      },
-      {
-        label: "Un primer resultado confiable",
-        body: "Cuando alguien busque en internet sobre el Mensaje del Hermano Branham, la primera respuesta que encuentre debe ser fundamentada, bíblica y enlazada a los sermones.",
-      },
-      {
-        label: "Más plataformas",
-        body: "Incluido el móvil, para que la herramienta esté disponible dondequiera que se estudie.",
-      },
-    ],
-    foundation:
-      "Con el tiempo, Branham Sermons Assistant formará parte de la Branham Sermons Foundation, como parte de una obra más amplia al servicio de creyentes y buscadores.",
-    contactHeading: "Contacto",
-    contactBody:
-      "Agradecemos los comentarios y sugerencias tanto de quienes son nuevos en el Mensaje como de quienes han estudiado los sermones por mucho tiempo.",
-    ctaChat: "Haga su primera pregunta",
-    ctaFaq: "Ver preguntas populares",
-    ctaExample: "¿Qué enseñó el Hno. Branham sobre los Siete Sellos?",
+    connectHeading: "Manténgase en contacto",
+    connectBody: "Nuestro canal de WhatsApp comparte el Altar Familiar de cada día y las nuevas respuestas, y es el lugar para comunicarse con nosotros.",
+    connectButton: "Unirse al canal de WhatsApp",
+    emailLead: "O escríbanos a",
   },
 
   fr: {
-    metaTitle: "À propos de Branham Sermons Assistant",
+    metaTitle: "À propos de BranhamSermons.ai",
     metaDescription:
-      "Pourquoi Branham Sermons Assistant existe, à qui il s’adresse et comment il répond aux questions sur la Bible et les sermons de William Marrion Branham, chaque point étant relié à sa source.",
+      "Découvrez ce que la création montre de Dieu, étudiez la Bible avec des réponses tirées des Écritures et cherchez dans les sermons de William Branham. Tout est cité.",
     askQuestion: "Poser une question",
-    title: "À propos de Branham Sermons Assistant",
+    title: "À propos de BranhamSermons.ai",
     lead:
-      "Branham Sermons Assistant, aussi appelé Branham Sermons AI, est une source de vérités bibliques et un outil de recherche et d’étude des sermons de William Marrion Branham. Interrogez la Bible et recevez des réponses avec la juste interprétation des Écritures, ou cherchez dans les sermons comme vous le demanderiez à une personne, avec vos propres mots ou avec les mots exacts dont vous vous souvenez. Chaque réponse est tirée des sermons, chaque point étant relié à la citation originale.",
+      "BranhamSermons.ai (aussi appelé Branham Sermons Assistant) est un lieu gratuit pour explorer la foi, étudier la Bible et chercher dans les sermons de William Branham. Quelle que soit votre croyance, commencez par Le christianisme vu dans la nature, une série qui examine ce que la création montre de Dieu. Si vous suivez Christ, posez n’importe quelle question sur la Bible et recevez des réponses qui laissent l’Écriture interpréter l’Écriture. Et si vous voulez savoir ce que Frère Branham a réellement prêché, cherchez dans ses sermons avec vos propres mots. Chaque réponse montre les versets ou les citations sur lesquels elle repose, pour que vous puissiez la vérifier vous-même.",
     availableIn: "Disponible en",
-    whyHeading: "Pourquoi il existe",
-    whyParagraphs: [
-      "L’idée est venue un matin pendant la prière. Un sermon m’est venu à l’esprit et j’ai voulu le retrouver, mais aucun mot-clé essayé dans l’application The Table ne l’a fait apparaître. Et si l’on pouvait trouver des sermons, comparer des doctrines et étudier le Message et les Écritures en posant des questions naturelles plutôt qu’en devinant des mots-clés ?",
-      "Une situation réelle a renforcé ce fardeau. Quelqu’un qui voulait comprendre ce que croyait notre église a fait des recherches en ligne, et ce qu’il a trouvé donnait une image déformée et alarmante, au point de dissuader un jeune homme de venir. Quand on cherche la vérité sur Frère Branham, ce que l’on trouve en premier est souvent incomplet, de seconde main ou partial.",
-    ],
-    pullQuote:
-      "Cette plateforme existe pour se tenir entre une question sincère et une réponse digne de confiance, et pour que cette réponse renvoie toujours aux sermons eux-mêmes.",
-    whoHeading: "À qui il s’adresse",
-    who: [
+    pathsHeading: "Par où commencer",
+    paths: [
       {
-        label: "Jeunes croyants et nouveaux convertis",
-        body: "Des réponses claires et scripturaires aux questions sur leur foi et les doctrines qu’ils tiennent.",
+        label: "Explorer la foi",
+        body: "Quelle que soit votre croyance, Le christianisme vu dans la nature examine ce que la création montre de Dieu, une question à la fois. La série part de la nature, pas de la Bible.",
+        links: [{ label: "Commencer la série", href: "/fr/faq/nature" }],
       },
       {
-        label: "Ministres et enseignants",
-        body: "Pour préparer des prédications, des études bibliques et des recherches sur les sujets du Message.",
+        label: "Étudier la Bible",
+        body: "Posez une question sur n’importe quel passage ou sujet et recevez des réponses qui laissent l’Écriture interpréter l’Écriture. Parcourez les Questions de foi et ouvrez chaque jour l’Autel familial pour une courte méditation à partager à la maison.",
+        links: [
+          { label: "Interroger la Bible", href: "/chat?mode=bible" },
+          { label: "Questions de foi", href: "/fr/faq" },
+          { label: "Autel familial", href: "/fr/altar" },
+        ],
       },
       {
-        label: "Croyants qui étudient en profondeur",
-        body: "Pour comparer des sermons liés et acquérir une compréhension plus large d’un sujet.",
-      },
-      {
-        label: "Chercheurs en dehors du Message",
-        body: "Toute personne qui découvre Frère Branham, et qui mérite les sermons eux-mêmes plutôt que des informations déformées trouvées en ligne.",
+        label: "Découvrir Frère Branham",
+        body: "La recherche dans les sermons montre ce qu’il a réellement dit, cité avec la date et le paragraphe du sermon, plutôt que des résumés de seconde main.",
+        links: [{ label: "Chercher dans les sermons", href: "/chat?mode=sermons" }],
       },
     ],
-    doesHeading: "Ce qu’il fait",
-    principle: "Il ne vous demande jamais de le croire sur parole. Il vous montre la source.",
+    trustHeading: "Rien à croire sur parole",
+    principle: "Chaque réponse montre les versets ou les citations des sermons sur lesquels elle repose.",
     example: {
       question: "Où a-t-il dit que Dieu a parlé par les prophètes, mais maintenant dans Son Fils ?",
       quote:
@@ -297,64 +210,20 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       evidenceLabel: "Preuve",
       caption: "Touchez la citation pour lire le paragraphe exact auquel elle renvoie.",
     },
-    features: [
-      {
-        label: "Recherche naturelle ou exacte",
-        body: "Décrivez ce dont vous vous souvenez, ou cherchez avec les mots précis.",
-      },
-      {
-        label: "Des réponses ciblées",
-        body: "Une réponse claire appuyée par des citations des sermons, avec les passages trouvés affichés à côté.",
-      },
-      { label: "Références cliquables", body: "Chaque citation ouvre l’emplacement exact dans le sermon." },
-      {
-        label: "Questions de suivi",
-        body: "Continuez à poser des questions comme dans une vraie conversation.",
-      },
-      {
-        label: "Questions populaires",
-        body: "Des réponses choisies aux questions les plus fréquentes sur la Bible et la doctrine.",
-      },
-      {
-        label: "Partage et sauvegarde",
-        body: "Partagez des réponses sur WhatsApp et ailleurs, et enregistrez vos conversations une fois connecté.",
-      },
-    ],
-    isntHeading: "Ce qu’il n’est pas",
-    isntPastor: {
-      heading: "Un substitut à votre pasteur",
-      body: "Il est conçu pour comparer des citations, trouver des références et comprendre la doctrine générale. Les questions spirituelles personnelles ou délicates relèvent de votre pasteur. Il soutient la vie du croyant et ne remplace jamais le berger que Dieu a placé au-dessus d’elle.",
+    isntHeading: "Ce que ce n’est pas",
+    isntChurch: {
+      heading: "Une église ou un pasteur",
+      body: "Pour les questions personnelles ou spirituelles, parlez à un pasteur ou à une personne de confiance. Si vous cherchez une église, écrivez-nous et nous vous aiderons à en trouver une.",
     },
     isntTable: {
-      heading: "Un remplacement de The Table",
-      body: "Ce n’est pas un lecteur de l’audio ou du texte des sermons. Il vous aide à trouver le bon sermon et la bonne citation, puis vous renvoie à la source pour lire le sermon en entier.",
+      heading: "Un substitut des sermons complets",
+      body: "Chaque citation de sermon renvoie à The Table, où vous pouvez lire ou écouter le sermon en entier.",
       linkLabel: "Ouvrir l’application The Table",
     },
-    aheadHeading: "Ce qui vient",
-    aheadIntro:
-      "Le but est d’être le pont entre ce que l’on cherche en ligne et les bandes et livres des sermons eux-mêmes, l’endroit où mène la question d’un chercheur et d’où il est guidé vers les bons sermons.",
-    roadmap: [
-      {
-        label: "Plus de langues",
-        body: "À partir de l’anglais, de l’espagnol et du français, pour que davantage de personnes puissent lire le Message dans leur propre langue.",
-      },
-      {
-        label: "Un premier résultat digne de confiance",
-        body: "Quand quelqu’un cherche en ligne au sujet du Message de Frère Branham, la première réponse qu’il rencontre doit être fondée, scripturaire et reliée aux sermons.",
-      },
-      {
-        label: "Plus de plateformes",
-        body: "Y compris le mobile, pour que l’outil soit disponible partout où l’on étudie.",
-      },
-    ],
-    foundation:
-      "Avec le temps, Branham Sermons Assistant fera partie de la Branham Sermons Foundation, au sein d’une œuvre plus large au service des croyants comme des chercheurs.",
-    contactHeading: "Contact",
-    contactBody:
-      "Nous accueillons les remarques et suggestions de ceux qui découvrent le Message comme de ceux qui étudient les sermons depuis longtemps.",
-    ctaChat: "Posez votre première question",
-    ctaFaq: "Voir les questions populaires",
-    ctaExample: "Qu’a enseigné Frère Branham sur les Sept Sceaux ?",
+    connectHeading: "Restons en contact",
+    connectBody: "Notre chaîne WhatsApp partage l’Autel familial de chaque jour et les nouvelles réponses, et c’est là que vous pouvez nous joindre.",
+    connectButton: "Rejoindre la chaîne WhatsApp",
+    emailLead: "Ou écrivez-nous à",
   },
 };
 

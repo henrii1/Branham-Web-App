@@ -1,3 +1,4 @@
+import { POSITIONING } from "@/lib/site/positioning";
 import { ImageResponse } from "next/og";
 
 export const size = {
@@ -38,7 +39,7 @@ export default function OpenGraphImage() {
               fontWeight: 700,
             }}
           >
-            Branham Sermons Assistant
+            BranhamSermons.ai
           </div>
           <div
             style={{
@@ -48,7 +49,7 @@ export default function OpenGraphImage() {
               color: "#4b5563",
             }}
           >
-            Biblical truths and the sermons of Bro. Branham.
+            {POSITIONING.en.short}
           </div>
         </div>
 
