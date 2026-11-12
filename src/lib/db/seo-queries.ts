@@ -72,11 +72,19 @@ export async function fetchTopPublishedSeoPages(
   return data ?? [];
 }
 
-export async function fetchAllPublishedSeoPages(language = "en"): Promise<SeoCacheRow[]> {
+export type SeoPageIndexRow = Pick<SeoCacheRow, "slug" | "question" | "meta_description" | "updated_at">;
+
+/**
+ * Every published page's address, question and dates, without the answer or
+ * the passages: for the sitemap, llms.txt and the build's page list. Reading
+ * the full rows (rag_context is large) for every page exceeds the database's
+ * statement timeout.
+ */
+export async function fetchPublishedPageIndex(language = "en"): Promise<SeoPageIndexRow[]> {
   const supabase = getPublicClient();
   const { data, error } = await supabase
     .from("seo_cache")
-    .select(SEO_COLUMNS)
+    .select("slug, question, meta_description, updated_at")
     .eq("published", true)
     .eq("language", language)
     .order("created_at", { ascending: true });

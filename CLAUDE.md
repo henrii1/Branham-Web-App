@@ -371,6 +371,7 @@ For the two admin accounts only (`isAdminEmail()`, re-checked in every route und
 - `src/lib/faq/entry.ts` holds the slug/meta/cleanup rules (same as `scripts/seed-seo.ts`); `src/lib/faq/modelApi.ts` is server-only (bearer key); `src/lib/faq/adminStore.ts` does all `seo_cache` writes with the service-role client.
 - **All text is passed through `sanitizeForPostgres`** before writing: sermon passages from the API can contain NUL bytes, which Postgres rejects (this broke the first publish in testing).
 - es/fr `meta_title` uses the localized question — the API's `query_summary` is English even for es/fr answers.
+- **Listing every FAQ page** (sitemap, `llms.txt`, the build's page list) uses `fetchPublishedPageIndex` (slug, question, meta description, dates). Never select full `seo_cache` rows for all pages: `rag_context` is large and the query exceeds the database statement timeout (it once broke the sitemap and the deploy).
 - Publish/update/delete expire the FAQ list cache tag; `sitemap.xml` is `force-dynamic`. (On Cloudflare no persistent incremental cache is configured, so nothing is cached there anyway.)
 
 ## Family Altar (daily devotional)

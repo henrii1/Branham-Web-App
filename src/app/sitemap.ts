@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { fetchAllPublishedSeoPages } from "@/lib/db/seo-queries";
+import { fetchPublishedPageIndex } from "@/lib/db/seo-queries";
 
 const SITE_URL = "https://branhamsermons.ai";
 
@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [enPages, esPages, frPages] = await Promise.all([
-    fetchAllPublishedSeoPages("en"),
-    fetchAllPublishedSeoPages("es"),
-    fetchAllPublishedSeoPages("fr"),
+    fetchPublishedPageIndex("en"),
+    fetchPublishedPageIndex("es"),
+    fetchPublishedPageIndex("fr"),
   ]);
 
   const enEntries: MetadataRoute.Sitemap = enPages.map((page) => ({

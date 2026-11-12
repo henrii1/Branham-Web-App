@@ -1,4 +1,4 @@
-import { fetchAllPublishedSeoPages, type SeoCacheRow } from "@/lib/db/seo-queries";
+import { fetchPublishedPageIndex, type SeoPageIndexRow } from "@/lib/db/seo-queries";
 
 const SITE_URL = "https://branhamsermons.ai";
 
@@ -21,7 +21,7 @@ function snippet(md: string, maxChars = 160): string {
   return plain.slice(0, maxChars - 1).trimEnd() + "…";
 }
 
-function buildLlmsTxt(pages: SeoCacheRow[]): string {
+function buildLlmsTxt(pages: SeoPageIndexRow[]): string {
   const intro = [
     "# BranhamSermons.ai",
     "",
@@ -42,7 +42,7 @@ function buildLlmsTxt(pages: SeoCacheRow[]): string {
   ];
 
   const questionLines = pages.map((p) => {
-    const note = snippet(p.meta_description ?? p.answer_markdown);
+    const note = snippet(p.meta_description ?? p.question);
     return `- [${p.question}](${SITE_URL}/q/${p.slug}): ${note}`;
   });
 
@@ -73,7 +73,7 @@ function buildLlmsTxt(pages: SeoCacheRow[]): string {
 
 export async function GET() {
   try {
-    const pages = await fetchAllPublishedSeoPages();
+    const pages = await fetchPublishedPageIndex();
     const body = buildLlmsTxt(pages);
     return new Response(body, {
       status: 200,

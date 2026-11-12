@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
   fetchAdjacentSeoPages,
-  fetchAllPublishedSeoPages,
+  fetchPublishedPageIndex,
   fetchFollowupKind,
   fetchNatureSeriesPosition,
   fetchSeoPage,
@@ -23,7 +23,7 @@ interface PageProps {
 export async function generateStaticParams() {
   const results: { lang: string; slug: string }[] = [];
   for (const lang of SUPPORTED_LANGS) {
-    const pages = await fetchAllPublishedSeoPages(lang);
+    const pages = await fetchPublishedPageIndex(lang);
     for (const page of pages) {
       results.push({ lang, slug: page.slug });
     }
