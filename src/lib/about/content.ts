@@ -7,10 +7,11 @@
  * Branham's sermons. The same three-part message is used across the site
  * (lib/site/positioning.ts). Spanish uses "usted".
  *
- * The example quote in each language is the real sermon text for HEBREWS,
- * CHAPTER ONE (57-0821) ¶104, as returned by the API's /api/reference
- * endpoint for that language — not a translation of the English — so the
- * citation pill opens a matching passage.
+ * The example quote in each language is the real sermon text of THE
+ * REVELATION OF JESUS CHRIST (60-1204M) ¶200, as returned by the API's
+ * /api/reference endpoint for that language — not a translation of the
+ * English — so the citation pill opens a matching passage. (The French text
+ * carries a stray "LA PAROLE PARLÉE" page header mid-sentence, left out.)
  *
  * Adding a language: add an entry here (the AboutLang union forces every
  * field), then add its route params and sitemap entry.
@@ -18,7 +19,7 @@
 
 export type AboutLang = "en" | "es" | "fr";
 
-export const ABOUT_LANGS: AboutLang[] = ["en", "es", "fr"];
+export const ABOUT_LANGS: AboutLang[] = ["en", "fr", "es"];
 
 /** One way into the site, for one audience. */
 export interface AboutPath {
@@ -32,8 +33,13 @@ export interface AboutContent {
   metaDescription: string;
   askQuestion: string;
   title: string;
+  /** First sentence of the lead: what the site is (set as the standfirst). */
+  leadIntro: string;
+  /** The rest: one sentence per audience, then why it can be trusted. */
   lead: string;
   availableIn: string;
+  /** Keeps the old name on the page for search ("Branham Sermons Assistant"). */
+  alsoKnownAs: string;
   pathsHeading: string;
   paths: AboutPath[];
   trustHeading: string;
@@ -61,9 +67,12 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       "Explore what creation shows about God, study the Bible with answers drawn from Scripture, and search the sermons of William Branham. Every answer is cited.",
     askQuestion: "Ask a question",
     title: "About BranhamSermons.ai",
+    leadIntro:
+      "BranhamSermons.ai is a free place to explore faith, study the Bible and search the sermons of William Branham.",
     lead:
-      "BranhamSermons.ai (also known as Branham Sermons Assistant) is a free place to explore faith, study the Bible and search the sermons of William Branham. Whatever you believe, start with Christianity Seen in Nature, a series that looks at what creation shows about God. If you follow Christ, ask anything about the Bible and get answers that let Scripture interpret Scripture. And if you want to know what Brother Branham actually preached, search his sermons in your own words. Every answer shows the verses or quotes it rests on, so you can check it for yourself.",
+      "Whatever you believe, start with Christianity Seen in Nature, a series that looks at what creation shows about God. If you follow Christ, ask anything about the Bible and get answers that let Scripture interpret Scripture. And if you want to know what Brother Branham actually preached, search his sermons in your own words. Every answer shows the verses or quotes it rests on, so you can check it for yourself.",
     availableIn: "Available in",
+    alsoKnownAs: "Also known as Branham Sermons Assistant",
     pathsHeading: "Where to start",
     paths: [
       {
@@ -89,10 +98,10 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
     trustHeading: "Nothing to take on trust",
     principle: "Every answer shows the verses or sermon quotes it rests on.",
     example: {
-      question: "Where did he say God spoke by the prophets, but now through His Son?",
+      question: "Did Brother Branham teach that Jesus is God?",
       quote:
-        "In that day, He spoke by the prophets, but this day through His Son. That was the word of a prophet, there. This is the Word of the Son, today.",
-      citation: "HEBREWS, CHAPTER ONE — 57-0821: ¶104",
+        "And He was the Lord of Glory, made manifest. So, He is the Lord Jesus Christ, the God of Glory made manifest among us.",
+      citation: "THE REVELATION OF JESUS CHRIST — 60-1204M: ¶200",
       evidenceLabel: "Evidence",
       caption: "Tap the citation to read the exact paragraph it points to.",
     },
@@ -107,7 +116,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       linkLabel: "Open the Table app",
     },
     connectHeading: "Stay connected",
-    connectBody: "Our WhatsApp channel shares the daily Family Altar and new answers, and it’s where to reach us.",
+    connectBody: "Our WhatsApp channel is for daily Christian growth: the Family Altar devotion, new answers, and posts on why Christianity is true. It’s also where to reach us.",
     connectButton: "Join the WhatsApp channel",
     emailLead: "Or email",
   },
@@ -118,9 +127,12 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       "Descubra lo que la creación muestra acerca de Dios, estudie la Biblia con respuestas tomadas de las Escrituras y busque en los sermones de William Branham. Todo citado.",
     askQuestion: "Hacer una pregunta",
     title: "Acerca de BranhamSermons.ai",
+    leadIntro:
+      "BranhamSermons.ai es un lugar gratuito para explorar la fe, estudiar la Biblia y buscar en los sermones de William Branham.",
     lead:
-      "BranhamSermons.ai (también conocido como Branham Sermons Assistant) es un lugar gratuito para explorar la fe, estudiar la Biblia y buscar en los sermones de William Branham. Sea cual sea su creencia, comience con El cristianismo visto en la naturaleza, una serie que examina lo que la creación muestra acerca de Dios. Si usted sigue a Cristo, pregunte cualquier cosa sobre la Biblia y reciba respuestas que dejan que la Escritura interprete la Escritura. Y si desea saber lo que el Hermano Branham predicó realmente, busque en sus sermones con sus propias palabras. Cada respuesta muestra los versículos o las citas en que se basa, para que usted mismo pueda comprobarla.",
+      "Sea cual sea su creencia, comience con El cristianismo visto en la naturaleza, una serie que examina lo que la creación muestra acerca de Dios. Si usted sigue a Cristo, pregunte cualquier cosa sobre la Biblia y reciba respuestas que dejan que la Escritura interprete la Escritura. Y si desea saber lo que el Hermano Branham predicó realmente, busque en sus sermones con sus propias palabras. Cada respuesta muestra los versículos o las citas en que se basa, para que usted mismo pueda comprobarla.",
     availableIn: "Disponible en",
+    alsoKnownAs: "También conocido como Branham Sermons Assistant",
     pathsHeading: "Por dónde empezar",
     paths: [
       {
@@ -146,10 +158,10 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
     trustHeading: "Nada que deba creer sin comprobar",
     principle: "Cada respuesta muestra los versículos o las citas de los sermones en que se basa.",
     example: {
-      question: "¿Dónde dijo que Dios habló por los profetas, pero ahora a través de Su Hijo?",
+      question: "¿Enseñó el Hermano Branham que Jesús es Dios?",
       quote:
-        "En aquel día, Él habló por los profetas, pero en este día a través de Su Hijo. Eso allá era la palabra de un profeta. Hoy, ésta es la Palabra del Hijo.",
-      citation: "HEBREOS, CAPÍTULO UNO — 57-0821: ¶104",
+        "Y Él era el Señor de la Gloria, manifestado. Así que, Él es el Señor Jesucristo: el Dios de Gloria manifestado entre nosotros.",
+      citation: "LA REVELACIÓN DE JESUCRISTO — 60-1204M: ¶200",
       evidenceLabel: "Evidencia",
       caption: "Toque la cita para leer el párrafo exacto al que se refiere.",
     },
@@ -164,7 +176,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       linkLabel: "Abrir la aplicación The Table",
     },
     connectHeading: "Manténgase en contacto",
-    connectBody: "Nuestro canal de WhatsApp comparte el Altar Familiar de cada día y las nuevas respuestas, y es el lugar para comunicarse con nosotros.",
+    connectBody: "Nuestro canal de WhatsApp es para su crecimiento cristiano diario: el devocional del Altar Familiar, nuevas respuestas y publicaciones sobre por qué el cristianismo es verdadero. También es el lugar para comunicarse con nosotros.",
     connectButton: "Unirse al canal de WhatsApp",
     emailLead: "O escríbanos a",
   },
@@ -175,9 +187,12 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       "Découvrez ce que la création montre de Dieu, étudiez la Bible avec des réponses tirées des Écritures et cherchez dans les sermons de William Branham. Tout est cité.",
     askQuestion: "Poser une question",
     title: "À propos de BranhamSermons.ai",
+    leadIntro:
+      "BranhamSermons.ai est un lieu gratuit pour explorer la foi, étudier la Bible et chercher dans les sermons de William Branham.",
     lead:
-      "BranhamSermons.ai (aussi appelé Branham Sermons Assistant) est un lieu gratuit pour explorer la foi, étudier la Bible et chercher dans les sermons de William Branham. Quelle que soit votre croyance, commencez par Le christianisme vu dans la nature, une série qui examine ce que la création montre de Dieu. Si vous suivez Christ, posez n’importe quelle question sur la Bible et recevez des réponses qui laissent l’Écriture interpréter l’Écriture. Et si vous voulez savoir ce que Frère Branham a réellement prêché, cherchez dans ses sermons avec vos propres mots. Chaque réponse montre les versets ou les citations sur lesquels elle repose, pour que vous puissiez la vérifier vous-même.",
+      "Quelle que soit votre croyance, commencez par Le christianisme vu dans la nature, une série qui examine ce que la création montre de Dieu. Si vous suivez Christ, posez n’importe quelle question sur la Bible et recevez des réponses qui laissent l’Écriture interpréter l’Écriture. Et si vous voulez savoir ce que Frère Branham a réellement prêché, cherchez dans ses sermons avec vos propres mots. Chaque réponse montre les versets ou les citations sur lesquels elle repose, pour que vous puissiez la vérifier vous-même.",
     availableIn: "Disponible en",
+    alsoKnownAs: "Aussi appelé Branham Sermons Assistant",
     pathsHeading: "Par où commencer",
     paths: [
       {
@@ -203,10 +218,10 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
     trustHeading: "Rien à croire sur parole",
     principle: "Chaque réponse montre les versets ou les citations des sermons sur lesquels elle repose.",
     example: {
-      question: "Où a-t-il dit que Dieu a parlé par les prophètes, mais maintenant dans Son Fils ?",
+      question: "Frère Branham a-t-il enseigné que Jésus est Dieu ?",
       quote:
-        "À cette époque-là Il a parlé par les prophètes, mais à notre époque, dans Son Fils. Là, c’était la parole d’un prophète. Aujourd’hui, c’est la Parole du Fils.",
-      citation: "HÉBREUX, CHAPITRE UN — 57-0821: ¶104",
+        "Et Il était le Seigneur de Gloire manifesté. Donc, Il est le Seigneur Jésus-Christ, le Dieu de Gloire manifesté parmi nous.",
+      citation: "LA RÉVÉLATION DE JÉSUS-CHRIST — 60-1204M: ¶200",
       evidenceLabel: "Preuve",
       caption: "Touchez la citation pour lire le paragraphe exact auquel elle renvoie.",
     },
@@ -221,7 +236,7 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       linkLabel: "Ouvrir l’application The Table",
     },
     connectHeading: "Restons en contact",
-    connectBody: "Notre chaîne WhatsApp partage l’Autel familial de chaque jour et les nouvelles réponses, et c’est là que vous pouvez nous joindre.",
+    connectBody: "Notre chaîne WhatsApp vous aide à grandir chaque jour dans la foi chrétienne : la méditation de l’Autel familial, les nouvelles réponses et des publications sur pourquoi le christianisme est vrai. C’est aussi là que vous pouvez nous joindre.",
     connectButton: "Rejoindre la chaîne WhatsApp",
     emailLead: "Ou écrivez-nous à",
   },

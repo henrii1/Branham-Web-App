@@ -112,7 +112,7 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
               <LangSwitcher current={l} hrefs={langHrefs} />
               <Link
                 href="/chat"
-                className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium whitespace-nowrap text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
                 Ask a question
               </Link>

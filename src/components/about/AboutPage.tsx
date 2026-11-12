@@ -108,7 +108,12 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
               <h1 className="font-display text-[2rem] leading-[1.08] text-balance text-foreground lg:text-[2.875rem]">
                 {c.title}
               </h1>
-              <p className="text-lg leading-relaxed text-pretty text-zinc-600 dark:text-zinc-300">
+              <p className="font-display text-[1.32rem] leading-[1.38] text-foreground lg:text-[1.55rem]">
+                {c.leadIntro}
+              </p>
+              {/* Justified, hyphenated in the page's language (article lang)
+                  so narrow screens don't open wide gaps between words. */}
+              <p className="hyphens-auto text-justify text-[15.5px] leading-[1.72] text-zinc-700 sm:text-[16.5px] dark:text-zinc-300">
                 {c.lead}
               </p>
               <div className="flex flex-wrap items-center gap-2 text-[13px] text-zinc-500 dark:text-zinc-400">
@@ -122,6 +127,7 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
                   </span>
                 ))}
               </div>
+              <p className="text-[13px] text-zinc-500 dark:text-zinc-400">{c.alsoKnownAs}</p>
             </div>
 
             {/* ── Where to start: one path per audience, outsiders first ── */}

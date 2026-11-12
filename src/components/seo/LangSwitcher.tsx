@@ -30,7 +30,8 @@ export function LangSwitcher({ current, hrefs }: LangSwitcherProps) {
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    // translate="no": a browser translating the page must not rewrite the language names.
+    <div ref={ref} className="relative" translate="no">
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
@@ -48,7 +49,9 @@ export function LangSwitcher({ current, hrefs }: LangSwitcherProps) {
           <circle cx="12" cy="12" r="10" />
           <path d="M12 2a14.5 14.5 0 0 1 0 20M12 2a14.5 14.5 0 0 0 0 20M2 12h20" />
         </svg>
-        <span>{current.toUpperCase()}</span>
+        {/* Phones: the short code (the header is tight); wider screens: the name. */}
+        <span className="sm:hidden">{current.toUpperCase()}</span>
+        <span className="hidden sm:inline">{LANG_LABELS[current]}</span>
         <svg
           className="h-3 w-3"
           viewBox="0 0 24 24"
@@ -62,7 +65,7 @@ export function LangSwitcher({ current, hrefs }: LangSwitcherProps) {
 
       {open && (
         <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[140px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-          {(["en", "es", "fr"] as const).map((lang) => {
+          {(["en", "fr", "es"] as const).map((lang) => {
             const isActive = lang === current;
             return isActive ? (
               <div

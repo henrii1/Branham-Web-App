@@ -45,7 +45,7 @@ We sincerely appreciate your feedback and suggestions as we continue improving t
 
 ## 🤝 Stay connected
 
-💬 Follow our WhatsApp channel for the daily Family Altar: [Join the channel](https://whatsapp.com/channel/0029VbE5R3qLI8YY3HEfmh0d)
+💬 Follow our WhatsApp channel for daily Christian growth: [Join the channel](https://whatsapp.com/channel/0029VbE5R3qLI8YY3HEfmh0d)
 📸 Instagram: [@branhamsermons.ai](https://www.instagram.com/branhamsermons.ai)
 👍 Facebook: [BranhamSermons.ai](https://www.facebook.com/share/1A2ybQezGf/)
 🎵 TikTok: [@branham.sermons.as](https://www.tiktok.com/@branham.sermons.as)

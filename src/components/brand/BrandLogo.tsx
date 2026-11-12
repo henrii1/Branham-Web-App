@@ -31,9 +31,10 @@ export function BrandLogo({
       />
       {showName && (
         <span
-          className={`font-display text-base leading-none font-semibold text-foreground ${nameClassName}`.trim()}
+          className={`font-display text-base leading-[1.05] font-semibold text-foreground ${nameClassName}`.trim()}
         >
-          BranhamSermons.ai
+          {/* Wraps as "Branham / Sermons.ai" when a narrow header needs it. */}
+          Branham<wbr />Sermons.ai
         </span>
       )}
     </>

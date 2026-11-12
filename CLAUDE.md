@@ -4,7 +4,7 @@ Guidance for agents working in this repository. The full design lives in `.curso
 
 ## Project Overview
 
-**Positioning and name.** The public name is **BranhamSermons.ai** everywhere visible; "Branham Sermons Assistant" / "Branham Sermons AI" stay only as `alternateName`s and keywords so existing search rankings carry over. The site is described in this order: an evangelism tool for anyone whatever they believe (Christianity Seen in Nature), then Bible study (Bible search, Questions of Faith, Family Altar), then a search of William Branham's sermons. The short and medium lines live in `src/lib/site/positioning.ts`; the long form is the About lead (`src/lib/about/content.ts`). New page copy should follow the same order.
+**Positioning and name.** The public name is **BranhamSermons.ai** everywhere visible; "Branham Sermons Assistant" / "Branham Sermons AI" stay only as `alternateName`s and keywords so existing search rankings carry over. The site is described in this order: an evangelism tool for anyone whatever they believe (Christianity Seen in Nature), then Bible study (Bible search, Questions of Faith, Family Altar), then a search of William Branham's sermons. The short and medium lines live in `src/lib/site/positioning.ts`; the long form is the About lead (`src/lib/about/content.ts`). New page copy should follow the same order. Every WhatsApp channel invitation (links page, About, end of the nature series, question 26, Family Altar, welcome email) is about **daily Christian growth** and posts on why Christianity is true. Languages are listed English, French, Spanish wherever readers pick one (`LangSwitcher`, the chat language pill, `LANGUAGES`, About).
 
 Branham Web App — Next.js 16 (App Router) + React 19 + Supabase frontend for `branhamsermons.ai`. It is the user-facing chat client; the **only** AI endpoint it calls is the Branham LLM API (a private Cloud Run service). All chat traffic is proxied through a same-origin server route so the API bearer token never enters the browser bundle.
 
@@ -392,7 +392,7 @@ For the two admin accounts only (`isAdminEmail()`, re-checked in every route und
 
 ## About page
 
-`/about` (+ es/fr): the long positioning lead, "Where to start" (one path per audience: exploring faith, studying the Bible, finding out about Brother Branham), the citation example, what it isn't (a church or a pastor; a replacement for the full sermons), and Stay connected (WhatsApp channel first, then email).
+`/about` (+ es/fr): the positioning lead as a serif standfirst (`leadIntro`) and a justified, hyphenated paragraph (the article's `lang` drives hyphenation), the old name as a small "Also known as" line, "Where to start" (one path per audience: exploring faith, studying the Bible, finding out about Brother Branham), the citation example, what it isn't (a church or a pastor; a replacement for the full sermons), and Stay connected (WhatsApp channel first, then email).
 
 ## Site footer and social links
 
