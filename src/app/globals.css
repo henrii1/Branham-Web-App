@@ -46,6 +46,10 @@
   --surface-sidebar: #24262b;
   --shadow-color: 2 6 23;
   --ring-color: #7c96ff;
+  /* Secondary text greys, a little lighter than Tailwind's on dark
+     backgrounds: zinc-500 text was ~3.6:1 against --background, now ~5:1. */
+  --color-zinc-400: oklch(77% 0.013 286);
+  --color-zinc-500: oklch(64% 0.015 286);
 }
 
 body {
