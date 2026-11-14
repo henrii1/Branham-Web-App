@@ -25,6 +25,10 @@ function applyTheme(theme: ThemePreference) {
   const root = document.documentElement;
   root.dataset.theme = theme;
   root.classList.toggle("dark", theme === "dark");
+}
+
+/** Remember an explicit choice (only then: light is the default). */
+function rememberTheme(theme: ThemePreference) {
   document.cookie = `${THEME_COOKIE_NAME}=${theme}; path=/; max-age=31536000; samesite=lax`;
 }
 
@@ -48,6 +52,7 @@ export function ThemeProvider({
   }, [theme]);
 
   const setTheme = useCallback((nextTheme: ThemePreference) => {
+    rememberTheme(nextTheme);
     setThemeState(nextTheme);
   }, []);
 

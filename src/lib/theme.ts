@@ -1,4 +1,9 @@
-export const THEME_COOKIE_NAME = "branham-theme";
+/**
+ * The theme a visitor chose (light is the default; dark only by choice).
+ * Renamed from "branham-theme", which was written automatically on every
+ * visit when dark was the default, so it never meant a choice.
+ */
+export const THEME_COOKIE_NAME = "branham-theme-choice";
 
 export const THEME_PREFERENCES = ["light", "dark"] as const;
 
@@ -10,7 +15,7 @@ export function isThemePreference(value: string | null | undefined): value is Th
 
 export function normalizeThemePreference(
   value: string | null | undefined,
-  fallback: ThemePreference = "dark",
+  fallback: ThemePreference = "light",
 ): ThemePreference {
   return isThemePreference(value) ? value : fallback;
 }

@@ -21,8 +21,27 @@ interface TypewriterRendererProps {
 export function TypewriterRenderer({
   markdown,
   chunkDelayMs = 120,
-  skipAnimation = false,
+  // Ready answers open in full: they're promised as instant, and a page that
+  // grows a paragraph at a time can't be scrolled until it finishes.
+  skipAnimation = true,
 }: TypewriterRendererProps) {
+  if (skipAnimation) return <FullAnswer markdown={markdown} />;
+  return <AnimatedAnswer markdown={markdown} chunkDelayMs={chunkDelayMs} />;
+}
+
+/** The whole answer at once (also in the server HTML), with a short fade-in. */
+function FullAnswer({ markdown }: { markdown: string }) {
+  const html = applyCitations(renderMarkdown(postprocessChatResponse(stripAnswerPrefix(markdown))));
+  return (
+    <div
+      className="chat-markdown prose prose-sm prose-zinc max-w-none break-words motion-safe:animate-[answer-in_.35s_ease-out] dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed prose-blockquote:border-l-zinc-300 dark:prose-blockquote:border-l-zinc-600"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+function AnimatedAnswer({ markdown, chunkDelayMs }: { markdown: string; chunkDelayMs: number }) {
+  const skipAnimation = false;
   const chunks = useRef<string[]>([]);
   const [visibleCount, setVisibleCount] = useState(0);
   const [complete, setComplete] = useState(skipAnimation);

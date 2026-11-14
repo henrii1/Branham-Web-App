@@ -20,7 +20,6 @@ import {
   fetchUserLanguage,
   updateUserLanguage,
   createConversation,
-  updateConversationKind,
   saveMessage,
   upsertRag,
   updateConversationAfterTurn,
@@ -41,15 +40,11 @@ import type { MessageRow, RagRow } from "@/lib/db/queries";
 import { ConversationSidebar } from "./ConversationSidebar";
 import { SourcesPanel } from "./SourcesPanel";
 import { ChatPanel } from "./ChatPanel";
+import { AnswerViewToggle } from "./AnswerViewToggle";
 import { Composer } from "./Composer";
-import { DragDivider } from "./DragDivider";
 import { AnonymousBanner } from "./AnonymousBanner";
 import { SensitiveUseBanner } from "./SensitiveUseBanner";
 import dynamic from "next/dynamic";
-const SearchModeModal = dynamic(
-  () => import("./SearchModeModal").then((m) => ({ default: m.SearchModeModal })),
-  { ssr: false },
-);
 import { LoginModal } from "./LoginModal";
 import { ShareModal } from "./ShareModal";
 import { OfflineModal } from "./OfflineModal";
@@ -57,23 +52,22 @@ import { SwipeAffordance } from "./SwipeAffordance";
 import { ReferencePopover } from "./ReferencePopover";
 import { WelcomeEmailTrigger } from "./WelcomeEmailTrigger";
 import { SidebarRail } from "./SidebarRail";
-import { TodayAltarCard } from "@/components/altar/TodayAltarCard";
 import { getChatStrings } from "@/lib/i18n/chatStrings";
 import { aboutHref } from "@/lib/about/content";
 import { altarHref } from "@/lib/altar/strings";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { natureFollowupNote, type FollowupFaqKind } from "@/lib/faq/groups";
 import { SearchModeToggle } from "./SearchModeToggle";
-import { defaultSearchMode, needsSearchModeChoice, saveSearchMode, type SearchMode } from "@/lib/chat/searchMode";
-import { markModeTried, readBrowserSearchMode, saveBrowserSearchMode, useBrowserSearchMode } from "@/lib/chat/searchModeTried";
+import { accountSearchMode, saveSearchMode, type SearchMode } from "@/lib/chat/searchMode";
+import { markModeTried, readBrowserSearchMode, saveBrowserSearchMode } from "@/lib/chat/searchModeTried";
+import { BibleWelcome, SermonWelcome } from "./ChatWelcome";
+import { closestAnswered, useBibleQuestions } from "@/lib/faq/useBibleQuestions";
+import { homeHref, readSiteLanguage, rememberSiteLanguage, isSiteLang } from "@/lib/site/siteLanguage";
 const AddToFaqModal = dynamic(
   () => import("@/components/admin/faq/AddToFaqModal").then((m) => ({ default: m.AddToFaqModal })),
   { ssr: false },
 );
 
-const DEFAULT_PANEL_RATIO = 0.4;
-// Bible search: the answer takes most of the height, passages a strip.
-const BIBLE_PANEL_RATIO = 0.15;
 const MAX_TITLE_LENGTH = 50;
 const MOBILE_ACTIVE_TAB_KEY = "branham-mobile-active-tab";
 // Mirror the server's per-message and per-window limits in
@@ -182,14 +176,15 @@ export function ChatShell({
   // Bible search: set ("bible") when this chat is in Bible search, or
   // started as a follow-up on a Bible or nature FAQ page; every turn is then
   // answered from Scripture (search_mode "bible"). Null = Sermon search.
-  const [sourceFaqKind, setSourceFaqKind] = useState<FollowupFaqKind | null>(null);
+  // A new chat starts in the mode its link names (?mode=), else Bible search
+  // until the reader's last-used mode is known (effect below).
+  const [sourceFaqKind, setSourceFaqKind] = useState<FollowupFaqKind | null>(() =>
+    !initialConversationId && (initialSearchMode ?? "bible") === "bible" ? "bible" : null,
+  );
   const searchMode: SearchMode = sourceFaqKind ? "bible" : "sermons";
-  // The account's default, used for every new chat.
-  const defaultModeRef = useRef<SearchMode>("sermons");
-  const [searchModeChosen, setSearchModeChosen] = useState(false);
-  // This browser's answer to the question (visitors who aren't signed in).
-  const browserSearchMode = useBrowserSearchMode();
-  const anonModeApplied = useRef(false);
+  // The reader's last-used mode, used for every new chat.
+  const defaultModeRef = useRef<SearchMode>("bible");
+  const modeApplied = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // ── Persistence state (logged-in only) ──────────────────────────────
@@ -215,16 +210,22 @@ export function ChatShell({
   const [chatReady, setChatReady] = useState(false);
   const [sourcesReady, setSourcesReady] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [panelRatio, setPanelRatio] = useState(DEFAULT_PANEL_RATIO);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Laptop windows narrower than 1280px start with the sidebar folded to its
+  // icon rail, so the answer (and passages) keep their room; it follows the
+  // window as it's resized, and the reader can still open it.
+  useEffect(() => {
+    const narrow = window.matchMedia("(max-width: 1279px)");
+    const apply = () => setSidebarCollapsed(narrow.matches);
+    apply();
+    narrow.addEventListener("change", apply);
+    return () => narrow.removeEventListener("change", apply);
+  }, []);
   const [answerViewMode, setAnswerViewMode] = useState<AnswerViewMode>(
     getStoredAnswerViewMode,
   );
 
   // ── Refs ────────────────────────────────────────────────────────────
-  const panelsRef = useRef<HTMLDivElement>(null);
-  const sourcesRef = useRef<HTMLDivElement>(null);
-  const chatAreaRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const activeTabRef = useRef<"chat" | "sources">(activeTab);
   const streamRagRef = useRef<RagData | null>(null);
@@ -234,6 +235,9 @@ export function ChatShell({
   const lastSendArgsRef = useRef<SendArgs | null>(null);
   const userLanguageRef = useRef<string | null>(null);
   const [chatLanguage, setChatLanguage] = useState<string>("en");
+  // Answered Bible questions in the chat's language: the Bible new-chat
+  // screen, the sermon screen's count, and "While you wait".
+  const bibleQuestions = useBibleQuestions(chatLanguage);
   const loadIdRef = useRef(0);
   const initialLoadDone = useRef(false);
   const pendingFollowUpRef = useRef<string | null>(null);
@@ -557,26 +561,11 @@ export function ChatShell({
     [isMobileViewport, user],
   );
 
-  // A mode link answers the question for a browser that hasn't been asked.
-  // Runs before the effects below, which read the browser's answer.
-  useEffect(() => {
-    if (initialSearchMode && readBrowserSearchMode() === null) saveBrowserSearchMode(initialSearchMode);
-  }, [initialSearchMode]);
-
   // ── Initial data load (runs once after auth resolves) ───────────────
   useEffect(() => {
     if (authLoading || !user || initialLoadDone.current) return;
     initialLoadDone.current = true;
 
-    defaultModeRef.current = defaultSearchMode(user);
-    // A new account whose browser already answered the question: keep that answer.
-    const carried = needsSearchModeChoice(user) ? readBrowserSearchMode() : null;
-    if (carried) {
-      defaultModeRef.current = carried;
-      setSearchModeChosen(true);
-      saveSearchMode(carried).catch((err) => console.error("Failed to save search mode:", err));
-    }
-    if (!initialConversationId && (initialSearchMode ?? defaultModeRef.current) === "bible") setSourceFaqKind("bible");
     loadConversations();
     fetchUserLanguage(user.id)
       .then((lang) => {
@@ -774,6 +763,8 @@ export function ChatShell({
                 streamRagRef.current = rag;
                 setRagData(rag);
                 setStreamingStatus("rag_received");
+                // Bible search has no passages panel: nothing to point at.
+                if (kind) break;
                 if (isMobileViewport) {
                   if (activeTabRef.current !== "sources") {
                     setSourcesReady(true);
@@ -987,7 +978,7 @@ export function ChatShell({
         query: content,
       };
       const lang = userLanguageRef.current;
-      if (!isAnonymous && lang && ["en", "es", "fr"].includes(lang)) {
+      if (lang && ["en", "es", "fr"].includes(lang)) {
         requestBody.user_language = lang;
       }
       if (conversationSummary) {
@@ -1003,6 +994,14 @@ export function ChatShell({
         requestBody.search_mode = "bible";
       }
       markModeTried(searchMode);
+      // The mode of a new chat's first question becomes the default for the next new chat.
+      if (messages.length === 0 && sourceFaqKind !== "nature") {
+        defaultModeRef.current = searchMode;
+        saveBrowserSearchMode(searchMode);
+        if (user && user.user_metadata?.search_mode !== searchMode) {
+          saveSearchMode(searchMode).catch((err) => console.error("Failed to save search mode:", err));
+        }
+      }
 
       const userMessage: Message = {
         id: generateId(),
@@ -1173,40 +1172,36 @@ export function ChatShell({
   );
 
   // ── Sermon search / Bible search ────────────────────────────────────
-  // Applies to this chat's next question; a saved chat keeps the switch.
-  const handleSearchModeChange = useCallback(
-    (mode: SearchMode) => {
-      const kind = mode === "bible" ? "bible" : null;
-      setSourceFaqKind(kind);
-      if (user && conversationExists) {
-        updateConversationKind(conversationId, kind).catch((err) =>
-          console.error("Failed to switch search mode:", err),
-        );
-      }
-    },
-    [user, conversationExists, conversationId],
-  );
+  // The switch shows only on a new chat; a chat keeps its mode for every follow-up.
+  const handleSearchModeChange = useCallback((mode: SearchMode) => {
+    setSourceFaqKind(mode === "bible" ? "bible" : null);
+  }, []);
 
-  const handleSearchModeChosen = useCallback(
-    (mode: SearchMode) => {
-      setSearchModeChosen(true);
-      defaultModeRef.current = mode;
-      if (messages.length === 0) setSourceFaqKind(mode === "bible" ? "bible" : null);
-    },
-    [messages.length],
-  );
-
-  // Not signed in: this browser's answer is the default for new chats.
+  // New chats open in the reader's last-used mode (account, else this
+  // browser), else Bible search. A mode link (?mode=) decides this first chat.
   useEffect(() => {
-    if (authLoading || user || !browserSearchMode || anonModeApplied.current) return;
-    anonModeApplied.current = true;
-    defaultModeRef.current = browserSearchMode;
-    if (!initialConversationId && (initialSearchMode ?? browserSearchMode) === "bible") setSourceFaqKind("bible");
-  }, [authLoading, user, browserSearchMode, initialConversationId, initialSearchMode]);
+    if (authLoading || modeApplied.current) return;
+    modeApplied.current = true;
+    const last: SearchMode = accountSearchMode(user ?? null) ?? readBrowserSearchMode() ?? "bible";
+    defaultModeRef.current = last;
+    if (!initialConversationId && !initialSearchMode) setSourceFaqKind(last === "bible" ? "bible" : null);
+  }, [authLoading, user, initialConversationId, initialSearchMode]);
 
-  // The answer panel grows in Bible search (desktop split).
+  // Not signed in: answers come in the site language (the switcher's pick,
+  // else the browser's language). Signed-in readers keep their profile's.
   useEffect(() => {
-    setPanelRatio(searchMode === "bible" ? BIBLE_PANEL_RATIO : DEFAULT_PANEL_RATIO);
+    if (authLoading || user || userLanguageRef.current) return;
+    const lang = readSiteLanguage();
+    userLanguageRef.current = lang;
+    setChatLanguage(lang);
+  }, [authLoading, user]);
+
+  // Bible search has no passages panel: keep phones on the answer.
+  useEffect(() => {
+    if (searchMode === "bible") {
+      setActiveTab("chat");
+      setSourcesReady(false);
+    }
   }, [searchMode]);
 
   // ── Chat language change ────────────────────────────────────────────
@@ -1214,6 +1209,7 @@ export function ChatShell({
     async (lang: string) => {
       userLanguageRef.current = lang;
       setChatLanguage(lang);
+      if (!user && isSiteLang(lang)) rememberSiteLanguage(lang);
       if (user) {
         try {
           await updateUserLanguage(user.id, lang);
@@ -1228,7 +1224,7 @@ export function ChatShell({
   // ── Auth loading skeleton ───────────────────────────────────────────
   if (authLoading) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-background">
+      <div className="app-screen flex h-dvh items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-sm text-zinc-400">
           <svg
             className="h-5 w-5 animate-spin"
@@ -1257,18 +1253,33 @@ export function ChatShell({
 
   // ── Render ──────────────────────────────────────────────────────────
   const strings = getChatStrings(chatLanguage);
+  const isBible = searchMode === "bible";
+  const isNewChat = messages.length === 0 && !conversationExists && !conversationLoading;
+  const stages: [string, string, string] | undefined = isBible ? [strings.stageSearching, strings.stageStructuring, strings.stageFinalizing] : undefined;
+  const lastUserQuestion = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const waiting = streamingStatus === "connecting" || streamingStatus === "rag_received";
+  const related = isBible && waiting && bibleQuestions ? closestAnswered(bibleQuestions.all, lastUserQuestion) : null;
+  const waitTip = related ? (
+    <>
+      {strings.whileYouWait}{" "}
+      <Link prefetch={false} href={chatLanguage === "en" ? `/q/${related.slug}` : `/${chatLanguage}/q/${related.slug}`} target="_blank" className="font-medium text-[var(--home-meadow)] hover:underline dark:text-[var(--home-leaf)]">
+        {related.question}
+      </Link>{" "}
+      {strings.isAlreadyAnswered}
+    </>
+  ) : undefined;
+  const welcome = isBible ? (
+    <BibleWelcome strings={strings} lang={chatLanguage} questions={bibleQuestions} />
+  ) : (
+    <SermonWelcome strings={strings} lang={chatLanguage} bibleCount={bibleQuestions?.all.length ?? null} onAsk={(q) => void handleSendMessage(q)} />
+  );
   const faqHref = chatLanguage === "en" ? "/faq" : `/${chatLanguage}/faq`;
   const aboutPageHref = aboutHref(chatLanguage);
   const altarPageHref = altarHref(chatLanguage);
 
   return (
-    <div className="flex h-dvh bg-background">
+    <div className="app-screen flex h-dvh bg-background">
       <WelcomeEmailTrigger enabled={triggerWelcomeEmail} />
-      {/* Asked once: new accounts, and visitors whose browser hasn't answered
-          (null; undefined until hydrated, so nothing flashes). */}
-      {!authLoading && !searchModeChosen && !initialSearchMode && browserSearchMode === null && (user ? needsSearchModeChoice(user) : true) && (
-        <SearchModeModal language={chatLanguage} signedIn={!!user} onChosen={handleSearchModeChosen} />
-      )}
 
       {/* ── Desktop sidebar ── */}
       <aside
@@ -1376,6 +1387,7 @@ export function ChatShell({
           strings={strings}
           faqHref={faqHref}
           altarHref={altarPageHref}
+          showTabs={!isBible}
         />
 
         {/* ── Sensitive-inquiry disclaimer (all users, always visible) ── */}
@@ -1384,12 +1396,30 @@ export function ChatShell({
         {/* ── Anonymous banner (desktop only) ── */}
         {isAnonymous && (
           <div className="hidden lg:block">
-            <AnonymousBanner strings={strings} faqHref={faqHref} />
+            <AnonymousBanner strings={strings} faqHref={faqHref} next={`/chat?mode=${searchMode}`} />
           </div>
         )}
 
         {/* ── Desktop share bar ── */}
-        <div className="hidden items-center justify-end border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2 lg:flex dark:border-zinc-800">
+        <div className="hidden items-center justify-between border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2 lg:flex dark:border-zinc-800">
+          <Link
+            prefetch={false}
+            href={homeHref(chatLanguage)}
+            className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m6-6-6 6 6 6" />
+            </svg>
+            {strings.homeLink}
+          </Link>
+          {!isBible && (
+            <AnswerViewToggle
+              mode={answerViewMode}
+              onChange={handleAnswerViewModeChange}
+              fullLabel={strings.answerViewFullLabel}
+              quotesLabel={strings.answerViewQuotesLabel}
+            />
+          )}
           <button
             type="button"
             onClick={() => conversationId && handleShareConversation(conversationId)}
@@ -1407,59 +1437,47 @@ export function ChatShell({
           </button>
         </div>
 
-        {/* ── Desktop: two-panel layout ── */}
-        <div
-          ref={panelsRef}
-          className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex"
-        >
-          <div
-            ref={sourcesRef}
-            className="min-h-0 overflow-hidden border-b border-zinc-200 dark:border-zinc-800"
-            style={{ flex: `${panelRatio} 0 0` }}
-          >
-            <SourcesPanel
-              ragData={ragData}
-              streamingStatus={streamingStatus}
-              passagesTitle={strings.passagesTitle}
-              passagesDescription={strings.passagesDescription}
-              passagesSectionHeader={strings.passagesSectionHeader}
-            />
-          </div>
-
-          <DragDivider
-            containerRef={panelsRef}
-            sourcesRef={sourcesRef}
-            chatRef={chatAreaRef}
-            onDragEnd={setPanelRatio}
-          />
-
-          <div
-            ref={chatAreaRef}
-            className="min-h-0 overflow-hidden"
-            style={{ flex: `${1 - panelRatio} 0 0` }}
-          >
+        {/* ── Desktop: the answer, with the passages in a column on the
+            right in sermon search (Bible search has no passages panel). ── */}
+        <div className="hidden min-h-0 flex-1 overflow-hidden lg:flex">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <ChatPanel
               messages={messages}
               streamingStatus={streamingStatus}
               streamBuffer={streamBuffer}
               error={error}
               isLoading={conversationLoading}
-              welcomeDescription={searchMode === "bible" ? strings.welcomeDescriptionBible : strings.welcomeDescription}
+              welcomeDescription={isBible ? strings.welcomeDescriptionBible : strings.welcomeDescription}
               finalizingText={strings.finalizingResponse}
-              mode={answerViewMode}
+              mode={isBible ? "full" : answerViewMode}
               onModeChange={handleAnswerViewModeChange}
               answerViewFullLabel={strings.answerViewFullLabel}
               answerViewQuotesLabel={strings.answerViewQuotesLabel}
               answerViewQuotesEmpty={strings.answerViewQuotesEmpty}
-                  welcomeExtra={<TodayAltarCard language={chatLanguage} />}
+              welcome={welcome}
+              stages={stages}
+              waitTip={waitTip}
+              showAnswerView={!isBible}
             />
           </div>
+          {!isBible && (
+            <aside className="w-[36%] max-w-[34rem] min-w-[19rem] shrink-0 overflow-hidden border-l border-zinc-200 dark:border-zinc-800">
+              <SourcesPanel
+                ragData={ragData}
+                streamingStatus={streamingStatus}
+                passagesTitle={strings.passagesTitle}
+                passagesDescription={strings.passagesEmpty}
+                passagesSectionHeader={strings.passagesSectionHeader}
+                language={chatLanguage}
+              />
+            </aside>
+          )}
         </div>
 
         {/* ── Mobile: sliding tab panels ── */}
         {/* Both panels sit side-by-side in a 200%-wide inner div.           translateX(0%)  → Chat visible                                    translateX(-50%) → Sources visible (−50% of 200% = −100vw)       During a drag, dragX shifts the position live so panels glide.    touch-action:pan-y lets the browser handle vertical scroll inside     each panel without interfering with our horizontal swipe detection. */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
-          {isAnonymous && <AnonymousBanner strings={strings} faqHref={faqHref} />}
+          {isAnonymous && <AnonymousBanner strings={strings} faqHref={faqHref} next={`/chat?mode=${searchMode}`} />}
 
           <div className="relative flex-1 overflow-hidden">
             {/* transform/transition are managed imperatively via mobileSliderRef */}
@@ -1472,10 +1490,11 @@ export function ChatShell({
                 willChange: "transform",
                 touchAction: "pan-y",
               }}
-              onTouchStart={handleSwipeTouchStart}
-              onTouchMove={handleSwipeTouchMove}
-              onTouchEnd={handleSwipeTouchEnd}
-              onTouchCancel={handleSwipeTouchEnd}
+              // Bible search has no passages tab to swipe to.
+              onTouchStart={isBible ? undefined : handleSwipeTouchStart}
+              onTouchMove={isBible ? undefined : handleSwipeTouchMove}
+              onTouchEnd={isBible ? undefined : handleSwipeTouchEnd}
+              onTouchCancel={isBible ? undefined : handleSwipeTouchEnd}
             >
               {/* Chat — 50% of 200% inner = 100% of viewport */}
               <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
@@ -1485,25 +1504,32 @@ export function ChatShell({
                   streamBuffer={streamBuffer}
                   error={error}
                   isLoading={conversationLoading}
-                  welcomeDescription={searchMode === "bible" ? strings.welcomeDescriptionBible : strings.welcomeDescription}
+                  welcomeDescription={isBible ? strings.welcomeDescriptionBible : strings.welcomeDescription}
                   finalizingText={strings.finalizingResponse}
-                  mode={answerViewMode}
+                  mode={isBible ? "full" : answerViewMode}
                   onModeChange={handleAnswerViewModeChange}
                   answerViewFullLabel={strings.answerViewFullLabel}
                   answerViewQuotesLabel={strings.answerViewQuotesLabel}
                   answerViewQuotesEmpty={strings.answerViewQuotesEmpty}
-                  welcomeExtra={<TodayAltarCard language={chatLanguage} />}
+                  welcome={welcome}
+                  stages={stages}
+                  waitTip={waitTip}
+                  showAnswerView={!isBible}
                 />
               </div>
               {/* Sources — 50% of 200% inner = 100% of viewport */}
               <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
-                <SourcesPanel
-                  ragData={ragData}
-                  streamingStatus={streamingStatus}
-                  passagesTitle={strings.passagesTitle}
-                  passagesDescription={strings.passagesDescription}
-                  passagesSectionHeader={strings.passagesSectionHeader}
-                />
+                {/* Bible search has no passages: don't build the hidden panel */}
+                {!isBible && (
+                  <SourcesPanel
+                    ragData={ragData}
+                    streamingStatus={streamingStatus}
+                    passagesTitle={strings.passagesTitle}
+                    passagesDescription={strings.passagesEmpty}
+                    passagesSectionHeader={strings.passagesSectionHeader}
+                    language={chatLanguage}
+                  />
+                )}
               </div>
             </div>
 
@@ -1511,7 +1537,7 @@ export function ChatShell({
                 whichever edge points toward the ready-but-unread tab.
                 Conditionally rendered so the active animation runs fresh
                 each time the affordance becomes applicable. */}
-            {activeTab === "chat" && sourcesReady && (
+            {!isBible && activeTab === "chat" && sourcesReady && (
               <SwipeAffordance
                 direction="right"
                 label={strings.viewPassages}
@@ -1528,8 +1554,8 @@ export function ChatShell({
           </div>
         </div>
 
-        {/* New-topic nudge — visible only once there are messages */}
-        {messages.length > 0 && (
+        {/* New-topic nudge — visible only once there are messages (sermon search: it's about passages) */}
+        {messages.length > 0 && !isBible && (
           <div className="bg-[var(--surface-base)] px-4 pb-1.5 pt-1 text-center">
             <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
               {strings.switchingTopics}{" "}
@@ -1547,15 +1573,21 @@ export function ChatShell({
 
         {/* ── Chat language indicator (all users) ── */}
         <div className="bg-[var(--surface-base)] px-4 pb-1 pt-1.5">
+          {isNewChat && isBible && (
+            <div className="mx-auto mb-2 hidden max-w-3xl items-center gap-3 text-[13px] lg:flex text-zinc-500 before:flex-1 before:border-t before:border-zinc-200 after:flex-1 after:border-t after:border-zinc-200 dark:text-zinc-400 dark:before:border-zinc-700 dark:after:border-zinc-700">
+              {strings.orAskOwn}
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
-            <SearchModeToggle
+            {/* Only on a new chat: a chat keeps its mode for every follow-up. */}
+            {isNewChat && <SearchModeToggle
               mode={searchMode}
               onChange={handleSearchModeChange}
               sermonsLabel={strings.searchModeSermons}
               bibleLabel={strings.searchModeBible}
               groupLabel={strings.searchModeLabel}
               disabled={streamingStatus === "connecting" || streamingStatus === "rag_received" || streamingStatus === "streaming"}
-            />
+            />}
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
                 {strings.respondingIn}
@@ -1566,7 +1598,7 @@ export function ChatShell({
               />
             </div>
           </div>
-          {strings.sermonCountNote ? (
+          {strings.sermonCountNote && !isBible ? (
             <p className="mt-0.5 text-center text-[10px] text-zinc-400 dark:text-zinc-500">
               {strings.sermonCountNote}
             </p>
@@ -1580,13 +1612,17 @@ export function ChatShell({
           streamingStatus={streamingStatus}
           placeholder={searchMode === "bible" ? strings.askPlaceholderBible : strings.askPlaceholder}
           waitingPlaceholder={strings.waitingPlaceholder}
-          note={sourceFaqKind === "nature" ? natureFollowupNote(chatLanguage) : undefined}
+          note={sourceFaqKind === "nature" ? natureFollowupNote(chatLanguage) : isNewChat && isBible ? strings.bibleWaitNote : undefined}
         />
       </div>
 
       {/* ── Login modal ── */}
       {showLoginModal && (
-        <LoginModal onClose={() => setShowLoginModal(false)} />
+        <LoginModal
+          onClose={() => setShowLoginModal(false)}
+          // Back to the same search (Bible or sermons) after sign-up and the profile step.
+          next={`/chat?mode=${searchMode}`}
+        />
       )}
 
       {/* ── Add to FAQ (admin only) ── */}
@@ -1751,6 +1787,7 @@ interface MobileHeaderProps {
   strings: ReturnType<typeof getChatStrings>;
   faqHref: string;
   altarHref: string;
+  showTabs?: boolean;
 }
 
 function MobileHeader({
@@ -1766,6 +1803,7 @@ function MobileHeader({
   strings,
   faqHref,
   altarHref,
+  showTabs = true,
 }: MobileHeaderProps) {
   // Show notification for the tab that has new content but is not currently active.
   const sourcesNotif = activeTab !== "sources" && sourcesReady;
@@ -1795,7 +1833,7 @@ function MobileHeader({
               />
             </svg>
           </button>
-          <BrandLogo href="/chat" size={30} showName={false} />
+          <BrandLogo href="/" size={30} showName={false} />
         </div>
 
         <div className="flex items-center gap-2">
@@ -1856,8 +1894,8 @@ function MobileHeader({
         </div>
       </div>
 
-      {/* Tab bar */}
-      <nav
+      {/* Tab bar (sermon search only: Bible search has no passages) */}
+      {showTabs && <nav
         className="flex border-t border-zinc-100 dark:border-zinc-800"
         role="tablist"
         aria-label="Chat panels"
@@ -1941,7 +1979,7 @@ function MobileHeader({
             </span>
           )}
         </button>
-      </nav>
+      </nav>}
 
     </header>
   );

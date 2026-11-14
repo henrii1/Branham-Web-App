@@ -164,7 +164,7 @@ export function Composer({
           type="button"
           onClick={handleSubmit}
           disabled={isDisabled || !value.trim()}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--home-meadow)] text-white transition-colors hover:bg-[#265a39] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
           aria-label="Send message"
         >
           <svg

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { notFound } from "next/navigation";
-import { BrandLogo } from "@/components/brand/BrandLogo";
 import { fetchFaqGroups, fetchFaqListItems } from "@/lib/db/seo-queries";
 import { groupFaqItems } from "@/lib/faq/groups";
 import { FaqGroups } from "@/components/seo/FaqGroups";
-import { LangSwitcher } from "@/components/seo/LangSwitcher";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
 const SITE_URL = "https://branhamsermons.ai";
@@ -104,23 +103,10 @@ export default async function LocalizedFaqPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="flex h-dvh flex-col overflow-hidden bg-background">
-        <header className="shrink-0 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 xl:max-w-[56rem]">
-            <BrandLogo href="/" priority />
-            <div className="flex items-center gap-2">
-              <LangSwitcher current={l} hrefs={langHrefs} />
-              <Link
-                href="/chat"
-                className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium whitespace-nowrap text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                Ask a question
-              </Link>
-            </div>
-          </div>
-        </header>
+      <div className="flex min-h-dvh flex-col bg-background">
+        <SiteHeader lang={l} langHrefs={langHrefs} tone="night" />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1">
           <div className="mx-auto max-w-4xl px-4 py-10 xl:max-w-[56rem]">
             <h1 className="font-display mb-2 text-3xl text-foreground lg:text-4xl">
               {LANG_META[l].label}

@@ -12,7 +12,7 @@ interface BrandLogoProps {
 }
 
 export function BrandLogo({
-  href = "/chat",
+  href = "/",
   showName = true,
   size = 36,
   priority = false,

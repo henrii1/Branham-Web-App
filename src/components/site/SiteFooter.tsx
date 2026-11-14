@@ -1,17 +1,19 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { CONTACT_EMAIL, SOCIAL_LINKS } from "@/lib/site/social";
+import { CONTACT_EMAIL, SOCIAL_LINKS, YOUTUBE_CHANNEL_URL } from "@/lib/site/social";
+import { seriesPagePath } from "@/lib/faq/series";
+import { bibleQuestionsHref } from "@/lib/site/home";
 import { altarHref } from "@/lib/altar/strings";
 import { aboutHref } from "@/lib/about/content";
-import { FacebookIcon, InstagramIcon, MailIcon, TikTokIcon, WhatsAppIcon, XIcon } from "./SocialIcons";
+import { FacebookIcon, InstagramIcon, MailIcon, TikTokIcon, WhatsAppIcon, XIcon, YouTubeIcon } from "./SocialIcons";
 
 type FooterLang = "en" | "es" | "fr";
 
-const COPY: Record<FooterLang, { about: string; faq: string; altar: string; contact: string; follow: string; site: string }> = {
-  en: { about: "About", faq: "Questions of Faith", altar: "Family Altar", contact: "Contact us", follow: "Follow us", site: "Site" },
-  es: { about: "Acerca de", faq: "Preguntas de fe", altar: "Altar Familiar", contact: "Contáctenos", follow: "Síganos", site: "Sitio" },
-  fr: { about: "À propos", faq: "Questions de foi", altar: "Autel familial", contact: "Nous contacter", follow: "Suivez-nous", site: "Site" },
+const COPY: Record<FooterLang, { about: string; faq: string; altar: string; contact: string; follow: string; site: string; nature: string; bible: string }> = {
+  en: { nature: "Christianity Seen in Nature", bible: "Bible Questions", about: "About", faq: "Questions of Faith", altar: "Family Altar", contact: "Contact us", follow: "Follow us", site: "Site" },
+  es: { nature: "El cristianismo visto en la naturaleza", bible: "Preguntas bíblicas", about: "Acerca de", faq: "Preguntas de fe", altar: "Altar Familiar", contact: "Contáctenos", follow: "Síganos", site: "Sitio" },
+  fr: { nature: "Le christianisme vu dans la nature", bible: "Questions bibliques", about: "À propos", faq: "Questions de foi", altar: "Autel familial", contact: "Nous contacter", follow: "Suivez-nous", site: "Site" },
 };
 
 const prefix = (lang: FooterLang) => (lang === "en" ? "" : `/${lang}`);
@@ -31,6 +33,7 @@ export function SiteFooter({ language }: { language: string }) {
     { label: "Facebook", href: SOCIAL_LINKS.facebook, icon: <FacebookIcon />, external: true },
     { label: "TikTok", href: SOCIAL_LINKS.tiktok, icon: <TikTokIcon />, external: true },
     { label: "X", href: SOCIAL_LINKS.x, icon: <XIcon />, external: true },
+    { label: "YouTube", href: YOUTUBE_CHANNEL_URL, icon: <YouTubeIcon />, external: true },
   ];
 
   return (
@@ -39,7 +42,7 @@ export function SiteFooter({ language }: { language: string }) {
           page links centred, a small sign-off last; the brand name is left
           to the page header. sm+: brand and links left, icons right. */}
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-5 px-4 pt-7 pb-8 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:py-7 xl:max-w-[56rem]">
-        <nav aria-label={c.follow} className="order-1 grid w-full max-w-xs grid-cols-6 justify-items-center gap-1 sm:order-2 sm:flex sm:w-auto sm:max-w-none sm:gap-1.5">
+        <nav aria-label={c.follow} className="order-1 grid w-full max-w-sm grid-cols-7 justify-items-center gap-1 sm:order-2 sm:flex sm:w-auto sm:max-w-none sm:gap-1.5">
           {icons.map((i) => (
             <a
               key={i.label}
@@ -57,12 +60,14 @@ export function SiteFooter({ language }: { language: string }) {
         <div className="order-2 flex flex-col items-center gap-3 sm:order-1 sm:items-start sm:gap-2.5">
           {/* Wrapper does the hiding: BrandLogo sets its own inline-flex. */}
           <div className="hidden sm:block">
-            <BrandLogo href="/" size={28} />
+            <BrandLogo href={lang === "en" ? "/" : `/${lang}`} size={28} />
           </div>
           <nav aria-label={c.site} className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-[13.5px] text-zinc-600 sm:justify-start sm:gap-x-4 sm:text-[13px] sm:text-zinc-500 dark:text-zinc-400">
-            <Link prefetch={false} href={aboutHref(lang)} className="hover:text-foreground">{c.about}</Link>
-            <Link prefetch={false} href={`${prefix(lang)}/faq`} className="hover:text-foreground">{c.faq}</Link>
+            <Link prefetch={false} href={seriesPagePath(lang)} className="hover:text-foreground">{c.nature}</Link>
+            <Link prefetch={false} href={bibleQuestionsHref(lang)} className="hover:text-foreground">{c.bible}</Link>
             <Link prefetch={false} href={altarHref(lang)} className="hover:text-foreground">{c.altar}</Link>
+            <Link prefetch={false} href={`${prefix(lang)}/faq`} className="hover:text-foreground">{c.faq}</Link>
+            <Link prefetch={false} href={aboutHref(lang)} className="hover:text-foreground">{c.about}</Link>
           </nav>
           <small className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
             {/* eslint-disable-next-line @next/next/no-img-element */}

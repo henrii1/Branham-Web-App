@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 
 // Minimal types for the Web Speech API — not in all TS DOM lib versions.
 interface SpeechRecognitionResult {
@@ -35,6 +35,8 @@ function getSpeechRecognitionCtor():
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 }
 
+const noSubscribe = () => () => {};
+
 interface UseVoiceInputOptions {
   onInterimResult: (transcript: string) => void;
   onFinalResult: (transcript: string) => void;
@@ -56,11 +58,18 @@ export function useVoiceInput({
   // Keep callbacks in refs so startRecording's closure never goes stale.
   const onInterimRef = useRef(onInterimResult);
   const onFinalRef = useRef(onFinalResult);
-  onInterimRef.current = onInterimResult;
-  onFinalRef.current = onFinalResult;
+  useLayoutEffect(() => {
+    onInterimRef.current = onInterimResult;
+    onFinalRef.current = onFinalResult;
+  });
 
   const recognitionRef = useRef<WebSpeechRecognition | null>(null);
-  const isSupported = !!getSpeechRecognitionCtor();
+  // false on the server and during hydration (so the HTML matches), then the browser's answer
+  const isSupported = useSyncExternalStore(
+    noSubscribe,
+    () => !!getSpeechRecognitionCtor(),
+    () => false,
+  );
 
   const stopRecording = useCallback(() => {
     recognitionRef.current?.stop();

@@ -38,11 +38,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   return [
+    // The home page (evangelism first), in each language.
+    ...(["", "/fr", "/es"] as const).map((path) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: path ? 0.9 : 1.0,
+    })),
     {
       url: `${SITE_URL}/chat`,
       lastModified: new Date(),
       changeFrequency: "weekly",
-      priority: 1.0,
+      priority: 0.9,
     },
     {
       url: `${SITE_URL}/faq`,
@@ -75,6 +82,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     // The Christianity Seen in Nature series page.
     ...(["/faq/nature", "/es/faq/nature", "/fr/faq/nature"] as const).map((path) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
+    // Every Bible question by topic.
+    ...(["/faq/bible", "/es/faq/bible", "/fr/faq/bible"] as const).map((path) => ({
       url: `${SITE_URL}${path}`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,

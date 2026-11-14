@@ -6,16 +6,19 @@ import type { ChatStrings } from "@/lib/i18n/chatStrings";
 interface AnonymousBannerProps {
   strings: ChatStrings;
   faqHref: string;
+  /** Where sign-up returns to (the same search). */
+  next?: string;
 }
 
-export function AnonymousBanner({ strings, faqHref }: AnonymousBannerProps) {
+/** Guest notice: one compact row on wide screens so the chat keeps its height. */
+export function AnonymousBanner({ strings, faqHref, next }: AnonymousBannerProps) {
   return (
-    <div className="px-4 py-3">
-      <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-[var(--surface-soft)] px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+    <div className="px-3 py-2 sm:px-4">
+      <div className="flex flex-row items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-[var(--surface-soft)] px-3 py-2 shadow-sm sm:px-4 dark:border-zinc-700">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--home-meadow)] text-white dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)]">
             <svg
-              className="h-4.5 w-4.5"
+              className="h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.8}
@@ -28,28 +31,24 @@ export function AnonymousBanner({ strings, faqHref }: AnonymousBannerProps) {
               />
             </svg>
           </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              {strings.guestHeading}
-            </p>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {strings.guestSubtext}
-            </p>
-          </div>
+          <p className="min-w-0 text-[13px] leading-snug sm:text-sm">
+            <span className="font-medium text-foreground">{strings.guestHeading}</span>{" "}
+            <span className="hidden text-zinc-500 sm:inline dark:text-zinc-400">{strings.guestSubtext}</span>
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             prefetch={false}
             href={faqHref}
-            className="rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-3 py-2 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="hidden rounded-xl border border-zinc-200 bg-[var(--surface-base)] px-3 py-2 text-xs sm:inline-flex font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             {strings.popularQuestions}
           </Link>
           <Link
             prefetch={false}
-            href="/signup"
-            className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+            className="rounded-xl bg-[var(--home-meadow)] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#265a39] dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
           >
             {strings.signUp}
           </Link>

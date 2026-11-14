@@ -4,11 +4,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
 import { TodayVerse } from "@/components/site/TodayVerse";
-import { FacebookIcon, InstagramIcon, MailIcon, TikTokIcon, WhatsAppIcon, XIcon } from "@/components/site/SocialIcons";
+import { FacebookIcon, InstagramIcon, MailIcon, TikTokIcon, WhatsAppIcon, XIcon, YouTubeIcon } from "@/components/site/SocialIcons";
 import { aboutHref } from "@/lib/about/content";
 import { seriesPagePath } from "@/lib/faq/series";
-import { BIBLE_QUESTIONS_ANCHOR } from "@/lib/faq/groups";
-import { CONTACT_EMAIL, SOCIAL_LINKS, WHATSAPP_CHANNEL_URL } from "@/lib/site/social";
+import { bibleQuestionsHref, chatHref } from "@/lib/site/home";
+import { homeHref } from "@/lib/site/siteLanguage";
+import { CONTACT_EMAIL, SOCIAL_LINKS, WHATSAPP_CHANNEL_URL, YOUTUBE_CHANNEL_URL } from "@/lib/site/social";
 import { LINKS_COPY, linksHref, type LinksLang } from "@/lib/site/links";
 
 const SITE_URL = "https://branhamsermons.ai";
@@ -31,7 +32,7 @@ const icon = "h-[18px] w-[18px]";
 
 function PathIcon({ children }: { children: ReactNode }) {
   return (
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--surface-soft)] text-[var(--series-accent)]">
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--home-chip)] text-[var(--home-chip-text)]">
       <svg className={icon} fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
         {children}
       </svg>
@@ -47,8 +48,7 @@ function PathIcon({ children }: { children: ReactNode }) {
  */
 export function LinksPage({ lang, natureCount }: { lang: LinksLang; natureCount: number }) {
   const c = LINKS_COPY[lang];
-  const prefix = lang === "en" ? "" : `/${lang}`;
-  const paths: { title: string; note: string; href: string; icon: ReactNode }[] = [
+  const paths: { title: string; note: string; href: string; icon: ReactNode; external?: boolean }[] = [
     {
       title: c.natureTitle,
       note: c.natureNote(natureCount),
@@ -56,15 +56,21 @@ export function LinksPage({ lang, natureCount }: { lang: LinksLang; natureCount:
       icon: <path strokeLinecap="round" strokeLinejoin="round" d="M5 19c9 0 14-5 14-14-9 0-14 5-14 14Zm0 0 8-8" />,
     },
     {
-      title: c.bibleTitle,
-      note: c.bibleNote,
-      href: "/chat?mode=bible",
-      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.5C10.5 5.3 8.4 4.75 5 4.75v13c3.4 0 5.5.55 7 1.75m0-13c1.5-1.2 3.6-1.75 7-1.75v13c-3.4 0-5.5.55-7 1.75m0-13v13" />,
+      title: c.videosTitle,
+      note: c.videosNote,
+      // the home page's films section: our own films until the channel has videos, then the most-liked ones
+      href: `${homeHref(lang)}#videos`,
+      icon: (
+        <>
+          <rect x="3.75" y="6" width="16.5" height="12" rx="3" />
+          <path strokeLinejoin="round" d="m10.5 9.75 4 2.25-4 2.25v-4.5Z" />
+        </>
+      ),
     },
     {
       title: c.faqTitle,
       note: c.faqNote,
-      href: `${prefix}/faq#${BIBLE_QUESTIONS_ANCHOR}`,
+      href: bibleQuestionsHref(lang),
       icon: (
         <>
           <circle cx="12" cy="12" r="8.25" />
@@ -73,9 +79,15 @@ export function LinksPage({ lang, natureCount }: { lang: LinksLang; natureCount:
       ),
     },
     {
+      title: c.bibleTitle,
+      note: c.bibleNote,
+      href: chatHref("bible"),
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.5C10.5 5.3 8.4 4.75 5 4.75v13c3.4 0 5.5.55 7 1.75m0-13c1.5-1.2 3.6-1.75 7-1.75v13c-3.4 0-5.5.55-7 1.75m0-13v13" />,
+    },
+    {
       title: c.sermonsTitle,
       note: c.sermonsNote,
-      href: "/chat?mode=sermons",
+      href: chatHref("sermons"),
       icon: (
         <>
           <circle cx="11" cy="11" r="6" />
@@ -89,29 +101,37 @@ export function LinksPage({ lang, natureCount }: { lang: LinksLang; natureCount:
     { label: "Facebook", href: SOCIAL_LINKS.facebook, icon: <FacebookIcon /> },
     { label: "TikTok", href: SOCIAL_LINKS.tiktok, icon: <TikTokIcon /> },
     { label: "X", href: SOCIAL_LINKS.x, icon: <XIcon /> },
+    { label: "YouTube", href: YOUTUBE_CHANNEL_URL, icon: <YouTubeIcon /> },
     { label: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}`, icon: <MailIcon /> },
   ];
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
-      <main lang={lang} className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-[28rem] flex-col px-4 pt-5 pb-10">
-        <div className="flex justify-end">
-          <LangSwitcher current={lang} hrefs={{ en: linksHref("en"), es: linksHref("es"), fr: linksHref("fr") }} />
+    <div className="flex min-h-dvh flex-col bg-[var(--home-day)]">
+      <main lang={lang} className="flex-1">
+        {/* The home page's night sky, so the bio link and the site look like one place. */}
+        <div className="relative overflow-hidden bg-[var(--home-night)] text-[#edf0e8]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/home/night-sky-sm.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[60%_35%] opacity-70" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,29,22,.35)_0%,rgba(11,29,22,.6)_60%,var(--home-night)_100%)]" />
+          <div className="relative mx-auto flex w-full max-w-[28rem] flex-col px-4 pt-5 pb-9">
+            <div className="flex justify-end [&_button]:!border-white/30 [&_button]:!text-[#edf0e8] [&_button:hover]:!bg-white/10">
+              <LangSwitcher current={lang} hrefs={{ en: linksHref("en"), es: linksHref("es"), fr: linksHref("fr") }} />
+            </div>
+            <header className="mt-2 flex flex-col items-center text-center">
+              <Image src="/logo.png" alt="" width={76} height={76} priority className="h-[76px] w-[76px] rounded-[22px] bg-white p-1.5 shadow-sm" />
+              <h1 className="font-display mt-4 text-[2rem] leading-none">BranhamSermons.ai</h1>
+              <p className="mt-2.5 max-w-[21rem] text-[15px] leading-snug text-pretty text-[#edf0e8]/85">{c.tagline}</p>
+            </header>
+          </div>
         </div>
-
-        <header className="mt-2 flex flex-col items-center text-center">
-          <Image src="/logo.png" alt="" width={76} height={76} priority className="h-[76px] w-[76px] rounded-[22px] bg-white p-1.5 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700" />
-          <h1 className="font-display mt-4 text-[2rem] leading-none text-foreground">BranhamSermons.ai</h1>
-          <p className="mt-2.5 max-w-[21rem] text-[15px] leading-snug text-pretty text-zinc-600 dark:text-zinc-300">{c.tagline}</p>
-        </header>
+        <div className="mx-auto flex w-full max-w-[28rem] flex-col px-4 pb-10">
 
         {/* The main way to stay connected. */}
         <a
           href={WHATSAPP_CHANNEL_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-6 flex items-center gap-3 rounded-2xl bg-[#1f7a4c] px-4 py-3.5 text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f7a4c]"
+          className="-mt-5 flex items-center gap-3 rounded-2xl bg-[#1f7a4c] shadow-lg shadow-black/20 relative px-4 py-3.5 text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f7a4c]"
         >
           <WhatsAppIcon className="h-6 w-6 shrink-0" />
           <span className="flex min-w-0 flex-col">
@@ -128,6 +148,7 @@ export function LinksPage({ lang, natureCount }: { lang: LinksLang; natureCount:
               <li key={p.href} className="border-b border-zinc-200 dark:border-zinc-800">
                 <Link
                   href={p.href}
+                  {...(p.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   className="group flex items-center gap-3.5 py-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--series-accent)]"
                 >
                   <PathIcon>{p.icon}</PathIcon>

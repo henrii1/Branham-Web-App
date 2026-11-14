@@ -1,5 +1,6 @@
 import { AuthForm } from "@/components/auth/AuthForm";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export default async function LoginPage({
   searchParams,
@@ -14,8 +15,9 @@ export default async function LoginPage({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <BrandLogo href="/" size={48} showName={false} className="mb-2 [&_img]:rounded-xl [&_img]:bg-white [&_img]:p-1 [&_img]:shadow-sm" />
+        <h1 className="font-display text-[1.9rem] leading-tight text-foreground">
           Welcome back
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">

@@ -1,7 +1,14 @@
-import { permanentRedirect } from "next/navigation";
+import { HomePage, buildHomeMetadata } from "@/components/home/HomePage";
+import { fetchHomeData } from "@/lib/site/homeData";
+import { fetchHomeVideos } from "@/lib/site/youtube";
 
-export default function Home() {
-  // 308 permanent (not the default 307) so Google consolidates / into /chat
-  // instead of tracking them as two separate URLs.
-  permanentRedirect("/chat");
+export const metadata = buildHomeMetadata("en");
+
+/**
+ * The home page (evangelism first). A first visit whose browser is French or
+ * Spanish is sent to /fr or /es by the middleware; the chat lives at /chat.
+ */
+export default async function Home() {
+  const [data, videos] = await Promise.all([fetchHomeData("en"), fetchHomeVideos("en")]);
+  return <HomePage lang="en" data={data} videos={videos} />;
 }

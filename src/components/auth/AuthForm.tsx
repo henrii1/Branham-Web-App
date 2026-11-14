@@ -159,7 +159,7 @@ export function AuthForm({ next }: AuthFormProps) {
           <button
             type="submit"
             disabled={verifying || !code.replace(/\D/g, "")}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="w-full rounded-lg bg-[var(--home-meadow)] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#265a39] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
           >
             {verifying ? <Spinner /> : "Sign in"}
           </button>
@@ -226,7 +226,7 @@ export function AuthForm({ next }: AuthFormProps) {
         <button
           type="submit"
           disabled={loading || googleLoading || !email.trim()}
-          className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="w-full rounded-lg bg-[var(--home-meadow)] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#265a39] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
         >
           {loading ? <Spinner /> : "Send magic link"}
         </button>

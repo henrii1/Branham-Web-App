@@ -21,11 +21,10 @@ import {
 } from "@/lib/db/queries";
 import type { Conversation } from "@/lib/chat/types";
 import type { ConversationRow } from "@/lib/db/queries";
-import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
-import { applyNgramHighlights } from "@/lib/markdown/ngramHighlight";
 import { buildCardAnswerExcerpt } from "@/lib/share/cardExcerpt";
 import { TypewriterRenderer } from "./TypewriterRenderer";
+import { PassageCards, passageCardsCopy } from "@/components/chat/PassageCards";
 import { CopyButton } from "@/components/site/CopyButton";
 import { faqPagePath, type FaqLanguage } from "@/lib/faq/entry";
 import { stripAnswerPrefix } from "@/lib/utils/answerDedup";
@@ -35,7 +34,6 @@ import { LoginModal } from "@/components/chat/LoginModal";
 import { ShareModal } from "@/components/chat/ShareModal";
 import { OfflineModal } from "@/components/chat/OfflineModal";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
-import { DragDivider } from "@/components/chat/DragDivider";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { AnonymousBanner } from "@/components/chat/AnonymousBanner";
 import { SidebarRail } from "@/components/chat/SidebarRail";
@@ -75,10 +73,7 @@ interface SeoShellProps {
   langHrefs: { en: string; es: string; fr: string };
 }
 
-const DEFAULT_PANEL_RATIO = 0.4;
-// Nature and Bible questions: the answer is the focus, so it takes all the
-// height the divider allows (its minimum for the passages panel).
-const ANSWER_FOCUS_PANEL_RATIO = 0.15;
+
 
 function rowToConversation(row: ConversationRow): Conversation {
   return {
@@ -124,21 +119,29 @@ export function SeoShell({
   // the seed without the user having to retype.
   const pendingFollowUpRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "sources">(() => {
-    if (typeof window === "undefined") return "chat";
+    if (typeof window === "undefined" || followupKind) return "chat";
     const stored = window.sessionStorage.getItem("branham-mobile-active-tab");
     return stored === "chat" || stored === "sources" ? stored : "chat";
   });
-  const [panelRatio, setPanelRatio] = useState(followupKind ? ANSWER_FOCUS_PANEL_RATIO : DEFAULT_PANEL_RATIO);
+  // Bible and nature pages show only the answer (no passages panel or tab).
+  const answerOnly = !!followupKind;
   const [seeding, setSeeding] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [drawerShouldRender, setDrawerShouldRender] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Laptop windows narrower than 1280px start with the sidebar folded to its
+  // icon rail, so the answer (and passages) keep their room; it follows the
+  // window as it's resized, and the reader can still open it.
+  useEffect(() => {
+    const narrow = window.matchMedia("(max-width: 1279px)");
+    const apply = () => setSidebarCollapsed(narrow.matches);
+    apply();
+    narrow.addEventListener("change", apply);
+    return () => narrow.removeEventListener("change", apply);
+  }, []);
 
-  const panelsRef = useRef<HTMLDivElement>(null);
-  const sourcesRef = useRef<HTMLDivElement>(null);
-  const chatAreaRef = useRef<HTMLDivElement>(null);
   // Imperative slider ref — animated via direct DOM writes, not React state.
   const mobileSliderRef = useRef<HTMLDivElement>(null);
   const isInitialSliderMount = useRef(true);
@@ -156,7 +159,6 @@ export function SeoShell({
   const drawerDragX = useRef(0);
 
   const processedRag = postprocessRag(ragContext);
-  const ragHtml = applyNgramHighlights(renderMarkdown(processedRag), retrievalQuery);
 
   // Defer rendering the Passages content to client-only so Googlebot's
   // raw-HTML pass doesn't see the verbatim sermon chunks — those chunks are
@@ -544,7 +546,7 @@ export function SeoShell({
   const altarPageHref = altarHref(language);
 
   return (
-    <div className="flex h-dvh bg-background">
+    <div className="app-screen flex h-dvh bg-background">
       {/* ── Desktop sidebar ── */}
       <aside
         className={`hidden flex-shrink-0 border-r border-zinc-200 transition-[width] duration-200 lg:block dark:border-zinc-800 ${
@@ -680,7 +682,7 @@ export function SeoShell({
             </div>
           </div>
 
-          <nav
+          {!answerOnly && <nav
             className="flex border-t border-zinc-100 dark:border-zinc-800"
             role="tablist"
             aria-label="SEO panels"
@@ -711,7 +713,7 @@ export function SeoShell({
             >
               Passages
             </button>
-          </nav>
+          </nav>}
         </header>
 
         {/* ── Anonymous banner (desktop only) ── */}
@@ -722,7 +724,17 @@ export function SeoShell({
         )}
 
         {/* ── Desktop share bar ── */}
-        <div className="hidden items-center justify-end border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2 lg:flex dark:border-zinc-800">
+        <div className="hidden items-center justify-between border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2 lg:flex dark:border-zinc-800">
+          <Link
+            prefetch={false}
+            href={language === "es" || language === "fr" ? `/${language}` : "/"}
+            className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m6-6-6 6 6 6" />
+            </svg>
+            {strings.homeLink}
+          </Link>
           <button
             type="button"
             onClick={handleShareSeoPage}
@@ -740,54 +752,11 @@ export function SeoShell({
           </button>
         </div>
 
-        {/* ── Desktop: two-panel layout ── */}
-        <div
-          ref={panelsRef}
-          className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex"
-        >
-          <div
-            ref={sourcesRef}
-            className="min-h-0 overflow-hidden border-b border-zinc-200 dark:border-zinc-800"
-            style={{ flex: `${panelRatio} 0 0` }}
-          >
-            <div className="flex h-full flex-col bg-[var(--surface-sources)]">
-              <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Passages
-                </h2>
-                <Link
-                  href={language === "en" ? "/faq" : `/${language}/faq`}
-                  className="text-xs font-medium text-zinc-500 transition-colors hover:text-foreground"
-                >
-                  {strings.popularQuestions}
-                </Link>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {passagesMounted ? (
-                  <div
-                    className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
-                    data-nosnippet
-                    dangerouslySetInnerHTML={{ __html: ragHtml }}
-                  />
-                ) : (
-                  <div className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]" />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <DragDivider
-            containerRef={panelsRef}
-            sourcesRef={sourcesRef}
-            chatRef={chatAreaRef}
-            onDragEnd={setPanelRatio}
-          />
-
-          <div
-            ref={chatAreaRef}
-            className="min-h-0 overflow-hidden bg-[var(--surface-chat)]"
-            style={{ flex: `${1 - panelRatio} 0 0` }}
-          >
+        {/* ── Desktop: the answer, with the passages in a column on the right
+            for doctrinal pages. Bible and nature pages have no passages
+            panel: the answer takes the whole width. ── */}
+        <div className="hidden min-h-0 flex-1 overflow-hidden lg:flex">
+          <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-[var(--surface-chat)]">
             <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-y-auto px-5 py-6 xl:max-w-[56rem]">
               {series && <SeriesHeader slug={slug} series={series} language={language} />}
               <div className="mb-4 flex items-start justify-between gap-4">
@@ -817,6 +786,26 @@ export function SeoShell({
               {series ? <SeriesNav series={series} language={language} /> : <NextQuestionLink nextPage={nextPage} language={language} />}
             </div>
           </div>
+          {!answerOnly && (
+            <aside className="w-[36%] max-w-[34rem] min-w-[19rem] shrink-0 overflow-hidden border-l border-zinc-200 dark:border-zinc-800">
+            <div className="flex h-full flex-col bg-[var(--surface-sources)]">
+              <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Passages
+                </h2>
+                <Link
+                  href={language === "en" ? "/faq" : `/${language}/faq`}
+                  className="text-xs font-medium text-zinc-500 transition-colors hover:text-foreground"
+                >
+                  {strings.popularQuestions}
+                </Link>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {passagesMounted && <PassageCards context={processedRag} query={retrievalQuery} copy={passageCardsCopy(language)} />}
+              </div>
+            </div>
+            </aside>
+          )}
         </div>
 
         {/* ── Mobile: sliding tab panels ── */}
@@ -833,10 +822,11 @@ export function SeoShell({
                 willChange: "transform",
                 touchAction: "pan-y",
               }}
-              onTouchStart={handleSwipeTouchStart}
-              onTouchMove={handleSwipeTouchMove}
-              onTouchEnd={handleSwipeTouchEnd}
-              onTouchCancel={handleSwipeTouchEnd}
+              // Bible and nature pages have no passages tab to swipe to.
+              onTouchStart={answerOnly ? undefined : handleSwipeTouchStart}
+              onTouchMove={answerOnly ? undefined : handleSwipeTouchMove}
+              onTouchEnd={answerOnly ? undefined : handleSwipeTouchEnd}
+              onTouchCancel={answerOnly ? undefined : handleSwipeTouchEnd}
             >
               {/* Answer / Chat panel
                   Outer wrapper is overflow:hidden so the browser skips scroll
@@ -878,15 +868,7 @@ export function SeoShell({
               {/* Sources panel — same outer/inner scroll split */}
               <div style={{ width: "50%", height: "100%", overflow: "hidden" }}>
                 <div className="h-full overflow-y-auto bg-[var(--surface-sources)]">
-                  {passagesMounted ? (
-                    <div
-                      className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]"
-                      data-nosnippet
-                      dangerouslySetInnerHTML={{ __html: ragHtml }}
-                    />
-                  ) : (
-                    <div className="sources-markdown prose prose-sm prose-zinc mx-auto max-w-5xl px-5 py-4 dark:prose-invert xl:max-w-[68rem]" />
-                  )}
+                  {passagesMounted && <PassageCards context={processedRag} query={retrievalQuery} copy={passageCardsCopy(language)} />}
                 </div>
               </div>
             </div>
@@ -1081,7 +1063,7 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous, note }: SeoComp
         <button
           type="submit"
           disabled={disabled || (!value.trim() && !isAnonymous)}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white transition-colors hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--home-meadow)] text-white transition-colors hover:bg-[#265a39] disabled:opacity-40 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
           aria-label="Send"
         >
           <svg

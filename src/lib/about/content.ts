@@ -82,11 +82,11 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       },
       {
         label: "Studying the Bible",
-        body: "Ask about any passage or subject and get answers that let Scripture interpret Scripture. Browse Questions of Faith, and open the Family Altar each day for a short devotion to share at home.",
+        body: "Start with the Bible questions already answered, open the Family Altar each day for a short devotion to share at home, and ask the Bible about any passage or subject: the answers let Scripture interpret Scripture.",
         links: [
-          { label: "Ask the Bible", href: "/chat?mode=bible" },
-          { label: "Questions of Faith", href: "/faq" },
+          { label: "Bible Questions", href: "/faq/bible" },
           { label: "Family Altar", href: "/altar" },
+          { label: "Ask the Bible", href: "/chat?mode=bible" },
         ],
       },
       {
@@ -142,11 +142,11 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       },
       {
         label: "Estudiar la Biblia",
-        body: "Pregunte sobre cualquier pasaje o tema y reciba respuestas que dejan que la Escritura interprete la Escritura. Vea las Preguntas de fe y abra cada día el Altar Familiar para un breve devocional que compartir en casa.",
+        body: "Comience con las preguntas bíblicas ya respondidas, abra cada día el Altar Familiar para un breve devocional que compartir en casa, y pregúntele a la Biblia sobre cualquier pasaje o tema: las respuestas dejan que la Escritura interprete la Escritura.",
         links: [
-          { label: "Preguntar a la Biblia", href: "/chat?mode=bible" },
-          { label: "Preguntas de fe", href: "/es/faq" },
+          { label: "Preguntas bíblicas", href: "/es/faq/bible" },
           { label: "Altar Familiar", href: "/es/altar" },
+          { label: "Preguntar a la Biblia", href: "/chat?mode=bible" },
         ],
       },
       {
@@ -202,11 +202,11 @@ export const ABOUT_CONTENT: Record<AboutLang, AboutContent> = {
       },
       {
         label: "Étudier la Bible",
-        body: "Posez une question sur n’importe quel passage ou sujet et recevez des réponses qui laissent l’Écriture interpréter l’Écriture. Parcourez les Questions de foi et ouvrez chaque jour l’Autel familial pour une courte méditation à partager à la maison.",
+        body: "Commencez par les questions bibliques qui ont déjà une réponse, ouvrez chaque jour l’Autel familial pour une courte méditation à partager à la maison, et interrogez la Bible sur n’importe quel passage ou sujet : les réponses laissent l’Écriture interpréter l’Écriture.",
         links: [
-          { label: "Interroger la Bible", href: "/chat?mode=bible" },
-          { label: "Questions de foi", href: "/fr/faq" },
+          { label: "Questions bibliques", href: "/fr/faq/bible" },
           { label: "Autel familial", href: "/fr/altar" },
+          { label: "Interroger la Bible", href: "/chat?mode=bible" },
         ],
       },
       {

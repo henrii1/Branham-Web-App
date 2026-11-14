@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand/BrandLogo";
-import { LangSwitcher } from "@/components/seo/LangSwitcher";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { applyCitations } from "@/lib/markdown/citations";
@@ -82,23 +81,10 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="flex h-dvh flex-col overflow-hidden bg-background">
-        <header className="shrink-0 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 xl:max-w-[56rem]">
-            <BrandLogo href="/" priority />
-            <div className="flex items-center gap-2">
-              <LangSwitcher current={lang} hrefs={langHrefs} />
-              <Link
-                href="/chat"
-                className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium whitespace-nowrap text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                {c.askQuestion}
-              </Link>
-            </div>
-          </div>
-        </header>
+      <div className="flex min-h-dvh flex-col bg-background">
+        <SiteHeader lang={lang} langHrefs={langHrefs} tone="night" />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1">
           <article
             lang={lang}
             className="mx-auto flex max-w-[41.5rem] flex-col gap-14 px-5 pt-10 pb-14 lg:gap-[4.5rem] lg:px-8 lg:pt-[4.5rem] lg:pb-[5.5rem]"

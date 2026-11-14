@@ -10,3 +10,7 @@ export const SOCIAL_LINKS = {
   tiktok: "https://www.tiktok.com/@branham.sermons.as",
   x: "https://x.com/branhamsermon",
 } as const;
+
+/** The YouTube channel by its id, which stays the same when the @handle is renamed. */
+export const YOUTUBE_CHANNEL_ID = "UCz3k8Gyt9GLgGsOIP2JBPWg";
+export const YOUTUBE_CHANNEL_URL = `https://www.youtube.com/channel/${YOUTUBE_CHANNEL_ID}`;

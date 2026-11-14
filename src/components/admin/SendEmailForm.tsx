@@ -176,7 +176,7 @@ export function SendEmailForm() {
           type="button"
           onClick={handleContinue}
           disabled={!canContinue}
-          className="w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
+          className="w-full rounded-xl bg-[var(--home-meadow)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#265a39] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)]"
         >
           Continue
         </button>

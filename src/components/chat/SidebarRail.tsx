@@ -139,7 +139,7 @@ export function SidebarRail({
           <Link
             prefetch={false}
             href="/profile"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white transition-opacity hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--home-meadow)] text-xs font-medium text-white transition-opacity hover:opacity-90 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)]"
             aria-label="Profile"
             title={user.email ?? "Profile"}
           >

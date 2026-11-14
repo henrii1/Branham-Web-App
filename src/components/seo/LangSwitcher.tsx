@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { rememberSiteLanguage } from "@/lib/site/siteLanguage";
 
 const LANG_LABELS: Record<string, string> = {
   en: "English",
@@ -91,7 +92,10 @@ export function LangSwitcher({ current, hrefs }: LangSwitcherProps) {
               <Link
                 key={lang}
                 href={hrefs[lang]}
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  rememberSiteLanguage(lang);
+                  setOpen(false);
+                }}
                 className="flex items-center px-3 py-2 text-sm text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
               >
                 {LANG_LABELS[lang]}

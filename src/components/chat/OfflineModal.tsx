@@ -73,7 +73,7 @@ export function OfflineModal({ onRetry, onDismiss }: OfflineModalProps) {
             <button
               type="button"
               onClick={onRetry}
-              className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="flex-1 rounded-lg bg-[var(--home-meadow)] px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-[#265a39] dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
             >
               Retry
             </button>

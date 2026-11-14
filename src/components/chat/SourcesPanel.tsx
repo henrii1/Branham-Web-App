@@ -2,9 +2,8 @@
 
 import { useMemo } from "react";
 import type { RagData, StreamingStatus } from "@/lib/chat/types";
-import { renderMarkdown } from "@/lib/markdown/render";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
-import { applyNgramHighlights } from "@/lib/markdown/ngramHighlight";
+import { PassageCards, passageCardsCopy } from "./PassageCards";
 
 interface SourcesPanelProps {
   ragData: RagData | null;
@@ -12,30 +11,24 @@ interface SourcesPanelProps {
   passagesTitle: string;
   passagesDescription: string;
   passagesSectionHeader: string;
+  language?: string;
 }
 
-function EmptyState({ title, description }: { title: string; description: string }) {
+/** Before the first answer: faint outlines of the passage cards to come, and what will appear there. */
+function EmptyState({ description }: { title: string; description: string }) {
+  const ghost = (
+    <div className="flex flex-col gap-2.5 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700" aria-hidden="true">
+      <span className="h-2 w-[46%] rounded bg-[var(--home-chip)]" />
+      <span className="h-2 w-full rounded bg-zinc-200/80 dark:bg-zinc-800" />
+      <span className="h-2 w-[88%] rounded bg-zinc-200/80 dark:bg-zinc-800" />
+      <span className="h-2 w-[64%] rounded bg-zinc-200/80 dark:bg-zinc-800" />
+    </div>
+  );
   return (
-    <div className="flex h-full items-center justify-center p-4">
-      <div className="max-w-sm rounded-[24px] border border-zinc-200 bg-[var(--surface-base)] px-6 py-7 text-center shadow-sm dark:border-zinc-700">
-        <svg
-          className="mx-auto mb-3 h-9 w-9 text-zinc-400 dark:text-zinc-500"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
-          />
-        </svg>
-        <p className="font-display text-xl text-foreground">{title}</p>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-          {description}
-        </p>
-      </div>
+    <div className="flex h-full flex-col justify-center gap-4 px-8 py-6">
+      {ghost}
+      {ghost}
+      <p className="mt-1 text-center text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{description}</p>
     </div>
   );
 }
@@ -72,18 +65,13 @@ export function SourcesPanel({
   passagesTitle,
   passagesDescription,
   passagesSectionHeader,
+  language = "en",
 }: SourcesPanelProps) {
   const isLoading = streamingStatus === "connecting";
   const hasNoContent = !ragData && streamingStatus === "idle";
 
-  // Postprocess and render RAG markdown once (memoized).
-  // No citation styling in the Sources panel (§8: chat panel only).
-  const renderedHtml = useMemo(() => {
-    if (!ragData) return "";
-    const cleaned = postprocessRag(ragData.ragContext);
-    const html = renderMarkdown(cleaned);
-    return applyNgramHighlights(html, ragData.retrievalQuery);
-  }, [ragData]);
+  // Cleaned once; shown as one card per sermon (no citation styling here: §8, chat panel only).
+  const cleaned = useMemo(() => (ragData ? postprocessRag(ragData.ragContext) : ""), [ragData]);
 
   return (
     <div className="flex h-full flex-col bg-[var(--surface-sources)]">
@@ -91,24 +79,12 @@ export function SourcesPanel({
         <h2 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
           {passagesSectionHeader}
         </h2>
-        {ragData && (
-          <span className="ml-2 inline-flex h-4 items-center rounded-full bg-green-100 px-1.5 text-[10px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-            Available
-          </span>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {isLoading && <LoadingState />}
         {hasNoContent && !isLoading && <EmptyState title={passagesTitle} description={passagesDescription} />}
-        {ragData && (
-          <div className="mx-auto w-full max-w-5xl px-5 py-4 xl:max-w-[68rem]">
-            <div
-              className="sources-markdown prose prose-sm prose-zinc max-w-none dark:prose-invert"
-              dangerouslySetInnerHTML={{ __html: renderedHtml }}
-            />
-          </div>
-        )}
+        {ragData && <PassageCards context={cleaned} query={ragData.retrievalQuery} copy={passageCardsCopy(language)} />}
       </div>
     </div>
   );

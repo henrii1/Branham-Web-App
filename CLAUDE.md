@@ -21,6 +21,8 @@ npm run build
 
 # Local Cloudflare Worker preview (build with OpenNext, serve on workerd)
 npm run preview
+# Same, on http://localhost:8787 with localhost as origin (no https redirect; use this to test in a browser)
+npm run preview:local
 
 # Deploy to Cloudflare
 npm run deploy        # build + deploy
@@ -260,17 +262,38 @@ If you change a wire-format invariant on the API side, you must also patch (in o
 - `api_contract.md` (the source of truth)
 - `CLAUDE.md` here and on the API side
 
+## Home page
+
+`/` (+ `/fr`, `/es`; `components/home/HomePage.tsx`, text in `src/lib/site/home.ts`, data from `lib/site/homeData.ts`) is the evangelism front door; the chat lives at `/chat`. It reads from night to day: the night-sky hero (`public/home/night-sky*.jpg`, Giles Laurent, CC BY-SA 4.0 — credited under the footer) and the nature series as a five-part path for anyone; "Stories from creation" (YouTube) as the sky turns; daylight for believers (Bible Questions Answered first — growth groups only, `HOME_FEATURED_GROUPS`/`HOME_TOPIC_GROUPS` — then Family Altar and the WhatsApp channel; Bible search only as a small link); the sermon search last and quiet. **Doctrinal questions never appear on the home page.** Brand colours are `--home-*` in `globals.css` (dark-mode values included).
+
+- **Language**: the middleware sends a GET of `/` to `/fr` or `/es` (307, `no-store`) when the cookie `site-lang` says so, else when the browser's *first* Accept-Language is French or Spanish; anything else stays English. Crawlers and link-preview fetchers are never redirected. `LangSwitcher` (and the chat's language pill for visitors) sets `site-lang` (`lib/site/siteLanguage.ts`).
+- **Videos** (`lib/site/youtube.ts`): the channel's three **most-liked** videos (ties: views, then newest); Shorts (feed link `/shorts/`, or ≤3 min via the API) show upright side by side, a swipeable row on phones. Ranked from the public RSS feed (likes = `media:starRating count`; only the 15 newest uploads) unless the optional secret `YOUTUBE_API_KEY` is set, then from the Data API over every upload. `FEATURED_VIDEO_IDS` overrides by hand. While the channel has no public videos, the English home page shows our own three films from `public/films/` (`SITE_FILMS`, 720p, played in a `<video>`; English captions, so es/fr get the "Subscribe on YouTube" invitation instead); delete `public/films` and `SITE_FILMS` once the channel has its own videos. `VideoCard` plays in place via youtube-nocookie only after a tap. Footage sources for new Shorts: `docs/video-sources.md`.
+- **SiteHeader** (`components/site/SiteHeader.tsx`) is the one header for home, FAQ, `/faq/bible`, `/faq/nature`, Family Altar and About: nav (xl+), language switcher, an **Ask** menu (Ask the Bible / Search the sermons — the only way the site asks which search), and on smaller screens a full-screen menu mirroring the links page.
+
+## Scrolling
+
+Reading pages (home, FAQ, `/faq/bible`, `/faq/nature`, Family Altar, About, links, sign-in) scroll the **window**: `min-h-dvh` roots, no inner scroll box, `SiteHeader` is `sticky` (the Family Altar week list is sticky on desktop). Keyboard scrolling, the phone address bar, anchors and back-button position depend on this — don't wrap a reading page in `h-dvh overflow-y-auto` again. Only the app screens lock the window: their root has the class **`app-screen`** (ChatShell, SeoShell, SharePageShell), and `globals.css` applies `overflow: hidden` to `html`/`body` only via `html:has(.app-screen)`. FAQ answers render in full at once (`TypewriterRenderer` defaults to `skipAnimation`): they are promised as instant, the page can be scrolled immediately, and the answer is in the server HTML.
+
+## One green theme
+
+The whole app is green: light = pale green on white, dark = forest green (the home page's night). It's carried by `globals.css`, not by components: the surface tokens (`--background`, `--surface-*`, `--ring-color`) are green, and **Tailwind's `zinc-*` palette is overridden with green-tinted neutrals and `blue-*` with brand green** (both themes), so every older screen written with zinc/blue classes follows. Primary buttons use `--home-meadow` (dark mode `--home-leaf` with `--home-night` text). Amber stays as the Family Altar's accent and the passage-highlight colour. **Light is the default**; dark only by choice: the cookie `branham-theme-choice` is written only when someone picks a theme (ThemeProvider `setTheme`), and a signed-in reader's `profiles.theme_preference` wins. (The old `branham-theme` cookie was written on every visit while dark was the default, so it's ignored.) New UI: use the zinc classes or the `--home-*` tokens; don't hard-code greys or blues.
+
+## Bible questions page
+
+`/faq/bible` (+ `/fr`, `/es`; `BibleQuestionsPage`, `BibleQuestionsList`, copy/metadata in `lib/faq/bibleQuestions.ts`): every Bible FAQ by topic (group), a search that filters as you type, topic chips (`#topic-<groupId>`, used by the home page), three per topic until "N more". Ends with Ask the Bible. A ready answer is instant; a new Bible answer takes 30–45 s (measured 2026-11-14: rag ~2.5 s, final 30–46 s, text arrives only at the end).
+
 ## Sermon search / Bible search
 
-The chat has two modes, switched just above the composer (`SearchModeToggle`). **Bible search** sends `search_mode: "bible"`; the `/api/chat` proxy (not the browser) turns that into the Model API's Bible FAQ mode (`response_mode: "faq"`, `faq_kind: "bible"`) when there is no `history_window` (first question), and `followup_kind: "bible"` after that. A `response_mode` sent by the browser is dropped. Sermon search is the normal chat.
+The chat has two modes. **Bible search** sends `search_mode: "bible"`; the `/api/chat` proxy (not the browser) turns that into the Model API's Bible FAQ mode (`response_mode: "faq"`, `faq_kind: "bible"`) when there is no `history_window` (first question), and `followup_kind: "bible"` after that. A `response_mode` sent by the browser is dropped. Sermon search is the normal chat.
 
-- A Bible chat is stored as `conversations.source_faq_kind = 'bible'` (same kind as a follow-up on a Bible FAQ page), so it reopens in Bible search; switching mid-chat updates it (`updateConversationKind`). In `ChatShell`, `sourceFaqKind` non-null = Bible search.
-- **Default per account**: auth user metadata `search_mode` (`src/lib/chat/searchMode.ts`), no table column. Accounts created on/after `SEARCH_MODE_QUESTION_SINCE` with no choice yet get `SearchModeModal` ("Scripture or the sermons?") once; older accounts default to sermons and never see it. `/profile` → **Default search** changes it. New chats start in the default.
-- **Visitors who aren't signed in** get the same question once per browser: the answer is kept in `localStorage` `search-mode-choice` (`useBrowserSearchMode`/`saveBrowserSearchMode` in `searchModeTried.ts`) and is their default, so open tabs and return visits aren't asked again. The modal hides its "change it in your profile" note for them. A new account whose browser already answered gets that answer saved to its metadata in ChatShell's init effect instead of being asked again.
-- **Nudge**: the option the reader hasn't asked a question with yet glows (`.search-mode-nudge`, static ring under reduced motion) until tried — `localStorage` `search-mode-tried`, read through `useSyncExternalStore` in `searchModeTried.ts` (client-only file, since server pages import `searchMode.ts`).
-- **Mode links**: `/chat?mode=bible` / `/chat?mode=sermons` (Linktree, shared links; list in `docs/linktree.md`) start the first chat in that mode (`initialSearchMode`). A browser that hasn't answered the question isn't asked; the link's mode is saved as its answer. A saved account default is never changed.
-- Bible search on desktop: passages strip 15%, answer 85% (`BIBLE_PANEL_RATIO`); Bible and nature `/q` pages too (`ANSWER_FOCUS_PANEL_RATIO` in `SeoShell`). Welcome text and placeholder change with the mode (`welcomeDescriptionBible`, `askPlaceholderBible`).
-- The old once-per-account "Before you begin" sensitive-use modal was removed; the header banner stays.
+- **No question modal any more.** The mode comes from the link that opened the chat (`/chat?mode=bible|sermons` — every "Ask" entry on the site uses one), else the reader's **last-used mode**: account metadata `search_mode` (`accountSearchMode`; accounts created before 2026-11-01 without one default to sermons, newer ones to Bible), else this browser's `localStorage` `search-mode-choice`, else **Bible search**. The mode of a new chat's first question is saved to both. `/profile` → Default search still edits the metadata.
+- **The Bible/Sermons switch shows only on a new chat**; a chat keeps its mode for every follow-up (stored as `conversations.source_faq_kind = 'bible'`).
+- **Bible search has no passages panel** (desktop or phone, no Passages tab, no swipe, no answer-view switch); the answer takes the full width. Same for Bible and nature `/q` pages (`SeoShell` `answerOnly`). **Sermon search** (and doctrinal `/q` pages) show passages in a right-hand column on desktop and the Passages tab on phones.
+- **New-chat screens** (`ChatWelcome.tsx`): Bible = "Ask the Bible", the answered questions first (search + four featured, `useBibleQuestions` loads them client-side per language), then "or ask your own question" and a note that a new answer takes 30–45 s. Sermons = what it is, a sample citation, three "Try asking" questions (sent on tap) and a strip to the Bible questions.
+- **Bible loading stages** (`MessageList` `StagedIndicator`): Searching the Scriptures → Structuring the answer (8 s) → Finalizing the response (22 s), timed from the measurements above, with an optional "While you wait" link to the closest answered question (`closestAnswered`). Sermon search keeps "Finalizing response…".
+- **Chat language for visitors who aren't signed in** follows the site language (`readSiteLanguage`) and is sent as `user_language`; signed-in readers keep their profile language.
+- **Sign-up from the chat** (`LoginModal` `next`) returns to `/chat?mode=<current mode>` after sign-up and the profile step. Visitors still get one question, no follow-ups and no history.
+- **Nudge**: the option the reader hasn't asked a question with yet glows (`.search-mode-nudge`) until tried (`search-mode-tried`).
 
 ## Conversation sharing
 
@@ -389,7 +412,7 @@ For the two admin accounts only (`isAdminEmail()`, re-checked in every route und
 
 ## Links page
 
-`/links` (+ `/es/links`, `/fr/links`; `LinksPage`, text in `src/lib/site/links.ts`) is the address in the social media bios, in place of Linktree: the WhatsApp channel first (the main way to stay connected), today's Family Altar verse (`TodayVerse`, same loader as `TodayAltarCard`), then one row per way in (nature series, Ask the Bible, Bible questions, Ask the Sermons), the social icons and an About link. `docs/linktree.md` lists every link.
+`/links` (+ `/es/links`, `/fr/links`; `LinksPage`, text in `src/lib/site/links.ts`) is the address in the social media bios, in place of Linktree, and matches the home page: the night-sky band with the logo, the WhatsApp channel first (the main way to stay connected), today's Family Altar verse (`TodayVerse`, same loader as `TodayAltarCard`), then one row per way in, in the home page's order (nature series, Stories from creation on YouTube, Bible Questions Answered, Ask the Bible, Search the sermons), the social icons (YouTube included) and an About link. `docs/linktree.md` lists every link.
 
 ## About page
 
@@ -445,6 +468,12 @@ Bulk sends use their own Postmark message stream, `BULK_MESSAGE_STREAM = "send-b
 
 `CopyButton` (`src/components/site/CopyButton.tsx`) under every chat answer (`MessageBubble`, so shares too), FAQ answer (`SeoShell`: question + answer + page link) and the Family Altar day ("Copy devotion": every section + the day's link). `copyMarkdown` (`src/lib/markdown/copyText.ts`) writes HTML from `renderMarkdown` plus plain text; citations stay as `[TITLE — DATE_ID: ¶n]` in both.
 
+## Passage cards
+
+The passages panel (chat `SourcesPanel` and doctrinal `/q` pages in `SeoShell`) shows **one card per sermon** (`components/chat/PassageCards.tsx`, parsing in `lib/markdown/ragCards.ts`): title, date id (`56-1001`, from the context's `YYYY-MM-DD`; the context carries no M/E suffix) and paragraph range, then the one-to-three-sentence window that shares the most words with the retrieval query (`bestExcerpt`, ≤320 chars, stems matched on their first five letters, en/es/fr stop words), matching words marked. "Read the N passages" opens every chunk retrieved from that sermon in the same card. Highlights are built as React elements from plain text (`markTerms`), never HTML. If the context isn't in the `### N. TITLE — YYYY-MM-DD` / `- ¶refs` shape, the card list falls back to the old markdown with n-gram highlighting.
+
+**Laptop windows**: under 1280px the chat and `/q` sidebars start folded to the icon rail (they follow the window as it's resized); the passages column is `w-[36%]` (`min-w-[19rem]`); the guest notice (`AnonymousBanner`) is one slim row everywhere; on desktop the Full answer / Sermon quotes switch sits in the Home / Share bar rather than a row of its own.
+
 ## Passage n-gram highlighting
 
 `src/lib/markdown/ngramHighlight.ts` (`applyNgramHighlights(html, query)`) highlights literal, contiguous word-overlap (3+ consecutive words, same order) between the retrieval query and each retrieved passage, in the Sources panel only — never in the chat answer panel, which already has its own citation-pill styling. Purely literal matching (NFKD diacritic-insensitive, lowercase, punctuation-agnostic via tokenization) — no stemming or semantic scoring, so many relevant passages will show no highlight at all when they were retrieved by dense/semantic search rather than keyword overlap. That's expected.
@@ -490,6 +519,7 @@ Wrangler config (`wrangler.jsonc`):
 | `SUPABASE_SERVICE_ROLE_KEY` | **secret** | Server-side admin (welcome email trigger, cron tasks) |
 | `POSTMARK_SERVER_TOKEN` | **secret** | Postmark API key |
 | `POSTMARK_FROM_EMAIL` | wrangler vars | Sender address |
+| `YOUTUBE_API_KEY` | **secret**, optional | YouTube Data API v3 key: ranks every channel upload by likes for the home page (without it, only the 15 newest from the RSS feed) |
 
 Set secrets:
 ```bash

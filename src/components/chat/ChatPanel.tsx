@@ -23,6 +23,12 @@ interface ChatPanelProps {
   answerViewQuotesEmpty: string;
   /** Shown under the welcome card on an empty chat (e.g. today's Family Altar). */
   welcomeExtra?: ReactNode;
+  /** Replaces the welcome card on an empty chat (the Bible / sermon search new-chat screens). */
+  welcome?: ReactNode;
+  stages?: [string, string, string];
+  waitTip?: ReactNode;
+  /** The Full answer / Sermon quotes switch (sermon search only). */
+  showAnswerView?: boolean;
 }
 
 function WelcomeState({ description, extra }: { description: string; extra?: ReactNode }) {
@@ -115,13 +121,18 @@ export function ChatPanel({
   answerViewQuotesLabel,
   answerViewQuotesEmpty,
   welcomeExtra,
+  welcome,
+  stages,
+  waitTip,
+  showAnswerView = true,
 }: ChatPanelProps) {
   const isEmpty =
     messages.length === 0 && streamingStatus === "idle" && !isLoading;
 
   return (
     <div className="flex h-full flex-col bg-[var(--surface-chat)]">
-      <div className="flex items-center border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
+      {/* Phones only: on desktop the switch sits in the Home / Share bar above. */}
+      {showAnswerView && <div className="flex items-center border-b border-zinc-200 px-4 py-2 lg:hidden dark:border-zinc-700">
         <h2 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase lg:hidden dark:text-zinc-400">
           Chat
         </h2>
@@ -133,13 +144,13 @@ export function ChatPanel({
             quotesLabel={answerViewQuotesLabel}
           />
         </div>
-      </div>
+      </div>}
 
       <div className="flex-1 overflow-y-auto [overflow-anchor:none]">
         {isLoading ? (
           <LoadingState />
         ) : isEmpty ? (
-          <WelcomeState description={welcomeDescription} extra={welcomeExtra} />
+          (welcome ?? <WelcomeState description={welcomeDescription} extra={welcomeExtra} />)
         ) : (
           <MessageList
             messages={messages}
@@ -148,6 +159,8 @@ export function ChatPanel({
             finalizingText={finalizingText}
             mode={mode}
             quotesEmptyText={answerViewQuotesEmpty}
+            stages={stages}
+            waitTip={waitTip}
           />
         )}
       </div>

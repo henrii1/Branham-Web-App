@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --webpack",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "preview:local": "opennextjs-cloudflare build && opennextjs-cloudflare preview --port 8787 --local-upstream localhost:8787",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",

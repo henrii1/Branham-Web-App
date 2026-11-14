@@ -5,21 +5,59 @@
 :root {
   color-scheme: light;
   /* Christianity Seen in Nature: the series path (NatureSeries, SeriesNav). */
-  --series-accent: #3e6a4a;
+  --series-accent: #2f6b45;
   --series-on-accent: #ffffff;
-  --series-line: #c9d6cc;
-  --background: #f7f7f8;
-  --foreground: #111112;
-  --muted-foreground: #4a4b57;
-  --border-subtle: #e4e4e7;
-  --surface-base: #ffffff;
-  --surface-soft: #f3f4f6;
-  --surface-muted: #ececf1;
-  --surface-chat: #fcfcfd;
-  --surface-sources: #f5f5f7;
-  --surface-sidebar: #eff0f3;
-  --shadow-color: 15 23 42;
-  --ring-color: #2563eb;
+  --series-line: #c5d7c9;
+  /* One theme for the whole app: light = pale green on white, dark = forest
+     green. Surfaces are green-tinted; see the palette overrides below. */
+  --background: #f1f5f0;
+  --foreground: #13201a;
+  --muted-foreground: #45534b;
+  --border-subtle: #dde5dc;
+  --surface-base: #fbfdfa;
+  --surface-soft: #eef3ed;
+  --surface-muted: #e3ebe2;
+  --surface-chat: #f8fbf7;
+  --surface-sources: #f1f6f0;
+  --surface-sidebar: #e7eee6;
+  --shadow-color: 11 29 22;
+  --ring-color: #2f6b45;
+  /* Tailwind's greys and blues, re-tuned to the brand: every zinc-* class
+     becomes a green-tinted neutral (so old "black and white" screens read as
+     dark green and pale green), and every blue-* accent becomes brand green.
+     Components keep their classes; the palette carries the theme. */
+  --color-zinc-50: oklch(98.4% 0.006 155);
+  --color-zinc-100: oklch(96.3% 0.01 155);
+  --color-zinc-200: oklch(91.6% 0.014 155);
+  --color-zinc-300: oklch(86.4% 0.019 155);
+  --color-zinc-400: oklch(70.5% 0.026 155);
+  --color-zinc-500: oklch(55% 0.03 155);
+  --color-zinc-600: oklch(44.5% 0.032 155);
+  --color-zinc-700: oklch(37% 0.03 155);
+  --color-zinc-800: oklch(28% 0.025 155);
+  --color-zinc-900: oklch(22% 0.024 155);
+  --color-zinc-950: oklch(15.5% 0.02 155);
+  --color-blue-50: oklch(97.4% 0.02 152);
+  --color-blue-100: oklch(94.3% 0.04 152);
+  --color-blue-200: oklch(89% 0.068 152);
+  --color-blue-300: oklch(82% 0.095 152);
+  --color-blue-400: oklch(72% 0.11 152);
+  --color-blue-500: oklch(60% 0.115 152);
+  --color-blue-600: oklch(50% 0.105 152);
+  --color-blue-700: oklch(44% 0.09 152);
+  --color-blue-800: oklch(37% 0.075 152);
+  --color-blue-900: oklch(30% 0.06 152);
+  --color-blue-950: oklch(22% 0.045 152);
+  /* Brand green (home page, site header, Bible/sermon chat screens): night
+     over a forest at the top, meadow for actions, leaf on dark green. */
+  --home-night: #0b1d16;
+  --home-meadow: #2f6b45;
+  --home-leaf: #8fc29e;
+  --home-day: #f1f5f0;
+  --home-card: #ffffff;
+  --home-line: #e1e7e0;
+  --home-chip: #e6f0e7;
+  --home-chip-text: #24533a;
 }
 
 @theme inline {
@@ -31,25 +69,41 @@
 
 .dark {
   color-scheme: dark;
-  --series-accent: #94c09f;
-  --series-on-accent: #17241b;
-  --series-line: #44574a;
-  --background: #212327;
-  --foreground: #f5f6f8;
-  --muted-foreground: #cacbd4;
-  --border-subtle: #3b3d45;
-  --surface-base: #2a2c31;
-  --surface-soft: #26282d;
-  --surface-muted: #303239;
-  --surface-chat: #2d3036;
-  --surface-sources: #292c31;
-  --surface-sidebar: #24262b;
-  --shadow-color: 2 6 23;
-  --ring-color: #7c96ff;
+  --series-accent: #8fc29e;
+  --series-on-accent: #0f1a14;
+  --series-line: #33473a;
+  /* Dark = forest green (the home page's night). */
+  --background: #111b16;
+  --foreground: #edf3ee;
+  --muted-foreground: #c3cfc6;
+  --border-subtle: #2c3a31;
+  --surface-base: #19251e;
+  --surface-soft: #16211b;
+  --surface-muted: #213027;
+  --surface-chat: #17231c;
+  --surface-sources: #142019;
+  --surface-sidebar: #0f1813;
+  --shadow-color: 2 10 6;
+  --ring-color: #8fc29e;
   /* Secondary text greys, a little lighter than Tailwind's on dark
      backgrounds: zinc-500 text was ~3.6:1 against --background, now ~5:1. */
-  --color-zinc-400: oklch(77% 0.013 286);
-  --color-zinc-500: oklch(64% 0.015 286);
+  --color-zinc-400: oklch(77% 0.022 155);
+  --color-zinc-500: oklch(64% 0.026 155);
+  /* Darker zinc steps carry the forest surfaces (borders, hovers, cards). */
+  --color-zinc-600: oklch(48% 0.03 155);
+  --color-zinc-700: oklch(36% 0.03 155);
+  --color-zinc-800: oklch(28.5% 0.028 155);
+  --color-zinc-900: oklch(22.5% 0.026 155);
+  --color-zinc-950: oklch(17% 0.022 155);
+  /* blue-* text on dark (links, pills) stays light enough to read. */
+  --color-blue-200: oklch(88% 0.07 152);
+  --color-blue-300: oklch(83% 0.09 152);
+  --color-blue-400: oklch(77% 0.1 152);
+  --home-day: #111b16;
+  --home-card: #19251e;
+  --home-line: #2c3a31;
+  --home-chip: #2a3a30;
+  --home-chip-text: #b9dcc3;
 }
 
 body {
@@ -59,14 +113,19 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-html,
-body {
+/* Reading pages (home, FAQ, Family Altar, About, links…) scroll the window
+   like any web page: keyboard, phone address bar, back-button position and
+   anchors all work. Only the app screens (chat, FAQ answers with their
+   follow-up box, shared chats) lock the window and scroll inside their own
+   panels: their root carries .app-screen. */
+html:has(.app-screen),
+html:has(.app-screen) body {
   height: 100%;
   overflow: hidden;
 }
 
-/* Prevent overscroll bounce on iOS */
-html {
+/* Prevent overscroll bounce on iOS in the app screens */
+html:has(.app-screen) {
   overscroll-behavior: none;
 }
 
@@ -77,7 +136,7 @@ html {
 }
 
 ::selection {
-  background: rgb(37 99 235 / 0.16);
+  background: rgb(47 107 69 / 0.2);
   color: inherit;
 }
 
@@ -90,7 +149,7 @@ html {
 .overflow-y-auto {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgb(113 113 122 / 0.7) transparent;
+  scrollbar-color: rgb(98 120 106 / 0.7) transparent;
 }
 
 .overflow-y-auto::-webkit-scrollbar {
@@ -102,12 +161,12 @@ html {
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: rgb(113 113 122 / 0.35);
+  background: rgb(98 120 106 / 0.35);
   border-radius: 3px;
 }
 
 .dark .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: rgb(161 161 170 / 0.32);
+  background: rgb(150 176 158 / 0.32);
 }
 
 /* ── Citation pill (§8.3) — Chat panel only ────────────────────────── */
@@ -115,7 +174,7 @@ html {
   display: inline-block;
   max-width: 100%;
   padding: 2px 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #c9d6cb;
   border-radius: 6px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.8em;
@@ -128,28 +187,28 @@ html {
 }
 
 .citation-pill:hover {
-  border-color: #9ca3af;
+  border-color: #8fa896;
 }
 
 .dark .citation-pill {
-  border-color: #4b5563;
+  border-color: #3a4d40;
 }
 
 .dark .citation-pill:hover {
-  border-color: #9ca3af;
+  border-color: #7d9a86;
 }
 
 /* ── Clickable reference pill — soft tinted "link-chip" affordance ───
  * Sermon citations that resolve to a reference become tappable: a subtle
- * brand-blue tint + matching border + link-tinted text signal interactivity
+ * brand-green tint + matching border + link-tinted text signal interactivity
  * without shouting, even when several pills sit inline. Opens the reference
  * tooltip (ReferencePopover) on click / Enter / Space.
  */
 .citation-pill--clickable {
   cursor: pointer;
-  color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.07);
-  border-color: rgba(37, 99, 235, 0.35);
+  color: #24533a;
+  background: rgba(47, 107, 69, 0.08);
+  border-color: rgba(47, 107, 69, 0.35);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -157,19 +216,19 @@ html {
 }
 
 .citation-pill--clickable:hover {
-  background: rgba(37, 99, 235, 0.14);
-  border-color: rgba(37, 99, 235, 0.55);
+  background: rgba(47, 107, 69, 0.15);
+  border-color: rgba(47, 107, 69, 0.55);
 }
 
 .dark .citation-pill--clickable {
-  color: #a9b8ff;
-  background: rgba(124, 150, 255, 0.13);
-  border-color: rgba(124, 150, 255, 0.38);
+  color: #b3dabf;
+  background: rgba(143, 194, 158, 0.12);
+  border-color: rgba(143, 194, 158, 0.38);
 }
 
 .dark .citation-pill--clickable:hover {
-  background: rgba(124, 150, 255, 0.22);
-  border-color: rgba(124, 150, 255, 0.6);
+  background: rgba(143, 194, 158, 0.22);
+  border-color: rgba(143, 194, 158, 0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -193,8 +252,8 @@ html {
   padding: 1px 8px;
   margin-right: 4px;
   border-radius: 4px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: #e9f0e8;
+  color: #56685c;
   font-size: 0.75em;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -203,8 +262,8 @@ html {
 }
 
 .dark .evidence-label {
-  background: #27272a;
-  color: #a1a1aa;
+  background: #213027;
+  color: #9fb5a5;
 }
 
 .evidence-row {
@@ -362,11 +421,11 @@ html {
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.03em;
-  color: #1d4ed8;
+  color: #24533a;
 }
 
 .dark .reference-group__caption {
-  color: #a9b8ff;
+  color: #b3dabf;
 }
 
 .reference-paragraph {
@@ -613,11 +672,11 @@ html {
 .chat-markdown hr {
   margin-top: 1.25em;
   margin-bottom: 0.75em;
-  border-color: #e5e7eb;
+  border-color: #dde5dc;
 }
 
 .dark .chat-markdown hr {
-  border-color: #3f3f46;
+  border-color: #2f3e35;
 }
 
 /* Tighten spacing around blockquotes in chat (for Quotes sections) */
@@ -626,12 +685,12 @@ html {
   margin-bottom: 0.5em;
   padding-left: 1em;
   border-left-width: 3px;
-  border-left-color: #d1d5db;
+  border-left-color: #b9d3bf;
   font-style: italic;
 }
 
 .dark .chat-markdown blockquote {
-  border-left-color: #4b5563;
+  border-left-color: #3f5a47;
 }
 
 @media (max-width: 767px) {
@@ -666,7 +725,7 @@ html {
 
 /* ── Passage n-gram highlight — Sources panel only ────────────────────
  * Subtle background tint marking literal query/passage word overlap.
- * Deliberately a different hue from .citation-pill (blue) so the two
+ * Deliberately a different hue from .citation-pill (green) so the two
  * styles never read as the same affordance if they ever appear near
  * each other.
  */
@@ -731,12 +790,28 @@ html {
   animation: search-mode-nudge 2.6s ease-in-out infinite;
 }
 @keyframes search-mode-nudge {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(214 168 64 / 0); }
-  50% { box-shadow: 0 0 0 2px rgb(214 168 64 / 0.45), 0 0 14px 2px rgb(214 168 64 / 0.4); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(95 165 118 / 0); }
+  50% { box-shadow: 0 0 0 2px rgb(95 165 118 / 0.45), 0 0 14px 2px rgb(95 165 118 / 0.4); }
 }
 @media (prefers-reduced-motion: reduce) {
   .search-mode-nudge {
     animation: none;
-    box-shadow: 0 0 0 2px rgb(214 168 64 / 0.5);
+    box-shadow: 0 0 0 2px rgb(95 165 118 / 0.5);
   }
+}
+
+/* Home hero: one entrance, nothing else moves on its own. */
+@media (prefers-reduced-motion: no-preference) {
+  .home-rise {
+    animation: home-rise 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes home-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@keyframes answer-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }

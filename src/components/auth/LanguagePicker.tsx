@@ -217,7 +217,7 @@ export function LanguagePicker({
           type="button"
           onClick={() => saveAndProceed(selected)}
           disabled={saving || (!isOnboarding && !hasChanged)}
-          className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="w-full rounded-lg bg-[var(--home-meadow)] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#265a39] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
         >
           {saving
             ? "Saving..."
@@ -281,7 +281,7 @@ function LangButton({ lang, selected, saving, onSelect, tooltip }: LangButtonPro
     <div className="group relative">
       {button}
       <div
-        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-lg bg-zinc-900 px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 dark:bg-zinc-100 dark:text-zinc-900"
+        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-lg bg-[var(--home-meadow)] px-3 py-2 text-xs leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)]"
         role="tooltip"
       >
         {tooltip}

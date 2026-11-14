@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/components/auth/AuthGate";
-import { LangSwitcher } from "@/components/seo/LangSwitcher";
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { SITE_NAV, chatHref } from "@/lib/site/home";
 import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { isAdminEmail } from "@/lib/email/adminAllowlist";
 import { renderMarkdown } from "@/lib/markdown/render";
@@ -99,32 +100,13 @@ export function AltarView({
   const shown = row ?? (showEnglish ? fallback : null);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-2.5 dark:border-zinc-800">
-        <Link prefetch={false} href="/chat" className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
-          {s.backToChat}
-        </Link>
-        <div className="font-display flex items-center gap-2 text-lg text-foreground">
-          <FlameIcon className="h-5 w-5 text-amber-700 dark:text-amber-400" />
-          {s.pageTitle}
-        </div>
-        <div className="flex items-center gap-2">
-          <LangSwitcher current={language} hrefs={{ en: altarHref("en"), es: altarHref("es"), fr: altarHref("fr") }} />
-          {/* Same button as the FAQ and About headers: the sermon search. */}
-          <Link
-            prefetch={false}
-            href="/chat"
-            className="hidden rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium whitespace-nowrap text-white transition-colors hover:bg-zinc-800 sm:inline-flex dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            {s.askQuestion}
-          </Link>
-        </div>
-      </header>
+    <div className="flex min-h-dvh flex-col bg-background">
+      <SiteHeader lang={language} langHrefs={{ en: altarHref("en"), es: altarHref("es"), fr: altarHref("fr") }} tone="night" />
+      <h1 className="sr-only">{s.pageTitle}</h1>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="flex flex-1 flex-col lg:flex-row lg:items-start">
         {/* Week: strip on phones, list on desktop */}
-        <nav aria-label={s.thisWeek} className="shrink-0 border-b border-zinc-200 bg-[var(--surface-base)] px-3 py-2.5 lg:w-64 lg:overflow-y-auto lg:border-r lg:border-b-0 lg:bg-[var(--surface-sidebar)] lg:px-3 lg:py-5 dark:border-zinc-800">
+        <nav aria-label={s.thisWeek} className="shrink-0 border-b border-zinc-200 bg-[var(--surface-base)] px-3 py-2.5 lg:sticky lg:top-16 lg:h-[calc(100dvh-4rem)] lg:w-64 lg:self-start lg:overflow-y-auto lg:border-r lg:border-b-0 lg:bg-[var(--surface-sidebar)] lg:px-3 lg:py-5 dark:border-zinc-800">
           <div className="mb-2 flex items-baseline justify-between px-1 lg:mb-3 lg:flex-col lg:gap-0.5 lg:px-2">
             {previewing || isThisWeek ? (
               <h2 className="text-xs font-medium text-zinc-500 lg:text-sm lg:text-foreground dark:text-zinc-400">{previewing ? "Next week (preview)" : s.thisWeek}</h2>
@@ -195,9 +177,9 @@ export function AltarView({
           </ol>
         </nav>
 
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="min-w-0 flex-1">
           <div className="mx-auto flex max-w-[42rem] flex-col gap-7 px-5 py-7 lg:px-10 lg:py-12">
-            <p className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
               {selected === today && (
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">{s.today}</span>
               )}
@@ -213,7 +195,7 @@ export function AltarView({
                   s={s}
                 />
               )}
-            </p>
+            </div>
 
             {previewing && (
               <p className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-900/60 dark:bg-blue-900/20 dark:text-blue-200">
@@ -246,7 +228,7 @@ export function AltarView({
               </p>
             )}
 
-            {!previewing && <AltarCta s={s} />}
+            {!previewing && <AltarCta s={s} language={language} />}
 
             <nav className="grid grid-cols-2 gap-3 border-t border-zinc-200 pt-5 dark:border-zinc-800" aria-label={s.thisWeek}>
               {[idx - 1, idx + 1].map((i, k) =>
@@ -381,7 +363,7 @@ function Devotional({ row, s }: { row: FamilyAltarDay; s: AltarStrings }) {
  * news) and, on phones, the sermon search (the header has it on sm+).
  * Outside the devotion so es/fr pages show it before "read in English".
  */
-function AltarCta({ s }: { s: AltarStrings }) {
+function AltarCta({ s, language }: { s: AltarStrings; language: AltarLanguage }) {
   return (
     <section className="flex flex-col gap-4 border-t border-zinc-200 pt-6 dark:border-zinc-800">
       <div className="flex flex-col gap-1">
@@ -402,10 +384,10 @@ function AltarCta({ s }: { s: AltarStrings }) {
         </a>
         <Link
           prefetch={false}
-          href="/chat"
-          className="inline-flex items-center rounded-xl bg-zinc-900 px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 sm:hidden dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          href={chatHref("bible")}
+          className="inline-flex items-center rounded-xl bg-[var(--home-meadow)] px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#265a39]"
         >
-          {s.askQuestion}
+          {SITE_NAV[language].askBible}
         </Link>
       </div>
     </section>

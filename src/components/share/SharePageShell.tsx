@@ -108,7 +108,7 @@ export function SharePageShell({
   );
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="app-screen flex h-dvh flex-col">
       <header className="border-b border-zinc-200 bg-[var(--surface-base)] px-4 py-3 dark:border-zinc-800">
         <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
           {strings.shareContinueGuidance}
@@ -263,7 +263,7 @@ function ShareComposer({ onFocus, onSubmit, disabled, isAnonymous, strings }: Sh
         <button
           type="submit"
           disabled={disabled || (!value.trim() && !isAnonymous)}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white transition-colors hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--home-meadow)] text-white transition-colors hover:bg-[#265a39] disabled:opacity-40 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]"
           aria-label="Send"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

@@ -88,7 +88,7 @@ export const adminInputClass =
   "w-full rounded-lg border border-zinc-200 bg-transparent px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-zinc-700";
 
 export const adminPrimaryButtonClass =
-  "rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200";
+  "rounded-lg bg-[var(--home-meadow)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#265a39] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)] dark:hover:bg-[#a6d2b2]";
 
 export const adminSecondaryButtonClass =
   "rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800";

@@ -1,7 +1,8 @@
 /**
  * Copy for the links page (/links, /es/links, /fr/links): the address in the
- * social media bios, in place of Linktree. Paths follow the site's order:
- * the nature series for anyone, then the Bible, then the sermons. Spanish
+ * social media bios, in place of Linktree. Paths follow the home page's
+ * order: the nature series and the films for anyone, then the Bible
+ * (ready answers before Bible search), then the sermons. Spanish
  * uses "usted".
  */
 
@@ -23,6 +24,8 @@ export interface LinksCopy {
   bibleNote: string;
   faqTitle: string;
   faqNote: string;
+  videosTitle: string;
+  videosNote: string;
   sermonsTitle: string;
   sermonsNote: string;
   followUs: string;
@@ -44,7 +47,9 @@ export const LINKS_COPY: Record<LinksLang, LinksCopy> = {
     bibleNote: "Get answers straight from Scripture",
     faqTitle: "Bible Questions Answered",
     faqNote: "Clear, Scripture-based answers to questions people often ask",
-    sermonsTitle: "Ask the Sermons",
+    videosTitle: "Stories from creation",
+    videosNote: "Short films on what nature shows about God",
+    sermonsTitle: "Search the sermons",
     sermonsNote: "Get answers from Brother Branham’s sermons, every quote cited",
     followUs: "Follow us",
     about: "About BranhamSermons.ai",
@@ -63,7 +68,9 @@ export const LINKS_COPY: Record<LinksLang, LinksCopy> = {
     bibleNote: "Reciba respuestas tomadas directamente de las Escrituras",
     faqTitle: "Preguntas bíblicas respondidas",
     faqNote: "Respuestas claras, basadas en las Escrituras, a preguntas frecuentes",
-    sermonsTitle: "Preguntar a los sermones",
+    videosTitle: "Historias de la creación",
+    videosNote: "Videos breves sobre lo que la naturaleza muestra acerca de Dios",
+    sermonsTitle: "Buscar en los sermones",
     sermonsNote: "Respuestas de los sermones del Hermano Branham, con cada cita indicada",
     followUs: "Síganos",
     about: "Acerca de BranhamSermons.ai",
@@ -82,7 +89,9 @@ export const LINKS_COPY: Record<LinksLang, LinksCopy> = {
     bibleNote: "Des réponses tirées directement des Écritures",
     faqTitle: "Questions bibliques",
     faqNote: "Des réponses claires, fondées sur les Écritures, aux questions qu’on se pose souvent",
-    sermonsTitle: "Interroger les sermons",
+    videosTitle: "Histoires de la création",
+    videosNote: "De courts films sur ce que la nature montre de Dieu",
+    sermonsTitle: "Rechercher dans les sermons",
     sermonsNote: "Des réponses tirées des sermons de Frère Branham, chaque citation indiquée",
     followUs: "Suivez-nous",
     about: "À propos de BranhamSermons.ai",

@@ -31,10 +31,10 @@ export function SearchModeToggle({ mode, onChange, sermonsLabel, bibleLabel, gro
         aria-checked={active}
         disabled={disabled}
         onClick={() => !active && onChange(value)}
-        className={`relative whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`relative whitespace-nowrap rounded-full border px-3.5 py-1 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
           active
-            ? "bg-white text-foreground shadow-sm dark:bg-zinc-700"
-            : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+            ? "border-[var(--home-meadow)] bg-[var(--home-meadow)] text-white dark:border-[var(--home-leaf)] dark:bg-[var(--home-leaf)] dark:text-[var(--home-night)]"
+            : "border-zinc-200 bg-[var(--surface-base)] text-zinc-600 hover:border-[var(--home-meadow)] hover:text-foreground dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-[var(--home-leaf)]"
         } ${nudge ? "search-mode-nudge" : ""}`}
       >
         {value === "bible" && (
@@ -51,10 +51,10 @@ export function SearchModeToggle({ mode, onChange, sermonsLabel, bibleLabel, gro
     <div
       role="radiogroup"
       aria-label={groupLabel}
-      className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-800"
+      className="inline-flex items-center gap-1.5"
     >
-      {option("sermons", sermonsLabel)}
       {option("bible", bibleLabel)}
+      {option("sermons", sermonsLabel)}
     </div>
   );
 }
