@@ -33,6 +33,9 @@ export interface SiteNavCopy {
   channelNote: string;
   signIn: string;
   yourChats: string;
+  account: string;
+  profile: string;
+  signOut: string;
   contact: string;
   home: string;
 }
@@ -98,6 +101,9 @@ export const SITE_NAV: Record<SiteLang, SiteNavCopy> = {
     channelNote: "Daily Christian growth, and posts on why Christianity",
     signIn: "Sign in",
     yourChats: "Your chats",
+    account: "Account",
+    profile: "Profile and settings",
+    signOut: "Sign out",
     contact: "Contact",
     home: "Home",
   },
@@ -125,6 +131,9 @@ export const SITE_NAV: Record<SiteLang, SiteNavCopy> = {
     channelNote: "Grandir chaque jour dans la foi, et des publications sur le pourquoi du christianisme",
     signIn: "Se connecter",
     yourChats: "Vos discussions",
+    account: "Compte",
+    profile: "Profil et réglages",
+    signOut: "Se déconnecter",
     contact: "Contact",
     home: "Accueil",
   },
@@ -152,6 +161,9 @@ export const SITE_NAV: Record<SiteLang, SiteNavCopy> = {
     channelNote: "Crecimiento cristiano diario y publicaciones sobre el porqué del cristianismo",
     signIn: "Iniciar sesión",
     yourChats: "Sus conversaciones",
+    account: "Cuenta",
+    profile: "Perfil y ajustes",
+    signOut: "Cerrar sesión",
     contact: "Contacto",
     home: "Inicio",
   },

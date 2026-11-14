@@ -71,38 +71,41 @@
   color-scheme: dark;
   --series-accent: #8fc29e;
   --series-on-accent: #0f1a14;
-  --series-line: #33473a;
-  /* Dark = forest green (the home page's night). */
-  --background: #111b16;
-  --foreground: #edf3ee;
-  --muted-foreground: #c3cfc6;
-  --border-subtle: #2c3a31;
-  --surface-base: #19251e;
-  --surface-soft: #16211b;
-  --surface-muted: #213027;
-  --surface-chat: #17231c;
-  --surface-sources: #142019;
-  --surface-sidebar: #0f1813;
-  --shadow-color: 2 10 6;
+  --series-line: oklch(36% 0.025 158);
+  /* Dark = charcoal with a whisper of green (Material/Apple dark guidance):
+     near-neutral surfaces that get clearly lighter as they rise (page →
+     panels → cards → hovers), the green kept for accents (leaf #8fc29e
+     buttons, links, pills, chips). The home page's night stays forest. */
+  --background: oklch(18.5% 0.009 160);
+  --foreground: oklch(94% 0.006 160);
+  --muted-foreground: oklch(80% 0.012 160);
+  --border-subtle: oklch(31% 0.012 160);
+  --surface-base: oklch(23.5% 0.011 160);
+  --surface-soft: oklch(20.5% 0.01 160);
+  --surface-muted: oklch(27.5% 0.012 160);
+  --surface-chat: oklch(18.5% 0.009 160);
+  --surface-sources: oklch(21% 0.01 160);
+  --surface-sidebar: oklch(15.5% 0.008 160);
+  --shadow-color: 0 0 0;
   --ring-color: #8fc29e;
-  /* Secondary text greys, a little lighter than Tailwind's on dark
-     backgrounds: zinc-500 text was ~3.6:1 against --background, now ~5:1. */
-  --color-zinc-400: oklch(77% 0.022 155);
-  --color-zinc-500: oklch(64% 0.026 155);
-  /* Darker zinc steps carry the forest surfaces (borders, hovers, cards). */
-  --color-zinc-600: oklch(48% 0.03 155);
-  --color-zinc-700: oklch(36% 0.03 155);
-  --color-zinc-800: oklch(28.5% 0.028 155);
-  --color-zinc-900: oklch(22.5% 0.026 155);
-  --color-zinc-950: oklch(17% 0.022 155);
+  /* Neutral ramp (zinc-*), nearly grey: secondary text stays ~5:1 on the
+     page; the darker steps are the borders, hovers and raised cards. */
+  --color-zinc-400: oklch(78% 0.012 160);
+  --color-zinc-500: oklch(65% 0.014 160);
+  --color-zinc-600: oklch(49% 0.015 160);
+  --color-zinc-700: oklch(37% 0.014 160);
+  --color-zinc-800: oklch(29% 0.012 160);
+  --color-zinc-900: oklch(23.5% 0.011 160);
+  --color-zinc-950: oklch(17% 0.009 160);
   /* blue-* text on dark (links, pills) stays light enough to read. */
   --color-blue-200: oklch(88% 0.07 152);
   --color-blue-300: oklch(83% 0.09 152);
   --color-blue-400: oklch(77% 0.1 152);
-  --home-day: #111b16;
-  --home-card: #19251e;
-  --home-line: #2c3a31;
-  --home-chip: #2a3a30;
+  --home-day: oklch(18.5% 0.009 160);
+  --home-card: oklch(23.5% 0.011 160);
+  --home-line: oklch(31% 0.012 160);
+  /* chips keep a real green tint: they are accents */
+  --home-chip: oklch(29% 0.035 155);
   --home-chip-text: #b9dcc3;
 }
 
@@ -262,7 +265,7 @@ html:has(.app-screen) {
 }
 
 .dark .evidence-label {
-  background: #213027;
+  background: var(--surface-muted);
   color: #9fb5a5;
 }
 

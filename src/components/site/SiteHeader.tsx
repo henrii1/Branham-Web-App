@@ -34,17 +34,48 @@ export function SiteHeader({ lang, langHrefs, tone = "page", overlay = false, na
   const c = SITE_NAV[lang];
   const [menuOpen, setMenuOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
+  /** undefined while checking (nothing shown), null for visitors. */
+  const [account, setAccount] = useState<{ initial: string; label: string } | null | undefined>(undefined);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const signedIn = !!account;
   const askRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
   const prefix = lang === "en" ? "" : `/${lang}`;
   const night = tone === "night";
 
+  // After the page shows (never blocks it): who is signed in, from the session cookie.
   useEffect(() => {
     createClient()
       .auth.getSession()
-      .then(({ data }) => setSignedIn(!!data.session))
-      .catch(() => {});
+      .then(({ data }) => {
+        const u = data.session?.user;
+        if (!u) return setAccount(null);
+        const name = String(u.user_metadata?.full_name ?? u.user_metadata?.name ?? "").trim();
+        const label = name || u.email || "";
+        setAccount({ initial: (label[0] ?? "?").toUpperCase(), label });
+      })
+      .catch(() => setAccount(null));
   }, []);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const close = (e: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setAccountOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setAccountOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [accountOpen]);
+
+  const signOut = async () => {
+    await createClient().auth.signOut().catch(() => {});
+    window.location.reload();
+  };
+  const signInHref = `/login?next=${encodeURIComponent(prefix || "/")}`;
 
   useEffect(() => {
     if (!askOpen) return;
@@ -127,6 +158,43 @@ export function SiteHeader({ lang, langHrefs, tone = "page", overlay = false, na
               </div>
             )}
           </div>
+          {account === null && (
+            <Link prefetch={false} href={signInHref} className={`hidden text-[14px] font-medium whitespace-nowrap sm:block ${navLink}`}>
+              {c.signIn}
+            </Link>
+          )}
+          {account && (
+            <div ref={accountRef} className="relative hidden sm:block">
+              <button
+                type="button"
+                aria-label={c.account}
+                aria-expanded={accountOpen}
+                aria-haspopup="menu"
+                onClick={() => setAccountOpen((o) => !o)}
+                className={`grid h-9 w-9 place-items-center rounded-full text-[14px] font-semibold transition-colors ${
+                  night ? "bg-white/15 text-[#edf0e8] ring-1 ring-white/30 hover:bg-white/25" : "bg-[var(--home-chip)] text-[var(--home-chip-text)] hover:ring-2 hover:ring-[var(--ring-color)]"
+                }`}
+              >
+                {account.initial}
+              </button>
+              {accountOpen && (
+                <div role="menu" className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-1.5 text-zinc-900 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+                  <p className="truncate px-3 pt-2 pb-2.5 text-[12.5px] text-zinc-500 dark:text-zinc-400">{account.label}</p>
+                  {[
+                    { label: c.yourChats, href: "/chat" },
+                    { label: c.profile, href: "/profile" },
+                  ].map((a) => (
+                    <Link key={a.href} role="menuitem" prefetch={false} href={a.href} className="block rounded-xl px-3 py-2.5 text-[14.5px] font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                      {a.label}
+                    </Link>
+                  ))}
+                  <button type="button" role="menuitem" onClick={signOut} className="block w-full rounded-xl px-3 py-2.5 text-left text-[14.5px] text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                    {c.signOut}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -175,11 +243,24 @@ export function SiteHeader({ lang, langHrefs, tone = "page", overlay = false, na
               <span className="text-[13px] text-white/85">{c.channelNote}</span>
             </span>
           </a>
+          {signedIn ? (
+            <MenuGroup title={account?.label || c.account}>
+              <MenuRow href="/chat" title={c.yourChats} onPick={() => setMenuOpen(false)} />
+              <MenuRow href="/profile" title={c.profile} onPick={() => setMenuOpen(false)} />
+              <li className="border-b border-white/10">
+                <button type="button" onClick={signOut} className="block w-full py-3 text-left text-[16px] text-[#edf0e8]/80">
+                  {c.signOut}
+                </button>
+              </li>
+            </MenuGroup>
+          ) : null}
           <nav className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-[#edf0e8]/75">
             <Link prefetch={false} href={aboutHref(lang)} onClick={() => setMenuOpen(false)}>{c.about}</Link>
-            <Link prefetch={false} href={signedIn ? "/chat" : `/login?next=${encodeURIComponent(prefix || "/")}`} onClick={() => setMenuOpen(false)}>
-              {signedIn ? c.yourChats : c.signIn}
-            </Link>
+            {!signedIn && (
+              <Link prefetch={false} href={signInHref} onClick={() => setMenuOpen(false)}>
+                {c.signIn}
+              </Link>
+            )}
             <a href={`mailto:${CONTACT_EMAIL}`}>{c.contact}</a>
           </nav>
         </div>

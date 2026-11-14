@@ -47,13 +47,15 @@ export function ThemePreferencePicker({
             : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
         }`}
       >
-        <div className="mb-3 flex h-16 rounded-xl border border-[#2c3a31] bg-[#19251e] p-2">
-          <div className="w-1/3 rounded-lg bg-[#0f1813]" />
-          <div className="ml-2 flex-1 rounded-lg bg-[#213027]" />
+        <div className="mb-3 flex h-16 rounded-xl border border-[#2b322e] bg-[#0f1411] p-2">
+          <div className="w-1/3 rounded-lg bg-[#090d0b]" />
+          <div className="ml-2 flex flex-1 items-end rounded-lg bg-[#1a201c] p-1.5">
+            <div className="h-2 w-8 rounded-full bg-[#8fc29e]" />
+          </div>
         </div>
         <p className="text-sm font-medium">Dark</p>
         <p className="mt-1 text-xs text-zinc-400">
-          Deep forest green, gentle on the eyes at night.
+          Soft charcoal with green accents, gentle on the eyes at night.
         </p>
       </button>
     </div>
