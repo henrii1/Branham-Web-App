@@ -6,6 +6,9 @@ import { ReferencePopover } from "@/components/chat/ReferencePopover";
 import { applyCitations } from "@/lib/markdown/citations";
 import { CONTACT_EMAIL, WHATSAPP_CHANNEL_URL } from "@/lib/site/social";
 import { WhatsAppIcon } from "@/components/site/SocialIcons";
+import { SiteTour } from "@/components/site/SiteTour";
+import { TourThumb } from "@/components/site/TourThumb";
+import { TOUR_COPY } from "@/lib/site/tour";
 import {
   ABOUT_CONTENT,
   ABOUT_LANGS,
@@ -121,6 +124,16 @@ export function AboutPage({ lang }: { lang: AboutLang }) {
               <h2 className="font-display text-[1.7rem] leading-tight text-balance text-foreground">
                 {c.pathsHeading}
               </h2>
+              <SiteTour
+                lang={lang}
+                className="group flex items-center gap-4 rounded-2xl border border-zinc-200 p-2.5 pr-4 text-left transition-colors hover:border-[var(--series-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--series-accent)] dark:border-zinc-700"
+              >
+                <TourThumb lang={lang} className="w-[7.5rem] sm:w-[9rem]" />
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="font-display text-[1.2rem] leading-tight text-foreground">{TOUR_COPY[lang].label}</span>
+                  <span className="text-[14px] text-zinc-500 dark:text-zinc-400">{TOUR_COPY[lang].note}</span>
+                </span>
+              </SiteTour>
               <ul className="flex flex-col">
                 {c.paths.map((path) => (
                   <li

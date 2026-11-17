@@ -881,6 +881,7 @@ export function SeoShell({
           onSubmit={handleFollowUp}
           disabled={seeding}
           isAnonymous={isAnonymous}
+          language={language}
           note={followupKind === "nature" ? natureFollowupNote(language) : undefined}
         />
       </div>
@@ -953,10 +954,18 @@ interface SeoComposerProps {
   onSubmit: (content: string) => void;
   disabled: boolean;
   isAnonymous: boolean;
+  language: string;
   note?: string;
 }
 
-function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous, note }: SeoComposerProps) {
+const COMPOSER_PLACEHOLDERS: Record<string, { anonymous: string; starting: string; ask: string }> = {
+  en: { anonymous: "Sign up to ask a follow-up…", starting: "Starting conversation…", ask: "Ask a follow-up question…" },
+  fr: { anonymous: "Inscrivez-vous pour poser une question de suivi…", starting: "Ouverture de la conversation…", ask: "Posez une question de suivi…" },
+  es: { anonymous: "Regístrese para hacer una pregunta de seguimiento…", starting: "Iniciando la conversación…", ask: "Haga una pregunta de seguimiento…" },
+};
+
+function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous, language, note }: SeoComposerProps) {
+  const ph = COMPOSER_PLACEHOLDERS[language] ?? COMPOSER_PLACEHOLDERS.en;
   const [value, setValue] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
 
@@ -1008,11 +1017,7 @@ function SeoComposer({ onFocus, onSubmit, disabled, isAnonymous, note }: SeoComp
           }}
           onFocus={isAnonymous ? onFocus : undefined}
           placeholder={
-            isAnonymous
-              ? "Sign up to ask a follow-up…"
-              : disabled
-                ? "Starting conversation…"
-                : "Ask a follow-up question…"
+            isAnonymous ? ph.anonymous : disabled ? ph.starting : ph.ask
           }
           disabled={disabled}
           readOnly={isAnonymous}

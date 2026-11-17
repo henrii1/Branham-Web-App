@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { WhatsAppIcon, YouTubeIcon } from "@/components/site/SocialIcons";
 import { HomeAltarCard } from "./HomeAltarCard";
 import { VideoCard } from "./VideoCard";
+import { SiteTour } from "@/components/site/SiteTour";
 import { seriesPagePath } from "@/lib/faq/series";
 import { HOME_COPY, bibleQuestionsHref, chatHref } from "@/lib/site/home";
 import type { HomeData } from "@/lib/site/homeData";
@@ -76,6 +77,10 @@ export function HomePage({ lang, data, videos }: { lang: SiteLang; data: HomeDat
               </Link>
             </p>
           )}
+          <SiteTour
+            lang={lang}
+            className="mt-6 inline-flex items-center gap-2.5 rounded-full text-[14.5px] font-medium text-[#edf0e8] transition-colors hover:text-[var(--home-leaf)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--home-leaf)] [@media(max-height:760px)]:mt-4"
+          />
         </div>
       </section>
 
@@ -125,9 +130,17 @@ export function HomePage({ lang, data, videos }: { lang: SiteLang; data: HomeDat
           </div>
           {videos.length > 0 && videos.some((v) => v.short) ? (
             /* Shorts: upright, side by side (a swipeable row on phones) */
-            <div className="-mx-4 mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:mx-auto lg:max-w-[56rem]">
+            <div
+              className={`mt-12 flex gap-4 sm:mx-auto sm:grid sm:gap-5 ${
+                videos.length === 1
+                  ? "justify-center sm:max-w-[18rem] sm:grid-cols-1"
+                  : videos.length === 2
+                    ? "-mx-4 snap-x snap-mandatory overflow-x-auto px-4 pb-2 sm:mx-auto sm:max-w-[37rem] sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0"
+                    : "-mx-4 snap-x snap-mandatory overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:mx-auto lg:max-w-[56rem]"
+              }`}
+            >
               {videos.map((v) => (
-                <div key={v.id} className="w-[68%] shrink-0 snap-center sm:w-auto">
+                <div key={v.id} className={`shrink-0 snap-center sm:w-auto ${videos.length === 1 ? "w-[72%] max-w-[18rem]" : "w-[68%]"}`}>
                   <VideoCard id={v.id} title={v.title} upright />
                 </div>
               ))}

@@ -3,6 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { LangSwitcher } from "@/components/seo/LangSwitcher";
+import { SiteTour } from "@/components/site/SiteTour";
+import { TourThumb } from "@/components/site/TourThumb";
+import { TOUR_COPY } from "@/lib/site/tour";
 import { TodayVerse } from "@/components/site/TodayVerse";
 import { FacebookIcon, InstagramIcon, MailIcon, TikTokIcon, WhatsAppIcon, XIcon, YouTubeIcon } from "@/components/site/SocialIcons";
 import { aboutHref } from "@/lib/about/content";
@@ -141,6 +144,17 @@ export function LinksPage({ lang, natureCount }: { lang: LinksLang; natureCount:
         </a>
 
         <TodayVerse lang={lang} copy={{ label: c.todayLabel, open: c.openDevotion, preparing: c.preparing }} />
+
+        <SiteTour
+          lang={lang}
+          className="group mt-5 flex items-center gap-3.5 rounded-2xl border border-zinc-200 p-2 pr-4 text-left transition-colors hover:border-[var(--series-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--series-accent)] dark:border-zinc-800"
+        >
+          <TourThumb lang={lang} className="w-[6.75rem]" />
+          <span className="flex min-w-0 flex-col">
+            <span className="text-[15.5px] font-medium text-foreground group-hover:underline group-hover:decoration-[var(--series-accent)] group-hover:underline-offset-4">{TOUR_COPY[lang].label}</span>
+            <span className="text-[13.5px] leading-snug text-zinc-500 dark:text-zinc-400">{TOUR_COPY[lang].note}</span>
+          </span>
+        </SiteTour>
 
         <nav aria-label={c.metaTitle} className="mt-7">
           <ul className="flex flex-col border-t border-zinc-200 dark:border-zinc-800">

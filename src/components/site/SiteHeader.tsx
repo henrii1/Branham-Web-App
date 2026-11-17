@@ -117,9 +117,9 @@ export function SiteHeader({ lang, langHrefs, tone = "page", overlay = false, na
           night ? (overlay ? "" : "bg-[var(--home-night)]") : "border-b border-zinc-200 bg-[var(--surface-base)] dark:border-zinc-800"
         } ${text}`}
       >
-        <div className="mx-auto flex h-16 max-w-[72rem] items-center gap-6 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-[72rem] items-center gap-6 px-4 sm:px-6 xl:gap-3 2xl:gap-6">
           <BrandLogo href={homeHref(lang)} size={30} priority className={`shrink-0 ${night ? "[&_img]:bg-white [&_img]:p-0.5" : ""}`} nameClassName={night ? "!text-[#edf0e8]" : ""} />
-          <nav aria-label={c.menu} className="ml-auto hidden items-center gap-5 text-[14px] whitespace-nowrap xl:flex">
+          <nav aria-label={c.menu} className="ml-auto hidden items-center gap-5 text-[14px] whitespace-nowrap xl:flex xl:gap-3.5 xl:text-[13.5px] 2xl:gap-5 2xl:text-[14px]">
             {nav.map((n) => (
               <Link key={n.href} prefetch={false} href={n.href} className={`transition-colors ${navLink}`}>
                 {n.label}
