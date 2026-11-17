@@ -45,6 +45,7 @@ export function HomePage({ lang, data, videos }: { lang: SiteLang; data: HomeDat
   const c = HOME_COPY[lang];
   const seriesHref = seriesPagePath(lang);
   const startHref = data.firstNature ? qHref(lang, data.firstNature.slug) : seriesHref;
+  const lone = videos.length === 1 && videos[0].short;
 
   return (
     <div lang={lang} className="min-h-dvh bg-[var(--home-day)] text-foreground">
@@ -115,8 +116,13 @@ export function HomePage({ lang, data, videos }: { lang: SiteLang; data: HomeDat
 
       {/* ── Dawn: the films ────────────────────────────────── */}
       <section id="videos" className="-mt-px scroll-mt-4 bg-[linear-gradient(180deg,var(--home-night)_0%,#14352a_40%,#2c5a40_72%,#5d8c66_100%)] py-24 dark:bg-[linear-gradient(180deg,var(--home-night)_0%,#123026_45%,#1f4130_100%)] text-[#edf0e8] md:py-28">
-        <div className="mx-auto max-w-[72rem] px-4 sm:px-6">
-          <div className="flex flex-wrap items-end justify-between gap-6">
+        {/* One Short: the film beside the heading on wider screens, not alone under it */}
+        <div
+          className={`mx-auto max-w-[72rem] px-4 sm:px-6 ${
+            lone ? "md:grid md:grid-cols-[minmax(0,1fr)_17rem] md:items-center md:gap-14 lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-24" : ""
+          }`}
+        >
+          <div className={lone ? "flex flex-col items-start gap-6" : "flex flex-wrap items-end justify-between gap-6"}>
             <div>
               <h2 className="font-display text-[clamp(1.9rem,3.6vw,2.75rem)] leading-[1.08] font-normal tracking-[-0.015em]">{c.videosTitle}</h2>
               <p className="mt-3.5 max-w-[34rem] leading-relaxed text-[#edf0e8]/78">{c.videosIntro}</p>
@@ -133,14 +139,14 @@ export function HomePage({ lang, data, videos }: { lang: SiteLang; data: HomeDat
             <div
               className={`mt-12 flex gap-4 sm:mx-auto sm:grid sm:gap-5 ${
                 videos.length === 1
-                  ? "justify-center sm:max-w-[18rem] sm:grid-cols-1"
+                  ? "justify-center sm:max-w-[18rem] sm:grid-cols-1 md:mt-0 md:max-w-none"
                   : videos.length === 2
                     ? "-mx-4 snap-x snap-mandatory overflow-x-auto px-4 pb-2 sm:mx-auto sm:max-w-[37rem] sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0"
                     : "-mx-4 snap-x snap-mandatory overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:mx-auto lg:max-w-[56rem]"
               }`}
             >
               {videos.map((v) => (
-                <div key={v.id} className={`shrink-0 snap-center sm:w-auto ${videos.length === 1 ? "w-[72%] max-w-[18rem]" : "w-[68%]"}`}>
+                <div key={v.id} className={`shrink-0 snap-center sm:w-auto ${videos.length === 1 ? "w-[72%] max-w-[18rem] md:max-w-none" : "w-[68%]"}`}>
                   <VideoCard id={v.id} title={v.title} upright />
                 </div>
               ))}
