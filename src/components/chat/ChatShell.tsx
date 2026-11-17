@@ -1179,12 +1179,21 @@ export function ChatShell({
 
   // New chats open in the reader's last-used mode (account, else this
   // browser), else Bible search. A mode link (?mode=) decides this first chat.
+  // Arriving from another site (a Google result, a shared link) always opens
+  // on Bible search; the last-used mode applies from the next new chat on.
   useEffect(() => {
     if (authLoading || modeApplied.current) return;
     modeApplied.current = true;
     const last: SearchMode = accountSearchMode(user ?? null) ?? readBrowserSearchMode() ?? "bible";
     defaultModeRef.current = last;
-    if (!initialConversationId && !initialSearchMode) setSourceFaqKind(last === "bible" ? "bible" : null);
+    let fromOutside = false;
+    try {
+      fromOutside = !!document.referrer && new URL(document.referrer).origin !== window.location.origin;
+    } catch {
+      fromOutside = false;
+    }
+    const first: SearchMode = fromOutside ? "bible" : last;
+    if (!initialConversationId && !initialSearchMode) setSourceFaqKind(first === "bible" ? "bible" : null);
   }, [authLoading, user, initialConversationId, initialSearchMode]);
 
   // Not signed in: answers come in the site language (the switcher's pick,
