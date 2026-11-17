@@ -202,7 +202,7 @@ export function AltarView({
                 Preview: readers can&apos;t see next week yet. It goes live on Monday at each reader&apos;s own midnight (from Sunday 10:00 UTC for the earliest time zones).
               </p>
             )}
-            {isAdmin && <AltarAdmin day={selected} row={row} today={today} onChanged={() => setReloadKey((k) => k + 1)} />}
+            {isAdmin && <AltarAdmin day={selected} language={language} row={row} today={today} onChanged={() => setReloadKey((k) => k + 1)} />}
 
             {shown ? (
               <>

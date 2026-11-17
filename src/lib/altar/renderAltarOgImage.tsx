@@ -27,6 +27,8 @@ export interface AltarOgContent {
   dateLabel: string;
   verse: string | null;
   reference: string | null;
+  /** Bible version label (KJV, LSG, RV1909). */
+  version?: string | null;
   title: string | null;
 }
 
@@ -99,6 +101,7 @@ function Flame({ size, color }: { size: number; color: string }) {
 
 export function renderAltarImage(content: AltarOgContent, day: string, format: AltarImageFormat = "og") {
   const { label, dateLabel, verse, reference, title } = content;
+  const version = content.version || "KJV";
   const p = paletteFor(day);
   const shownVerse = verse ? `“${truncate(verse, MAX_VERSE_CHARS[format])}”` : title ?? label;
   const size = VERSE_TIERS[format].find(([max]) => shownVerse.length < max)![1];
@@ -137,7 +140,7 @@ export function renderAltarImage(content: AltarOgContent, day: string, format: A
             {reference && (
               <div style={{ display: "flex", fontSize: 28, color: p.accent }}>
                 {reference}
-                <span style={{ marginLeft: 10, color: muted }}>KJV</span>
+                <span style={{ marginLeft: 10, color: muted }}>{version}</span>
               </div>
             )}
           </div>
@@ -174,7 +177,7 @@ export function renderAltarImage(content: AltarOgContent, day: string, format: A
           {reference && (
             <div style={{ display: "flex", fontSize: story ? 42 : 36, color: p.accent }}>
               {reference}
-              <span style={{ marginLeft: 12, color: muted }}>KJV</span>
+              <span style={{ marginLeft: 12, color: muted }}>{version}</span>
             </div>
           )}
           {verse && title && (

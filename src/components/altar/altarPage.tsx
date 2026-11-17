@@ -39,7 +39,7 @@ export async function buildAltarDayMetadata(language: AltarLanguage, day: string
   const url = `${SITE_URL}${altarDayHref(language, day)}`;
   const row = await fetchPublishedAltarDay(day, dayLanguages(language)).catch(() => null);
   const title = row?.title ? `${row.title} | ${s.pageTitle}` : `${s.pageTitle}: ${longDate(day, s.locale)}`;
-  const description = row ? `“${row.scripture_text}” ${row.scripture_ref} (KJV)` : s.metaDescription;
+  const description = row ? `“${row.scripture_text}” ${row.scripture_ref} (${row.bible_version})` : s.metaDescription;
   return {
     ...base,
     title: { absolute: title },
@@ -65,9 +65,10 @@ export async function renderAltarDayImage(language: AltarLanguage, day: string, 
     dateLabel: longDate(day, s.locale),
     verse: row?.scripture_text ?? null,
     reference: row?.scripture_ref ?? null,
+    version: row?.bible_version ?? null,
     title: row?.title ?? null,
   };
-  const drawn = Object.values(content).join("") + ALTAR_OG_BRAND + ALTAR_IMAGE_DOMAIN + "“”…KJV";
+  const drawn = Object.values(content).join("") + ALTAR_OG_BRAND + ALTAR_IMAGE_DOMAIN + "“”…KJVLSGRV1909";
   const [regular, medium] = await Promise.all([loadNewsreader(drawn, 400), loadNewsreader(drawn, 500)]);
   const fonts = [
     ...(regular ? [{ name: "Newsreader", data: regular, weight: 400 as const, style: "normal" as const }] : []),

@@ -41,7 +41,7 @@ export function TodayVerse({ lang, copy }: { lang: AltarLanguage; copy: { label:
       {state.status === "ready" && (
         <>
           <blockquote className="font-display m-0 line-clamp-5 text-[1.45rem] leading-[1.3] text-pretty text-foreground">“{state.row.scripture_text}”</blockquote>
-          <span className="text-[13.5px] text-zinc-500 dark:text-zinc-400">{state.row.scripture_ref} (KJV)</span>
+          <span className="text-[13.5px] text-zinc-500 dark:text-zinc-400">{state.row.scripture_ref} ({state.row.bible_version})</span>
         </>
       )}
       {state.status === "none" && <span className="text-[15px] text-foreground">{copy.preparing}</span>}

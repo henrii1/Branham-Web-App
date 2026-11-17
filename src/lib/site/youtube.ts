@@ -22,29 +22,7 @@ export interface YouTubeVideo {
   likes: number;
   views: number;
   published: string;
-  /** Served from the site (public/films) instead of YouTube. */
-  file?: { src: string; poster: string };
 }
-
-/**
- * Our own films, served from public/films, shown on the English home page
- * only while the channel has no public videos (their captions are in
- * English). Once anything is on the channel, YouTube's videos replace them;
- * then delete public/films and this list.
- */
-export const SITE_FILMS: YouTubeVideo[] = [
-  ["the-seed-that-has-to-die", "The seed that has to die"],
-  ["the-sun-that-never-forgets-to-rise", "The sun that never forgets to rise"],
-  ["the-lost-sheep", "The lost sheep"],
-].map(([slug, title]) => ({
-  id: slug,
-  title,
-  short: false,
-  likes: 0,
-  views: 0,
-  published: "",
-  file: { src: `/films/${slug}.mp4`, poster: `/films/${slug}.jpg` },
-}));
 
 /** Hand-picked videos (ids from youtube.com/watch?v=ID or /shorts/ID), shown in this order. Empty: most liked. */
 export const FEATURED_VIDEO_IDS: string[] = [];
@@ -141,10 +119,9 @@ export function rankByLikes(videos: YouTubeVideo[]): YouTubeVideo[] {
   return [...videos].sort((a, b) => b.likes - a.likes || b.views - a.views || b.published.localeCompare(a.published));
 }
 
-/** The videos to show: the featured ones, else the most liked, else (English only) our own films. Never throws. */
-export async function fetchHomeVideos(lang = "en"): Promise<YouTubeVideo[]> {
-  const videos = await fetchChannelVideos();
-  return videos.length || lang !== "en" ? videos : SITE_FILMS;
+/** The videos to show: the featured ones, else the most liked. Never throws. */
+export async function fetchHomeVideos(): Promise<YouTubeVideo[]> {
+  return fetchChannelVideos();
 }
 
 async function fetchChannelVideos(): Promise<YouTubeVideo[]> {

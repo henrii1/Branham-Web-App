@@ -58,7 +58,7 @@ export function LinksPage({ lang, natureCount }: { lang: LinksLang; natureCount:
     {
       title: c.videosTitle,
       note: c.videosNote,
-      // the home page's films section: our own films until the channel has videos, then the most-liked ones
+      // the home page's films section: the channel's most-liked videos
       href: `${homeHref(lang)}#videos`,
       icon: (
         <>

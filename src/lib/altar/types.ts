@@ -2,7 +2,7 @@ export const ALTAR_LANGUAGES = ["en", "es", "fr"] as const;
 export type AltarLanguage = (typeof ALTAR_LANGUAGES)[number];
 
 /** Languages devotionals are generated in today. Add "es"/"fr" here to turn them on. */
-export const ALTAR_GENERATED_LANGUAGES: readonly AltarLanguage[] = ["en"];
+export const ALTAR_GENERATED_LANGUAGES: readonly AltarLanguage[] = ["en", "es", "fr"];
 
 export type AltarStatus = "pending" | "generating" | "ready" | "failed";
 

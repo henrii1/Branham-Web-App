@@ -27,8 +27,8 @@ be cropped to vertical, but you lose about two-thirds of the frame.
 
 ## Wikimedia Commons (credit usually required)
 
-commons.wikimedia.org, search with `filetype:video`. The three films in
-`youtube-films/` came from here. Each file has its own licence:
+commons.wikimedia.org, search with `filetype:video`. The three films on the
+home page (`public/films/`) came from here. Each file has its own licence:
 
 - **CC0 / public domain**: use freely.
 - **CC BY**: allowed; give the author, licence and link in the caption or description.

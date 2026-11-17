@@ -10,7 +10,7 @@ import {
   postJson,
 } from "@/components/admin/faq/AdminDialog";
 import { addDays, mondayOf } from "@/lib/altar/week";
-import type { AltarStatus, FamilyAltarDay } from "@/lib/altar/types";
+import type { AltarLanguage, AltarStatus, FamilyAltarDay } from "@/lib/altar/types";
 
 interface WeekState {
   rows: FamilyAltarDay[];
@@ -31,11 +31,14 @@ const STATUS_STYLE: Record<AltarStatus | "none", string> = {
  */
 export function AltarAdmin({
   day,
+  language,
   row,
   today,
   onChanged,
 }: {
   day: string;
+  /** The page's language: the tools manage that language's days. */
+  language: AltarLanguage;
   row: FamilyAltarDay | null;
   /** Called after a generate or an edit, so the page reloads what it shows. */
   onChanged?: () => void;
@@ -56,10 +59,10 @@ export function AltarAdmin({
 
   const fetchWeek = useCallback(
     (weekStart: string) =>
-      postJson<{ ok: boolean; rows: FamilyAltarDay[]; defaults: Record<string, string> }>("/api/admin/altar/week", { week_start: weekStart }).then(
+      postJson<{ ok: boolean; rows: FamilyAltarDay[]; defaults: Record<string, string> }>("/api/admin/altar/week", { week_start: weekStart, language }).then(
         ({ data }) => (data?.ok ? ([weekStart, { rows: data.rows, defaults: data.defaults }] as const) : null),
       ),
-    [],
+    [language],
   );
 
   const loadWeek = useCallback(
@@ -89,7 +92,7 @@ export function AltarAdmin({
       setBusy(days.length > 1 ? `Generating ${i + 1} of ${days.length} (${d})… about 30s each` : `Generating ${d}… about 30 seconds`);
       const { data } = await postJson<{ ok: boolean; result?: { error?: string; keptPrevious?: boolean }; error?: string }>(
         "/api/admin/altar/generate-day",
-        reference ? { day: d, reference } : { day: d },
+        reference ? { day: d, language, reference } : { day: d, language },
       );
       if (data?.ok) ok++;
       else failures.push(`${d}: ${data?.result?.error ?? data?.error ?? "failed"}${data?.result?.keptPrevious ? " (the published version was kept)" : ""}`);

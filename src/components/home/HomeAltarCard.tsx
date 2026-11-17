@@ -41,7 +41,7 @@ export function HomeAltarCard({ lang, copy }: { lang: AltarLanguage; copy: { lab
       {state.status === "ready" && (
         <>
           <blockquote className="font-display mt-3 line-clamp-5 text-[1.4rem] leading-[1.3] text-pretty">“{state.row.scripture_text}”</blockquote>
-          <span className="mt-2.5 block text-[13.5px] text-[#7a5a2a] dark:text-amber-200/80">{state.row.scripture_ref} (KJV)</span>
+          <span className="mt-2.5 block text-[13.5px] text-[#7a5a2a] dark:text-amber-200/80">{state.row.scripture_ref} ({state.row.bible_version})</span>
         </>
       )}
       {state.status === "none" && <p className="mt-3 text-[15px]">{copy.preparing}</p>}

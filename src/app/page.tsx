@@ -9,6 +9,6 @@ export const metadata = buildHomeMetadata("en");
  * Spanish is sent to /fr or /es by the middleware; the chat lives at /chat.
  */
 export default async function Home() {
-  const [data, videos] = await Promise.all([fetchHomeData("en"), fetchHomeVideos("en")]);
+  const [data, videos] = await Promise.all([fetchHomeData("en"), fetchHomeVideos()]);
   return <HomePage lang="en" data={data} videos={videos} />;
 }

@@ -1,5 +1,6 @@
 import { getAdminUser } from "@/lib/faq/adminStore";
 import { generateAndStoreDay } from "@/lib/altar/store";
+import { ALTAR_GENERATED_LANGUAGES, type AltarLanguage } from "@/lib/altar/types";
 import { addDays, isIsoDate, mondayOf, utcTodayIso } from "@/lib/altar/week";
 
 /**
@@ -11,10 +12,11 @@ export async function POST(request: Request) {
   if (!(await getAdminUser())) {
     return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
   }
-  const body = (await request.json().catch(() => null)) as { day?: string; reference?: string } | null;
+  const body = (await request.json().catch(() => null)) as { day?: string; language?: string; reference?: string } | null;
   const day = body?.day ?? "";
   const reference = body?.reference?.trim() || undefined;
-  if (!isIsoDate(day) || (reference && reference.length > 60)) {
+  const language = (body?.language ?? "en") as AltarLanguage;
+  if (!isIsoDate(day) || (reference && reference.length > 60) || !ALTAR_GENERATED_LANGUAGES.includes(language)) {
     return Response.json({ ok: false, error: "invalid_request" }, { status: 400 });
   }
   // Today onward only (past days would waste a Model API call), up to the end
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await generateAndStoreDay(day, "en", reference);
+    const result = await generateAndStoreDay(day, language, reference, { reuse: false });
     return Response.json({ ok: result.ok, result }, { status: result.ok ? 200 : 502 });
   } catch (err) {
     console.error("Altar generate-day failed:", err);

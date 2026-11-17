@@ -6,7 +6,7 @@
 
 import { processSSEStream } from "@/lib/sse/parser";
 import { postprocessRag } from "@/lib/markdown/ragPostprocess";
-import type { KjvPassage } from "./kjv";
+import type { BiblePassage } from "./bible";
 import type { AltarLanguage } from "./types";
 
 export interface GeneratedDevotional {
@@ -28,7 +28,7 @@ const strings = (v: unknown): string[] =>
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
 
 export async function generateDevotional(
-  passage: KjvPassage,
+  passage: BiblePassage,
   language: AltarLanguage,
   day: string,
 ): Promise<GeneratedDevotional> {
@@ -42,7 +42,7 @@ export async function generateDevotional(
     body: JSON.stringify({
       conversation_id: `altar-${day}-${language}-${crypto.randomUUID().slice(0, 8)}`,
       // Format required by devotional mode: "<reference> (<version>): <verse text>".
-      query: `${passage.reference} (KJV): ${passage.text}`,
+      query: `${passage.reference} (${passage.version}): ${passage.text}`,
       user_language: language,
       response_mode: "devotional",
     }),

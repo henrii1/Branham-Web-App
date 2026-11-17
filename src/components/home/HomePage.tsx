@@ -117,10 +117,9 @@ export function HomePage({ lang, data, videos }: { lang: SiteLang; data: HomeDat
               <p className="mt-3.5 max-w-[34rem] leading-relaxed text-[#edf0e8]/78">{c.videosIntro}</p>
             </div>
             {videos.length > 0 && (
-              <a href={videos[0].file ? `${YOUTUBE_CHANNEL_URL}?sub_confirmation=1` : YOUTUBE_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border-b border-white/50 pb-0.5 text-[15px] font-medium hover:border-white">
+              <a href={YOUTUBE_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border-b border-white/50 pb-0.5 text-[15px] font-medium hover:border-white">
                 <YouTubeIcon className="h-5 w-5" />
-                {/* our own films (channel still empty): invite to subscribe rather than "more" */}
-                {videos[0].file ? c.videosEmptyButton : c.videosMore}
+                {c.videosMore}
               </a>
             )}
           </div>
@@ -136,7 +135,7 @@ export function HomePage({ lang, data, videos }: { lang: SiteLang; data: HomeDat
           ) : videos.length > 0 ? (
             <div className={`mt-12 grid gap-5 ${videos.length > 1 ? "lg:grid-cols-[1.7fr_1fr]" : ""}`}>
               {videos.map((v, i) => (
-                <VideoCard key={v.id} id={v.id} title={v.title} file={v.file} big={i === 0 && videos.length > 2} />
+                <VideoCard key={v.id} id={v.id} title={v.title} big={i === 0 && videos.length > 2} />
               ))}
             </div>
           ) : (

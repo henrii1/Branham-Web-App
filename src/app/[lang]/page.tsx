@@ -26,6 +26,6 @@ export default async function LocalizedHome({ params }: PageProps) {
   const { lang } = await params;
   if (!SUPPORTED_LANGS.includes(lang as SupportedLang)) notFound();
   const l = lang as SupportedLang;
-  const [data, videos] = await Promise.all([fetchHomeData(l), fetchHomeVideos(l)]);
+  const [data, videos] = await Promise.all([fetchHomeData(l), fetchHomeVideos()]);
   return <HomePage lang={l} data={data} videos={videos} />;
 }

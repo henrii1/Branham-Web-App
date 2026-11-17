@@ -9,6 +9,7 @@ import { ALTAR_GENERATED_LANGUAGES, type AltarLanguage } from "@/lib/altar/types
 
 export interface TodayRow {
   scripture_ref: string;
+  bible_version: string;
   scripture_text: string;
   title: string | null;
   discussion_questions: string[];
@@ -28,7 +29,7 @@ export function loadToday(day: string, language: AltarLanguage): Promise<TodayRo
       Promise.resolve(
         createClient()
           .from("family_altar_days")
-          .select("scripture_ref, scripture_text, title, discussion_questions, prayer_points")
+          .select("scripture_ref, bible_version, scripture_text, title, discussion_questions, prayer_points")
           .eq("day", day)
           .eq("language", language)
           .eq("status", "ready")
@@ -123,7 +124,7 @@ export function TodayAltarCard({ language }: { language: string }) {
             <span className="font-display line-clamp-3 text-[1.05rem] leading-[1.35] text-pretty text-foreground">“{row.scripture_text}”</span>
             <span className="flex items-center justify-between gap-3">
               <span className="truncate text-xs text-zinc-600 dark:text-zinc-400">
-                {row.scripture_ref} <span className="text-zinc-400 dark:text-zinc-500">· KJV</span>
+                {row.scripture_ref} <span className="text-zinc-400 dark:text-zinc-500">· {row.bible_version}</span>
               </span>
               <span className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-900 transition-colors group-hover:bg-amber-100 dark:border-amber-700/60 dark:text-amber-200 dark:group-hover:bg-amber-900/30">
                 {c.openShort}

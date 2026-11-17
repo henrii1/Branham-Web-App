@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // local, git-ignored work (video tools, worktrees)
+    "reels_dir/**",
+    ".worktrees/**",
   ]),
 ]);
 

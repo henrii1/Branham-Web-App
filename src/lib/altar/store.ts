@@ -6,7 +6,8 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeForPostgres as clean } from "@/lib/faq/entry";
-import { fetchKjvPassage, KjvLookupError } from "./kjv";
+import { BibleLookupError, fetchPassage } from "./bible";
+import { KjvLookupError } from "./kjv";
 import { DevotionalError, generateDevotional } from "./generate";
 import { addDays, defaultVerseFor, mondayOf, utcTodayIso, weekDays } from "./week";
 import {
@@ -40,7 +41,13 @@ export interface DayResult {
   error?: string;
   /** True when a previously published version was kept because regeneration failed. */
   keptPrevious?: boolean;
+  /** The day it was copied from, when an earlier devotional on the same verse was reused (no Model API call). */
+  reusedFrom?: string;
 }
+
+/** The devotional fields copied when a verse comes round again. */
+const CONTENT_COLUMNS =
+  "day, title, reflection_markdown, sermon_quotes_markdown, discussion_questions, prayer_intro, prayer_points, sermon_references, answer_markdown, rag_context, generated_at, edited_at, edited_by" as const;
 
 /**
  * Generate (or regenerate) one day. `reference` swaps the verse; otherwise
@@ -52,12 +59,19 @@ export async function generateAndStoreDay(
   day: string,
   language: AltarLanguage,
   reference?: string,
+  { reuse = true }: { reuse?: boolean } = {},
 ): Promise<DayResult> {
   const admin = createAdminClient();
   const existing = await admin.from(TABLE).select("status, scripture_ref").eq("day", day).eq("language", language).maybeSingle();
   if (existing.error) throw existing.error;
   const wasReady = existing.data?.status === "ready";
-  const ref = reference?.trim() || existing.data?.scripture_ref || defaultVerseFor(day);
+  // French and Spanish follow the English day's verse (same reference, their own Bible), so all three stay in sync.
+  let englishRef: string | null = null;
+  if (language !== "en" && !reference?.trim()) {
+    const en = await admin.from(TABLE).select("scripture_ref").eq("day", day).eq("language", "en").maybeSingle();
+    englishRef = en.data?.scripture_ref || null;
+  }
+  const ref = reference?.trim() || englishRef || (language === "en" ? existing.data?.scripture_ref : null) || defaultVerseFor(day);
 
   const fail = async (message: string): Promise<DayResult> => {
     if (wasReady) return { day, language, ok: false, error: message, keptPrevious: true };
@@ -75,9 +89,9 @@ export async function generateAndStoreDay(
 
   let passage;
   try {
-    passage = await fetchKjvPassage(ref);
+    passage = await fetchPassage(ref, language);
   } catch (err) {
-    return fail(err instanceof KjvLookupError ? err.message : "Couldn't fetch the Bible text. Try again.");
+    return fail(err instanceof BibleLookupError || err instanceof KjvLookupError ? err.message : "Couldn't fetch the Bible text. Try again.");
   }
 
   if (!wasReady) {
@@ -86,10 +100,42 @@ export async function generateAndStoreDay(
       language,
       week_start: mondayOf(day),
       scripture_ref: passage.reference,
+      bible_version: passage.version,
       scripture_text: clean(passage.text),
       status: "generating",
       error: null,
     });
+  }
+
+  // Every devotional is kept for good: when the verse comes round again (the
+  // list repeats every 365 days), serve the earlier one instead of asking the
+  // model again. Admin "Regenerate" passes reuse: false to get a fresh one.
+  if (reuse) {
+    const { data: earlier } = await admin
+      .from(TABLE)
+      .select(CONTENT_COLUMNS)
+      .eq("language", language)
+      .eq("scripture_ref", passage.reference)
+      .eq("status", "ready")
+      .neq("day", day)
+      .order("day", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (earlier) {
+      const { day: from, ...content } = earlier;
+      const { error } = await admin.from(TABLE).upsert({
+        ...content,
+        day,
+        language,
+        week_start: mondayOf(day),
+        scripture_ref: passage.reference,
+        bible_version: passage.version,
+        scripture_text: clean(passage.text),
+        status: "ready",
+        error: null,
+      });
+      if (!error) return { day, language, ok: true, scripture_ref: passage.reference, reusedFrom: from as string };
+    }
   }
 
   let dev;
@@ -104,7 +150,7 @@ export async function generateAndStoreDay(
     language,
     week_start: mondayOf(day),
     scripture_ref: passage.reference,
-    bible_version: "KJV",
+    bible_version: passage.version,
     scripture_text: clean(passage.text),
     title: clean(dev.title),
     reflection_markdown: clean(dev.reflection_markdown),
