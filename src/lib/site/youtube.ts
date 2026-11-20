@@ -1,15 +1,16 @@
 /**
  * Videos for the home page's "Stories from creation". Server only.
  *
- * The channel's most-liked videos are shown (ties: most viewed, then
- * newest). Two sources, best first:
- *  - YOUTUBE_API_KEY set (optional secret): the YouTube Data API ranks
+ * The home page shows the Nature Series (FEATURED_VIDEOS, in series order);
+ * everything else on the channel is one tap away ("More on YouTube"), since
+ * later uploads won't all be about nature. If FEATURED_VIDEOS is emptied, the
+ * channel's first three uploads are shown instead. Sources, best first:
+ *  - YOUTUBE_API_KEY set (optional secret): the YouTube Data API lists
  *    every upload on the channel (up to MAX_RANKED).
- *  - otherwise the channel's public feed, which carries like and view
- *    counts but only for the 15 newest uploads.
- * FEATURED_VIDEO_IDS overrides both by hand. Shorts (vertical) are flagged so
- * the page can show them upright. With no uploads at all, the page shows an
- * invitation to subscribe instead of empty frames. Never throws.
+ *  - otherwise the channel's public feed (only the 15 newest uploads), which
+ *    is why the featured videos carry their own title and Short flag.
+ * Shorts (vertical) are flagged so the page can show them upright. With no
+ * videos at all, the page shows an invitation to subscribe. Never throws.
  */
 
 import { YOUTUBE_CHANNEL_ID } from "./social";
@@ -24,8 +25,16 @@ export interface YouTubeVideo {
   published: string;
 }
 
-/** Hand-picked videos (ids from youtube.com/watch?v=ID or /shorts/ID), shown in this order. Empty: most liked. */
-export const FEATURED_VIDEO_IDS: string[] = [];
+/**
+ * The videos shown, in this order (ids from youtube.com/watch?v=ID or /shorts/ID).
+ * Title and Short flag are fallbacks for when the feed no longer lists a video;
+ * the live title wins. Empty: the channel's first three uploads.
+ */
+export const FEATURED_VIDEOS: { id: string; title: string; short: boolean }[] = [
+  { id: "dmhINwMo5yQ", title: "Baby Turtles Follow the Wrong Light 🐢🌙 | The Nature Series Part 1", short: true },
+  { id: "QYpv2G_GSIk", title: "The Salmon's Last Journey Home 🐟 | The Nature Series Part 2", short: true },
+  { id: "2qXUlo2z0gk", title: "He Thought the Water Was Holding Him Back 🐟 | The Nature Series Part 3", short: true },
+];
 
 export const HOME_VIDEO_COUNT = 3;
 const MAX_RANKED = 200;
@@ -44,6 +53,11 @@ function decodeXml(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
+/** A title without its trailing hashtags ("… Part 3 #faith #nature" → "… Part 3"). */
+export function cleanTitle(title: string): string {
+  return title.replace(/(\s+#[\p{L}\p{N}_]+)+\s*$/u, "").trim();
+}
+
 /** Parse the channel feed's entries (newest first). Exported for testing. */
 export function parseYouTubeFeed(xml: string): YouTubeVideo[] {
   const out: YouTubeVideo[] = [];
@@ -54,7 +68,7 @@ export function parseYouTubeFeed(xml: string): YouTubeVideo[] {
     const link = entry.match(/<link rel="alternate" href="([^"]+)"/)?.[1] ?? "";
     out.push({
       id,
-      title: decodeXml(title),
+      title: cleanTitle(decodeXml(title)),
       short: link.includes("/shorts/"),
       likes: Number(entry.match(/<media:starRating count="(\d+)"/)?.[1] ?? 0),
       views: Number(entry.match(/<media:statistics views="(\d+)"/)?.[1] ?? 0),
@@ -95,7 +109,7 @@ async function fetchFromApi(key: string): Promise<YouTubeVideo[]> {
       if (v.status?.privacyStatus !== "public" || v.status?.embeddable === false) continue;
       out.push({
         id: v.id,
-        title: v.snippet?.title ?? "",
+        title: cleanTitle(v.snippet?.title ?? ""),
         // The API doesn't say "Short"; anything up to 3 minutes on this channel is one.
         short: seconds(v.contentDetails?.duration ?? "") <= 180,
         likes: Number(v.statistics?.likeCount ?? 0),
@@ -114,12 +128,12 @@ async function fetchFromFeed(): Promise<YouTubeVideo[]> {
   return res.ok ? parseYouTubeFeed(await res.text()) : [];
 }
 
-/** Most liked first; ties by views, then newest. Exported for testing. */
-export function rankByLikes(videos: YouTubeVideo[]): YouTubeVideo[] {
-  return [...videos].sort((a, b) => b.likes - a.likes || b.views - a.views || b.published.localeCompare(a.published));
+/** Oldest upload first. Exported for testing. */
+export function firstUploads(videos: YouTubeVideo[]): YouTubeVideo[] {
+  return [...videos].sort((a, b) => a.published.localeCompare(b.published));
 }
 
-/** The videos to show: the featured ones, else the most liked. Never throws. */
+/** The videos to show: the featured ones, else the channel's first uploads. Never throws. */
 export async function fetchHomeVideos(): Promise<YouTubeVideo[]> {
   return fetchChannelVideos();
 }
@@ -141,13 +155,13 @@ async function fetchChannelVideos(): Promise<YouTubeVideo[]> {
       /* YouTube unreachable */
     }
   }
-  if (FEATURED_VIDEO_IDS.length) {
+  if (FEATURED_VIDEOS.length) {
     const known = new Map(all.map((v) => [v.id, v]));
-    return FEATURED_VIDEO_IDS.slice(0, HOME_VIDEO_COUNT).map(
-      (id) => known.get(id) ?? { id, title: "", short: false, likes: 0, views: 0, published: "" },
+    return FEATURED_VIDEOS.slice(0, HOME_VIDEO_COUNT).map(
+      (f) => known.get(f.id) ?? { ...f, likes: 0, views: 0, published: "" },
     );
   }
-  return rankByLikes(all).slice(0, HOME_VIDEO_COUNT);
+  return firstUploads(all).slice(0, HOME_VIDEO_COUNT);
 }
 
 export const youtubeThumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
